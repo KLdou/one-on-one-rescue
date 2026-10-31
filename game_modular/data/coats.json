@@ -1,0 +1,126 @@
+{
+  "catCoats": {
+    "cow": {
+      "id": "cow",
+      "tier": "unpopular",
+      "popularity": 0.22,
+      "name": "Черно-белый («Коровка» / «Маркиз»)",
+      "adjFemale": "черно-белая",
+      "adjMale": "черно-белый",
+      "adjPlural": "черно-белых",
+      "tagColor": "bg-slate-700 text-slate-200"
+    },
+    "tabby": {
+      "id": "tabby",
+      "tier": "unpopular",
+      "popularity": 0.3,
+      "name": "Серо-полосатый («Шпротный» / «Тигровый»)",
+      "adjFemale": "серо-полосатая",
+      "adjMale": "серо-полосатый",
+      "adjPlural": "серо-полосатых",
+      "tagColor": "bg-amber-900/60 text-amber-200"
+    },
+    "white_tabby": {
+      "id": "white_tabby",
+      "tier": "unpopular",
+      "popularity": 0.38,
+      "name": "Бело-тигровый",
+      "adjFemale": "бело-тигровая",
+      "adjMale": "бело-тигровый",
+      "adjPlural": "бело-тигровых",
+      "tagColor": "bg-amber-800/50 text-amber-100"
+    },
+    "black": {
+      "id": "black",
+      "tier": "polarizing",
+      "popularity": 0.45,
+      "name": "Чисто черный («Пантерка»)",
+      "adjFemale": "черная",
+      "adjMale": "черный",
+      "adjPlural": "черных",
+      "tagColor": "bg-zinc-900 text-zinc-300 border border-zinc-600"
+    },
+    "grey": {
+      "id": "grey",
+      "tier": "mid_popular",
+      "popularity": 0.65,
+      "name": "Серый дымчатый («Голубой»)",
+      "adjFemale": "серая",
+      "adjMale": "серый",
+      "adjPlural": "серых",
+      "tagColor": "bg-slate-600 text-slate-100"
+    },
+    "calico_spices": {
+      "id": "calico_spices",
+      "tier": "popular",
+      "popularity": 0.78,
+      "name": "Трехцветка / Черепаховый («Специи»)",
+      "adjFemale": "трехцветная",
+      "adjMale": "трехцветный",
+      "adjPlural": "трехцветных",
+      "tagColor": "bg-orange-950 text-orange-200 border border-orange-500/50"
+    },
+    "white_ginger": {
+      "id": "white_ginger",
+      "tier": "popular",
+      "popularity": 0.82,
+      "name": "Бело-рыжий",
+      "adjFemale": "бело-рыжая",
+      "adjMale": "бело-рыжий",
+      "adjPlural": "бело-рыжих",
+      "tagColor": "bg-amber-700/60 text-amber-100"
+    },
+    "ginger": {
+      "id": "ginger",
+      "tier": "hit",
+      "popularity": 0.95,
+      "name": "Ярко-рыжий («Солнечный»)",
+      "adjFemale": "ярко-рыжая",
+      "adjMale": "ярко-рыжий",
+      "adjPlural": "ярко-рыжих",
+      "tagColor": "bg-amber-600 text-slate-950 font-bold"
+    },
+    "colorpoint": {
+      "id": "colorpoint",
+      "tier": "high_demand",
+      "popularity": 1.25,
+      "name": "Голубоглазый Колор-пойнт (Тайский фенотип)",
+      "adjFemale": "тайская колор-пойнт",
+      "adjMale": "тайский колор-пойнт",
+      "adjPlural": "тайских колор-пойнтов",
+      "tagColor": "bg-sky-900 text-sky-200 border border-sky-400"
+    },
+    "purebred": {
+      "id": "purebred",
+      "tier": "maximum",
+      "popularity": 2.0,
+      "name": "Фенотип породы (Шотландец / Британец)",
+      "adjFemale": "породистая шотландская",
+      "adjMale": "породистый шотландский",
+      "adjPlural": "породистых шотландских",
+      "tagColor": "bg-purple-900 text-purple-200 border border-purple-400"
+    }
+  },
+  "dogCoats": [
+    {
+      "name": "Черно-подпалый («Овчаристый дворик»)",
+      "popularity": 0.32,
+      "tagColor": "bg-amber-950 text-amber-300"
+    },
+    {
+      "name": "Рыже-палевый («Лисичка»)",
+      "popularity": 0.42,
+      "tagColor": "bg-amber-700/80 text-amber-100"
+    },
+    {
+      "name": "Чепрачный («Зонарный»)",
+      "popularity": 0.28,
+      "tagColor": "bg-stone-800 text-stone-200"
+    },
+    {
+      "name": "Светло-кремовый («Беляк»)",
+      "popularity": 0.45,
+      "tagColor": "bg-amber-100 text-slate-900 font-bold"
+    }
+  ]
+}

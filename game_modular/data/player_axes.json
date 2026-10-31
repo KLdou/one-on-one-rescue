@@ -1,0 +1,101 @@
+{
+  "incomes": [
+    {
+      "id": "low",
+      "label": "ЗП 1650 BYN (свободно 400 BYN/мес)",
+      "startingCash": 280,
+      "monthlySalary": 1650,
+      "monthlyFreeCash": 400
+    },
+    {
+      "id": "mid",
+      "label": "ЗП 2800 BYN (свободно 825 BYN/мес)",
+      "startingCash": 600,
+      "monthlySalary": 2800,
+      "monthlyFreeCash": 825
+    },
+    {
+      "id": "high",
+      "label": "ЗП 4600 BYN (свободно 1500 BYN/мес)",
+      "startingCash": 1120,
+      "monthlySalary": 4600,
+      "monthlyFreeCash": 1500
+    }
+  ],
+  "housing": [
+    {
+      "id": "own_flat",
+      "label": "🏠 Своя квартира",
+      "landlordRisk": 0,
+      "dailyMentalDrain": 0
+    },
+    {
+      "id": "rent_strict",
+      "label": "🔑 Съемная (строгий запрет на животных)",
+      "landlordRisk": 0.14,
+      "dailyMentalDrain": 1,
+      "depositCost": 150
+    },
+    {
+      "id": "with_relatives",
+      "label": "👥 С родней (против животных, -2%🧠/д)",
+      "landlordRisk": 0,
+      "dailyMentalDrain": 2
+    }
+  ],
+  "family": [
+    {
+      "id": "single",
+      "label": "👤 Живу один/одна (+32⚡/д)",
+      "energyBonus": 32,
+      "mentalBonus": 0,
+      "ringwormPanic": 1.0
+    },
+    {
+      "id": "partner_support",
+      "label": "💑 Партнер поддерживает (+36⚡/д, +3%🧠/д)",
+      "energyBonus": 36,
+      "mentalBonus": 3,
+      "ringwormPanic": 0.8
+    },
+    {
+      "id": "small_kids",
+      "label": "👶 Маленький ребенок (+22⚡/д, паника лишая 2.5x)",
+      "energyBonus": 22,
+      "mentalBonus": -1,
+      "ringwormPanic": 2.5
+    }
+  ],
+  "ownPets": [
+    {
+      "id": "none",
+      "label": "🐾 Своих животных нет",
+      "infectionRisk": "none"
+    },
+    {
+      "id": "vaccinated_cat",
+      "label": "🛡️ Свой кот (привит)",
+      "infectionRisk": "low"
+    },
+    {
+      "id": "unvaccinated_cat",
+      "label": "⚠️ Свой кот (НЕ привит!)",
+      "infectionRisk": "critical",
+      "treatmentCost": 215
+    }
+  ],
+  "mobility": [
+    {
+      "id": "car",
+      "label": "🚗 Личное авто",
+      "energyMod": 0.75,
+      "extraTaxiCost": 0
+    },
+    {
+      "id": "no_car",
+      "label": "🚌 Без авто (общественный транспорт / такси)",
+      "energyMod": 1.2,
+      "extraTaxiCost": 20
+    }
+  ]
+}

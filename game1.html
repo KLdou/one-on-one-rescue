@@ -1,0 +1,3301 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Один на один: Симулятор спасения</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0b111a;
+      color: #e2e8f0;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    @keyframes pulseUrgent {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.7); }
+      50% { box-shadow: 0 0 0 8px rgba(225, 29, 72, 0); }
+    }
+    .urgent-btn {
+      animation: pulseUrgent 1.8s infinite;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- ================= 1. ТОП-БАР: ВРЕМЯ, СКОРОСТЬ И РЕСУРСЫ ================= -->
+  <header class="sticky top-0 z-30 bg-[#0f1724]/95 backdrop-blur border-b border-slate-800 px-3 py-2.5 shadow-lg">
+    <div class="max-w-7xl mx-auto flex flex-col gap-2.5">
+      
+      <!-- Верхняя строка: Название, День, Скорость, Перемотка штиля и Новая партия -->
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2.5">
+          <span id="tickIndicator" class="inline-flex items-center justify-center w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+          <span class="font-extrabold text-sm sm:text-base tracking-tight text-white">ОДИН НА ОДИН</span>
+          <span class="font-mono text-xs sm:text-sm px-2.5 py-0.5 rounded bg-slate-800 text-emerald-400 border border-slate-700 font-bold">
+            ДЕНЬ <span id="dayCounter">1</span>
+          </span>
+          <span id="seasonBadge" class="hidden font-mono text-[11px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
+            ☀️ Сезон котят (-75% звонков на взрослых)
+          </span>
+        </div>
+
+        <!-- Кнопки управления временем -->
+        <div class="flex flex-wrap items-center gap-1.5">
+          <button id="btnSpeed0" onclick="setSpeed(0)" class="px-2.5 py-1 rounded text-xs font-mono font-bold bg-emerald-500 text-slate-950 border border-emerald-400 transition">
+            ⏸ Пауза
+          </button>
+          <button id="btnSpeed1" onclick="setSpeed(1)" class="px-2.5 py-1 rounded text-xs font-mono font-semibold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 transition">
+            ▶ 1x
+          </button>
+          <button id="btnSpeed2" onclick="setSpeed(2)" class="px-2.5 py-1 rounded text-xs font-mono font-semibold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 transition">
+            ▶▶ 2x
+          </button>
+          <button id="btnSpeed5" onclick="setSpeed(5)" class="px-2.5 py-1 rounded text-xs font-mono font-semibold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 transition">
+            ⚡ 5x
+          </button>
+          <button onclick="fastForwardCalmDays()" title="Промотать спокойные дни (авто-стоп за 1 день до дедлайна)" class="px-2.5 py-1 rounded text-xs font-mono font-bold bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400 transition">
+            ⏩ Промотать штиль
+          </button>
+          <button onclick="startNewRun()" class="ml-1 px-2.5 py-1 rounded text-xs font-mono font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600 transition">
+            ↻ Новая жизнь
+          </button>
+        </div>
+      </div>
+
+      <!-- Нижняя строка топ-бара: 4 главные шкалы -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        <!-- Бюджет и Талон -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-lg px-3 py-1.5 flex items-center justify-between">
+          <div>
+            <div class="text-[10px] font-mono uppercase text-slate-400">Личный бюджет</div>
+            <div id="cashValue" class="font-mono font-bold text-sm sm:text-base text-emerald-400">$120</div>
+          </div>
+          <div class="text-right font-mono text-[11px]">
+            <div id="voucherDebtText" class="text-slate-500">Талон: не выписан</div>
+            <div id="voucherTimerText" class="hidden text-rose-400 font-bold">30 дн.</div>
+          </div>
+        </div>
+
+        <!-- Менталка -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-lg px-3 py-1.5 flex flex-col justify-center">
+          <div class="flex justify-between text-[11px] font-mono mb-1">
+            <span class="text-slate-400">🧠 Менталка / Ресурс</span>
+            <span id="mentalValue" class="font-bold text-sky-400">100%</span>
+          </div>
+          <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+            <div id="mentalBar" class="h-full bg-sky-400 transition-all duration-300" style="width: 100%"></div>
+          </div>
+        </div>
+
+        <!-- Энергия / Время -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-lg px-3 py-1.5 flex flex-col justify-center">
+          <div class="flex justify-between text-[11px] font-mono mb-1">
+            <span class="text-slate-400">⚡ Время / Энергия</span>
+            <span id="energyValue" class="font-bold text-amber-400">100⚡</span>
+          </div>
+          <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+            <div id="energyBar" class="h-full bg-amber-400 transition-all duration-300" style="width: 100%"></div>
+          </div>
+        </div>
+
+        <!-- Здоровье подопечного -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-lg px-3 py-1.5 flex flex-col justify-center">
+          <div class="flex justify-between text-[11px] font-mono mb-1">
+            <span class="text-slate-400">❤️ Жизнь питомца</span>
+            <span id="animalHealthValue" class="font-bold text-emerald-400">90%</span>
+          </div>
+          <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+            <div id="healthBar" class="h-full bg-emerald-400 transition-all duration-300" style="width: 90%"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ================= ОСНОВНОЙ КОНТЕЙНЕР ================= -->
+  <main class="max-w-7xl w-full mx-auto flex-1 flex flex-col gap-3 p-3">
+
+    <!-- ================= 2. КАРТОЧКА ИГРОКА И КАРТОЧКА ЖИВОТНОГО ================= -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-3">
+      
+      <!-- Карточка Игрока (5 cols) -->
+      <div class="lg:col-span-5 bg-[#131b29] border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between gap-2">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+          <span class="text-xs font-mono uppercase tracking-wider text-slate-400 font-bold">👤 Профиль куратора (Случайный человек)</span>
+        </div>
+      <!-- Дополнительная информация игрока и статус -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 flex flex-col gap-2">
+        <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div class="flex flex-wrap items-center gap-1.5 font-mono text-[11px]" id="playerTagsContainer">
+            <!-- Заполняется JS -->
+          </div>
+          <div class="flex items-center gap-3">
+            <span id="giftedFoodBadge" class="hidden text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+              🎁 Корм в подарок
+            </span>
+            <span id="fosterStatusBadge" class="text-xs font-mono text-sky-400 font-semibold">
+              ⚠️ Живет дома на полу
+            </span>
+            <span id="dailyExpenseLabel" class="text-xs font-mono text-rose-300 font-semibold">
+              Расход: $1.5/день
+            </span>
+          </div>
+          <div class="font-mono text-xs font-semibold text-amber-300" id="salaryCountdown">
+            До ЗП (+$120): 30 дн.
+          </div>
+        </div>
+      </div>
+
+      <!-- СПЕЦИАЛЬНЫЙ БАННЕР ВЫКОРМА СЛЕПЫШЕЙ (Появляется только если на руках новорожденные котята) -->
+      <div id="newbornUrgentBanner" class="hidden bg-rose-950/70 border border-rose-500/70 rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xl">🍼</span>
+          <div>
+            <div class="text-xs font-bold text-rose-200">РЕЖИМ ВЫКОРМА НОВОРОЖДЕННЫХ СЛЕПЫШЕЙ</div>
+            <div class="text-[11px] font-mono text-rose-300/90" id="milkSupplyTag">Запас спецсмеси: проверяем...</div>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <button id="btnCowMilkTrap" onclick="feedCowMilkTrap()" class="hidden px-3 py-1.5 rounded-lg bg-rose-800 hover:bg-rose-700 text-white font-mono text-xs font-bold transition">
+            🐄 Напоить коровьим молоком ($0)
+          </button>
+          <button id="btnBuyFormula" onclick="buyBabycatFormula()" class="hidden px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-mono text-xs font-bold transition">
+            📦 Купить банку смеси ($32)
+          </button>
+          <button id="btnFeedNewborns" onclick="feedNewbornKittens()" class="urgent-btn flex-1 sm:flex-initial px-3.5 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs sm:text-sm transition">
+            🍼 Покормить из соски (-15⚡)
+          </button>
+        </div>
+      </div>
+      </div>
+
+      <!-- Карточка Животного (Архетип + Скрытые и открытые теги + Живой чек-лист) -->
+      <div class="lg:col-span-7 bg-[#131b29] border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
+        <div>
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2 mb-2">
+            <div>
+              <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" id="animalSpeciesBadge">Кот</span>
+              <h2 class="text-sm sm:text-base font-bold text-white inline ml-1.5" id="animalTitle">Загрузка...</h2>
+            </div>
+            <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-amber-300 border border-slate-700" id="coatPopularityBadge">
+              Шанс звонков: 0.35x
+            </span>
+          </div>
+
+          <p class="text-xs text-slate-300 leading-relaxed mb-2.5" id="animalDescription">
+            Описание животного...
+          </p>
+
+          <!-- Живой чек-лист подготовки и таймеров (Карантин 14д, Глистогонка 1/2 и 2/2 180д, Вакцина, Стерилизация, Титры ЕС) -->
+          <div class="mb-2 bg-slate-900/80 border border-slate-800 rounded-lg p-2">
+            <div class="text-[10px] font-mono uppercase text-slate-400 font-bold mb-1.5 flex items-center justify-between">
+              <span>📌 Живой чек-лист куратора и таймеры обработок:</span>
+              <span id="checklistHintText" class="text-amber-400 font-normal">Сделайте просвет Вуда и 1-ю глистогонку</span>
+            </div>
+            <div class="flex flex-wrap gap-1.5" id="animalChecklistTags">
+              <!-- Генерируется JS -->
+            </div>
+          </div>
+
+          <!-- Диагностические теги статуса (Просвет, ПЦР, Фото) -->
+          <div class="flex flex-wrap gap-1.5" id="animalStatusTags">
+            <!-- Генерируется JS -->
+          </div>
+        </div>
+
+        <div class="mt-3 pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono">
+          <span class="text-slate-400" id="visibleStateText">Состояние: стабильное</span>
+          <span class="text-sky-400" id="prProgressText">Статус поиска дома: Не начат</span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- БАННЕР ВЕЩЕСТВЕННОЙ ПОМОЩИ («Посылки добра» — возможность поблагодарить подписчиков) -->
+    <div id="giftThankYouBanner" class="hidden bg-emerald-950/70 border border-emerald-500/60 rounded-xl p-2.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+      <div class="text-xs text-emerald-100">
+        <span class="font-bold text-emerald-300">🎁 Посылка добра получена!</span>
+        <span id="giftBannerText">Подписчики прислали корм и пеленки. Сделайте короткий фото-отчет с благодарностью, чтобы люди продолжали помогать вещами!</span>
+      </div>
+      <button onclick="thankForMaterialGift()" class="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-mono font-bold text-xs shrink-0 transition">
+        📸 Выложить фото с подарком (-5⚡, +доверие)
+      </button>
+    </div>
+
+    <!-- ================= 3. ЦЕНТРАЛЬНОЕ ОКНО: СОБЫТИЯ / ЗВОНКИ ИЛИ ПАНЕЛЬ ДЕЙСТВИЙ ================= -->
+    <section class="bg-[#131b29] border border-slate-800 rounded-xl p-3.5 shadow-xl relative">
+      
+      <!-- А) МОДАЛЬНЫЙ БЛОК АКТИВНОГО СОБЫТИЯ / ЗВОНКА «РУЧЕК» (перекрывает панель действий при триггере) -->
+      <div id="eventOverlayBox" class="hidden flex-col gap-3 bg-slate-900/95 border-2 border-amber-500/70 rounded-xl p-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+          <div class="flex items-center gap-2">
+            <span id="eventBadge" class="text-xs font-mono uppercase px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-bold">
+              ⚡ СОБЫТИЕ (ИГРА НА ПАУЗЕ)
+            </span>
+            <h3 id="eventTitle" class="text-sm sm:text-base font-bold text-white">Заголовок события</h3>
+          </div>
+        </div>
+
+        <div id="eventBody" class="text-xs sm:text-sm text-slate-200 leading-relaxed space-y-2 whitespace-pre-line font-sans">
+          Текст события или монолог потенциального хозяина...
+        </div>
+
+        <!-- Дополнительный ответ при проверке ручек -->
+        <div id="extraQuestionBox" class="hidden bg-slate-800/90 border border-slate-700 rounded-lg p-3 text-xs text-amber-200 font-mono">
+        </div>
+
+        <div id="eventChoicesContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+          <!-- Кнопки выбора -->
+        </div>
+      </div>
+
+      <!-- Б) ПАНЕЛЬ УПРАВЛЕНИЯ И ДЕЙСТВИЙ КУРАТОРА (3 ВКЛАДКИ) -->
+      <div id="actionsDashboard">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2.5 mb-3">
+          <div class="flex items-center gap-1.5 overflow-x-auto">
+            <button onclick="switchTab('vet')" id="tabBtn_vet" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition">
+              🏥 1. Ветеринария (Доктор Вет)
+            </button>
+            <button onclick="switchTab('zooshans')" id="tabBtn_zooshans" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition">
+              🤝 2. Помощь «Зоошанса» и Сборы
+            </button>
+            <button onclick="switchTab('care')" id="tabBtn_care" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition">
+              📸 3. Быт, Передержка и Пиар
+            </button>
+          </div>
+          <span class="text-[11px] font-mono text-slate-400 hidden sm:inline">
+            Подсказка: в любой момент ставьте игру на Паузу для выбора действий
+          </span>
+        </div>
+
+        <!-- Контейнер кнопок текущей вкладки -->
+        <div id="tabContent_vet" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5"></div>
+        <div id="tabContent_zooshans" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5"></div>
+        <div id="tabContent_care" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5"></div>
+      </div>
+
+    </section>
+
+    <!-- ================= 4. ЛЕНТА ХРОНИКИ (ЛОГ ДНЕЙ) ================= -->
+    <section class="bg-[#131b29] border border-slate-800 rounded-xl p-3 flex-1 flex flex-col min-h-[170px] max-h-[240px]">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-2">
+        <h3 class="text-xs font-mono uppercase tracking-wider text-slate-400 font-bold">
+          📜 Хроника спасательной операции
+        </h3>
+        <span class="text-[11px] font-mono text-slate-500" id="logCountInfo">Записей: 1</span>
+      </div>
+      <div id="chronicleLog" class="flex-1 overflow-y-auto space-y-1.5 pr-1 font-mono text-xs">
+        <!-- Записи лога -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= ФИНАЛЬНОЕ МОДАЛЬНОЕ ОКНО: МОСТ В РЕАЛЬНОСТЬ (BRIDGE TO REALITY) ================= -->
+  <div id="endGameModal" class="fixed inset-0 z-50 hidden bg-slate-950/90 backdrop-blur-md overflow-y-auto p-3 sm:p-6 flex items-center justify-center">
+    <div class="bg-[#131b29] border-2 border-slate-700 rounded-2xl max-w-2xl w-full p-4 sm:p-6 shadow-2xl my-auto">
+      
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+        <div>
+          <span id="endModalBadge" class="text-xs font-mono uppercase px-2.5 py-1 rounded font-bold bg-emerald-500 text-slate-950">
+            ИТОГ ПАРТИИ
+          </span>
+          <h2 id="endModalTitle" class="text-lg sm:text-xl font-extrabold text-white mt-2">
+            Заголовок финала
+          </h2>
+        </div>
+        <button onclick="startNewRun()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-200 border border-slate-600">
+          ↻ Сыграть еще раз
+        </button>
+      </div>
+
+      <p id="endModalDescription" class="text-xs sm:text-sm text-slate-200 leading-relaxed mb-4 whitespace-pre-line">
+        Подробный разбор того, что произошло...
+      </p>
+
+      <!-- Статистика партии -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-900/90 border border-slate-800 rounded-xl p-3 mb-4 font-mono text-xs">
+        <div>
+          <div class="text-slate-400 text-[11px]">Прожито дней:</div>
+          <div class="text-white font-bold text-sm" id="statDays">0</div>
+        </div>
+        <div>
+          <div class="text-slate-400 text-[11px]">Личных средств:</div>
+          <div class="text-emerald-400 font-bold text-sm" id="statPersonalSpent">$0</div>
+        </div>
+        <div>
+          <div class="text-slate-400 text-[11px]">По талонам Зоошанса:</div>
+          <div class="text-sky-400 font-bold text-sm" id="statVoucherUsed">$0</div>
+        </div>
+        <div>
+          <div class="text-slate-400 text-[11px]">Отсеяно опасных ручек:</div>
+          <div class="text-amber-400 font-bold text-sm" id="statFilteredCalls">0</div>
+        </div>
+      </div>
+
+      <!-- Блок конверсии в реальную помощь МБООПЖ «Зоошанс» -->
+      <div class="bg-emerald-950/30 border border-emerald-500/40 rounded-xl p-3.5 mb-4">
+        <p class="text-xs text-emerald-200 italic leading-relaxed mb-3">
+          «В симуляторе вы можете включить скорость 5x или перезапустить партию. В реальности волонтеры МБООПЖ «Зоошанс» не спят ночами, выкармливают слепышей по будильнику, дежурят в реанимациях и ведут сотни животных одновременно. Государственных приютов в Беларуси нет — вся эта помощь держится только на неравнодушных людях».
+        </p>
+
+        <h4 class="text-xs font-mono uppercase text-emerald-400 font-bold mb-2">
+          КАК ПОМОЧЬ ИЛИ ПОЛУЧИТЬ СОВЕТ ПРЯМО СЕЙЧАС:
+        </h4>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <a href="https://zooshans.by/help-us" target="_blank" rel="noopener noreferrer" class="flex flex-col justify-between p-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold transition">
+            <span>💳 Помочь «Зоошансу» (ЕРИП: 4346991)</span>
+            <span class="text-[10px] font-mono opacity-90 mt-1">Благотворительность → Защита животных → Зоошанс</span>
+          </a>
+
+          <a href="https://t.me/zooshans_chat" target="_blank" rel="noopener noreferrer" class="flex flex-col justify-between p-2.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold transition">
+            <span>💬 Живой чат взаимопомощи @zooshans_chat</span>
+            <span class="text-[10px] font-mono opacity-90 mt-1">Проверить «ручки», спросить совета, найти смесь</span>
+          </a>
+
+          <a href="https://t.me/zooshans_info_bot" target="_blank" rel="noopener noreferrer" class="flex flex-col justify-between p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 font-semibold transition">
+            <span>🤖 Справочный бот @zooshans_info_bot</span>
+            <span class="text-[10px] font-mono text-slate-400 mt-1">Памятки по карантину, проверенные врачи и пиар</span>
+          </a>
+
+          <a href="https://t.me/zooshans" target="_blank" rel="noopener noreferrer" class="flex flex-col justify-between p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 font-semibold transition">
+            <span>📢 Канал «Жизнь Зоошанса» (@zooshans)</span>
+            <span class="text-[10px] font-mono text-slate-400 mt-1">Реальные истории спасения и пристройства</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="flex justify-end">
+        <button onclick="startNewRun()" class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-sm transition">
+          Начать новую случайную партию
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= ИГРОВОЙ ДВИЖОК И БАЗА ДАННЫХ СЦЕНАРИЕВ ================= -->
+  <script>
+    // ---------------------------------------------------------------------------
+    // 1. ОСИ ПРОЦЕДУРНОЙ ГЕНЕРАЦИИ ИГРОКА (5 НЕЗАВИСИМЫХ ПАРАМЕТРОВ)
+    // ---------------------------------------------------------------------------
+    const PLAYER_AXES = {
+      incomes: [
+        { id: 'low', label: 'ЗП $500 (свободно $120/мес)', monthlyFreeCash: 120, startingCash: 85 },
+        { id: 'mid', label: 'ЗП $850 (свободно $250/мес)', monthlyFreeCash: 250, startingCash: 180 },
+        { id: 'high', label: 'ЗП $1400 (свободно $450/мес)', monthlyFreeCash: 450, startingCash: 340 }
+      ],
+      housing: [
+        { id: 'own_flat', label: '🏠 Своя квартира', landlordRisk: 0, dailyMentalDrain: 0 },
+        { id: 'rent_strict', label: '🔑 Съемная (строгий запрет на животных)', landlordRisk: 0.14, dailyMentalDrain: 1 },
+        { id: 'with_relatives', label: '👥 С родственниками (против животных)', landlordRisk: 0, dailyMentalDrain: 3 }
+      ],
+      family: [
+        { id: 'single', label: '👤 Живу один/одна', energyBonus: 18, mentalBonus: 0, ringwormPanic: 1.0 },
+        { id: 'partner_support', label: '💑 Партнер поддерживает (+3🧠/день)', energyBonus: 22, mentalBonus: 3, ringwormPanic: 1.0 },
+        { id: 'small_kids', label: '👶 Маленький ребенок (мало времени, x3 паника при лишае)', energyBonus: 12, mentalBonus: -1, ringwormPanic: 2.5 }
+      ],
+      ownPets: [
+        { id: 'none', label: '🐾 Своих животных нет', infectionRisk: 'none' },
+        { id: 'vaccinated_cat', label: '🛡️ Свой кот (привит)', infectionRisk: 'low' },
+        { id: 'unvaccinated_cat', label: '⚠️ Свой кот (НЕ привит — риск заражения!)', infectionRisk: 'critical' }
+      ],
+      mobility: [
+        { id: 'car', label: '🚗 Личное авто (свобода поездок)', energyMod: 0.7, extraTaxiCost: 0 },
+        { id: 'no_car', label: '🚌 Без авто (троллейбус, поиск попуток у знакомых, такси)', energyMod: 1.25, extraTaxiCost: 6 }
+      ]
+    };
+
+    // ---------------------------------------------------------------------------
+    // 2. МАТРИЦА ИЗ 10 РЕАЛЬНЫХ ОКРАСОВ И 25+ СЦЕНАРИЕВ НАЙДЕНЫШЕЙ
+    // ---------------------------------------------------------------------------
+    const COAT_CATALOG = {
+      tabby: {
+        id: 'tabby',
+        name: 'Шпротный / Тигровый',
+        adjPlural: 'шпротных полосатых',
+        adjMale: 'шпротный тигровый',
+        adjFemale: 'шпротная тигровая',
+        popularity: 0.30,
+        tier: 'unpopular_cow_tabby',
+        note: 'Классический дворовый полосатик — звонят редко'
+      },
+      cow: {
+        id: 'cow',
+        name: 'Черно-белый («Коровка»)',
+        adjPlural: 'черно-белых («коровок»)',
+        adjMale: 'черно-белый маркиз («коровка»)',
+        adjFemale: 'черно-белая «коровка»',
+        popularity: 0.20,
+        tier: 'unpopular_cow_tabby',
+        note: 'Самый сложный в пристройстве окрас (0.20x)'
+      },
+      white_tabby: {
+        id: 'white_tabby',
+        name: 'Бело-тигровый',
+        adjPlural: 'бело-тигровых',
+        adjMale: 'бело-тигровый',
+        adjFemale: 'бело-тигровая',
+        popularity: 0.35,
+        tier: 'unpopular_cow_tabby',
+        note: 'Обычный окрас — требует хороших пиарных фото'
+      },
+      black: {
+        id: 'black',
+        name: 'Чисто черный',
+        adjPlural: 'угольно-черных',
+        adjMale: 'угольно-черный',
+        adjFemale: 'угольно-черная',
+        popularity: 0.45,
+        tier: 'black_cat',
+        note: 'Средний спрос, но привлекает неадекватов перед Хэллоуином'
+      },
+      grey: {
+        id: 'grey',
+        name: 'Серый / Голубой дымчатый',
+        adjPlural: 'серых дымчатых',
+        adjMale: 'пепельно-серый',
+        adjFemale: 'пепельно-серая',
+        popularity: 0.65,
+        tier: 'popular_ginger_calico',
+        note: 'Приятный благородный окрас (0.65x)'
+      },
+      ginger: {
+        id: 'ginger',
+        name: 'Ярко-рыжий',
+        adjPlural: 'ярко-рыжих',
+        adjMale: 'огненно-рыжий',
+        adjFemale: 'солнечно-рыжая',
+        popularity: 0.90,
+        tier: 'popular_ginger_calico',
+        note: 'Высокий спрос (0.90x), но много импульсивных звонков'
+      },
+      white_ginger: {
+        id: 'white_ginger',
+        name: 'Бело-рыжий',
+        adjPlural: 'бело-рыжих',
+        adjMale: 'бело-рыжий',
+        adjFemale: 'бело-рыжая',
+        popularity: 0.75,
+        tier: 'popular_ginger_calico',
+        note: 'Популярный теплый окрас (0.75x)'
+      },
+      calico_spices: {
+        id: 'calico_spices',
+        name: 'Трехцветка / Черепаховый («Специи»)',
+        adjPlural: 'пестрых черепаховых («специи»)',
+        adjMale: 'редкий трехцветный',
+        adjFemale: 'черепаховая («специи» — корица с шоколадом)',
+        popularity: 0.55,
+        tier: 'popular_ginger_calico',
+        note: 'Окрас «специи» плохо смотрится на фото с телефона, но расцветает у проф. фотографа!'
+      },
+      colorpoint: {
+        id: 'colorpoint',
+        name: 'Колор-пойнт (Голубоглазый)',
+        adjPlural: 'голубоглазых пойнтовых',
+        adjMale: 'голубоглазый колор-пойнт',
+        adjFemale: 'голубоглазая колор-пойнт',
+        popularity: 1.25,
+        tier: 'colorpoint_phenotype',
+        note: 'Ажиотажный спрос (1.25x): звонят разведенцы и люди со стереотипами про «злых сиамов»'
+      },
+      purebred: {
+        id: 'purebred',
+        name: 'Фенотип породы',
+        adjPlural: 'породистых фенотипичных',
+        adjMale: 'породистый фенотипичный',
+        adjFemale: 'породистая фенотипичная',
+        popularity: 2.00,
+        tier: 'purebred_phenotype',
+        note: 'Магнит для мошенников с курьером, перекупов и плодильщиков (2.0x)'
+      }
+    };
+
+    const DOG_COATS = [
+      { name: 'чепрачный (овчарочьего типа)', pop: 0.30 },
+      { name: 'черно-подпалый', pop: 0.25 },
+      { name: 'рыжий лохматый', pop: 0.40 },
+      { name: 'тигровый метис', pop: 0.30 },
+      { name: 'бежевый с темной маской', pop: 0.35 }
+    ];
+
+    // Функция процедурной сборки одного из 25+ жизненных сценариев с рандомизацией окрасов
+    function generateRandomAnimalScenario() {
+      const scenarioTemplates = [
+        // 1. Просто здоровые котята НЕПОПУЛЯРНОГО окраса (коровки, тигры, бело-тигровые)
+        () => {
+          const coat = randomItem([COAT_CATALOG.cow, COAT_CATALOG.tabby, COAT_CATALOG.white_tabby]);
+          const cnt = randomInt(2, 4);
+          return {
+            id: 'healthy_unpopular_kittens',
+            species: 'cat',
+            speciesLabel: `${cnt} котенка (2 мес.)`,
+            title: `Коробка из ${cnt} ${coat.adjPlural} котят у рынка`,
+            visualDescription: `Активные малыши окраса «${coat.name}» (~2 месяца). Сами едят, бегают, никаких страшных вирусов нет — только блохи и глисты.`,
+            coatTier: coat.tier,
+            coatLabel: `${coat.name} (${coat.popularity}x)`,
+            coatPopularity: coat.popularity,
+            ageCategory: 'kitten',
+            count: cnt,
+            visibleState: 'Здоровые котята без вирусных сюрпризов! Нужно обработать от паразитов, привить и запастись терпением из-за непопулярного окраса.',
+            hiddenState: { isNewborn: false, ringworm: false, deadlyVirus: null, chronicCarrier: null, isPregnant: false, hasSevereTrauma: false, isLostOrPurebred: false, isKittenSeason: false }
+          };
+        },
+        // 2. Здоровые котята ПОПУЛЯРНОГО или «Специи» окраса
+        () => {
+          const coat = randomItem([COAT_CATALOG.ginger, COAT_CATALOG.white_ginger, COAT_CATALOG.calico_spices, COAT_CATALOG.grey]);
+          const cnt = randomInt(2, 3);
+          return {
+            id: 'healthy_popular_kittens',
+            species: 'cat',
+            speciesLabel: `${cnt} котенка (2.5 мес.)`,
+            title: `Выводок из ${cnt} ${coat.adjPlural} котят в палисаднике`,
+            visualDescription: `Симпатичные пушистые котята окраса «${coat.name}». Немного чумазые, но бодрые и с отменным аппетитом.`,
+            coatTier: coat.tier,
+            coatLabel: `${coat.name} (${coat.popularity}x)`,
+            coatPopularity: coat.popularity,
+            ageCategory: 'kitten',
+            count: cnt,
+            visibleState: 'Здоровы, без инфекций. Главное — провести базовую обработку и отсеять толпу импульсивных звонящих («хочу игрушку ребенку»).',
+            hiddenState: { isNewborn: false, ringworm: false, deadlyVirus: null, chronicCarrier: null, isPregnant: false, hasSevereTrauma: false, isLostOrPurebred: false, isKittenSeason: false }
+          };
+        },
+        // 3. Новорожденные слепые котята («Слепыши») — Игрок не знает про спецсмесь на старте!
+        () => {
+          const coat = randomItem([COAT_CATALOG.cow, COAT_CATALOG.tabby, COAT_CATALOG.white_ginger, COAT_CATALOG.black]);
+          return {
+            id: 'newborn_blind_kittens',
+            species: 'cat',
+            speciesLabel: '4 слепых котенка',
+            title: `Завязанный пакет с 4 слепыми котятами у мусорки (${coat.name})`,
+            visualDescription: `Четыре новорожденных слепыша (3 дня от роду, вес по 90 г), пуповины еще не отпали. Отчаянно пищат и ищут маму.`,
+            coatTier: coat.tier,
+            coatLabel: `${coat.name} (${coat.popularity}x)`,
+            coatPopularity: coat.popularity,
+            ageCategory: 'newborn',
+            count: 4,
+            visibleState: 'Не умеют есть сами! Вы не знаете, чем их кормить (в холодильнике только обычное молоко). Попросите совета у волонтеров!',
+            hiddenState: { isNewborn: true, ringworm: false, deadlyVirus: null, chronicCarrier: null, isPregnant: false, hasSevereTrauma: false, isLostOrPurebred: false, isKittenSeason: false }
+          };
+        },
+        // 4. Взрослый АБСОЛЮТНО ЗДОРОВЫЙ кот/кошка (тигр, коровка, бело-тигровый, черный, серый, специи)
+        () => {
+          const coat = randomItem([COAT_CATALOG.tabby, COAT_CATALOG.cow, COAT_CATALOG.white_tabby, COAT_CATALOG.black, COAT_CATALOG.grey, COAT_CATALOG.calico_spices]);
+          const isFemale = coat.id === 'calico_spices' ? true : Math.random() < 0.5;
+          return {
+            id: 'healthy_adult_cat_marathon',
+            species: 'cat',
+            speciesLabel: isFemale ? 'Взрослая кошка' : 'Взрослый кот',
+            title: isFemale ? `Бывшедомашняя ${coat.adjFemale} кошка у подъезда` : `Спокойный ${coat.adjMale} кот на остановке`,
+            visualDescription: `Возраст около 2.5 лет. Чистые глаза и уши, сразу идет на руки, знает лоток на отлично. Никаких скрытых вирусов или лишая нет.`,
+            coatTier: coat.tier,
+            coatLabel: `${coat.name} (${coat.popularity}x)`,
+            coatPopularity: coat.popularity,
+            ageCategory: 'adult',
+            count: 1,
+            visibleState: 'Полностью здоров(а) без ветеринарных сюрпризов! Но взрослое животное нужно обработать, стерилизовать и долго пиарить с проф. фото.',
+            hiddenState: { isNewborn: false, ringworm: false, deadlyVirus: null, chronicCarrier: null, isPregnant: false, hasSevereTrauma: false, isLostOrPurebred: false, isKittenSeason: false }
+          };
+        },
+        // 5. Взрослый здоровый кот в разгар летнего «Сезона котят»
+        () => {
+          const coat = randomItem([COAT_CATALOG.cow, COAT_CATALOG.tabby, COAT_CATALOG.white_tabby, COAT_CATALOG.black]);
+          return {
+            id: 'adult_cat_in_kitten_season',
+            species: 'cat',
+            speciesLabel: 'Взрослая кошка (Лето)',
+            title: `Ласковая ${coat.adjFemale} кошка в разгар «Сезона котят»`,
+            visualDescription: `Двухлетняя умница окраса «${coat.name}». На улице июль — все паблики и барахолки переполнены тысячами бесплатных котят.`,
+            coatTier: coat.tier,
+            coatLabel: `${coat.name} + Сезон котят (0.12x)`,
+            coatPopularity: Math.max(0.10, +(coat.popularity * 0.45).toFixed(2)),
+            ageCategory: 'adult',
+            count: 1,
+            visibleState: 'Здорова, но из-за летнего сезона котят звонков почти нет. Спасут только профи-фотограф Зоошанса и фестиваль пристройства!',
+            hiddenState: { isNewborn: false, ringworm: false, deadlyVirus: null, chronicCarrier: null, isPregnant: false, hasSevereTrauma: false, isLostOrPurebred: false, isKittenSeason: true }
+          };
+        },
+        // 6. Взрослая здоровая СОБАКА (нужно обработать, стерилизовать, найти передержку $10/сут и отсеять будку/цепь)
+        () => {
+          const dCoat = randomItem(DOG_COATS);
+          return {
+            id: 'healthy_adult_dog_rehab',
+            species: 'dog',
+            speciesLabel: 'Взрослая собака (18 кг)',
+            title: `Добрая взрослая собака (${dCoat.name}) у торгового центра`,
+            visualDescription: `Контактная молодая собака по колено (~1.5 года), заглядывает в глаза прохожим и дает лапу. В квартире занимает много места, соседи косятся.`,
+            coatTier: 'unpopular_cow_tabby',
+            coatLabel: `Собака: ${dCoat.name} (${dCoat.pop}x)`,
+            coatPopularity: dCoat.pop,
+            ageCategory: 'adult',
+            count: 1,
+            visibleState: 'Внешне здорова! Но взрослую собаку нужно обработать от клещей, обязательно стерилизовать ($90 / $72 по талону) и оплачивать корм/передержку ($10/сут).',
+            hiddenState: { isNewborn: false, ringworm: false, deadlyVirus: null, chronicCarrier: null, isPregnant: false, hasSevereTrauma: false, isLostOrPurebred: false, isKittenSeason: false }
+          };
+        },
+        // 7. Щенки без мамы (здоровые или с парвовирусом)
+        () => {
+          const hasParvo = Math.random() < 0.55;
+          return {
+            id: 'orphan_puppies_litter',
+            species: 'dog',
+            speciesLabel: '4 щенка без мамы',
+            title: 'Коробка с четырьмя щенками без мамы на обочине леса',
+            visualDescription: 'Крупные щенки-метисы (1.5 месяца), скулят по ночам, писают каждые полчаса на одноразовые пеленки и пытаются грызть обувь и обои.',
+            coatTier: 'unpopular_cow_tabby',
+            coatLabel: 'Щенки-метисы (0.30x)',
+            coatPopularity: 0.30,
+            ageCategory: 'puppy',
+            count: 4,
+            visibleState: hasParvo
+              ? 'Раздутые от глистов животы, огромный расход пеленок ($3.5/день). Скрытая инкубация парвовирусного энтерита!'
+              : 'Активные бутузы с глистами и блохами! Скулят по ночам и требуют гор пеленок до полной вакцинации.',
+            hiddenState: {
+              isNewborn: false,
+              ringworm: false,
+              deadlyVirus: hasParvo ? 'parvovirus_enteritis' : null,
+              virusIncubationDays: 4,
+              chronicCarrier: null,
+              isPregnant: false,
+              hasSevereTrauma: false,
+              isLostOrPurebred: false,
+              isKittenSeason: false
+            }
+          };
+        },
+        // 8. Внешне здоровый кот со скрытым ВИК (Иммунодефицит)
+        () => {
+          const coat = randomItem([COAT_CATALOG.ginger, COAT_CATALOG.white_ginger, COAT_CATALOG.tabby, COAT_CATALOG.black]);
+          return {
+            id: 'healthy_look_fiv_cat',
+            species: 'cat',
+            speciesLabel: 'Взрослый кот (ВИК?)',
+            title: `Шикарный ${coat.adjMale} кот со двора (Скрытый ВИК)`,
+            visualDescription: `Крупный, ласковый кот около 3 лет со старой царапиной на ухе. Идеально идет на руки, громко мурчит и сразу пошел в лоток.`,
+            coatTier: coat.tier,
+            coatLabel: `${coat.name} (${coat.popularity}x)`,
+            coatPopularity: coat.popularity,
+            ageCategory: 'adult',
+            count: 1,
+            visibleState: 'Внешне 100% здоров! Но без сдачи ПЦР вы не узнаете про скрытый иммунодефицит (пристраивается строго единственным котом).',
+            hiddenState: { isNewborn: false, ringworm: false, deadlyVirus: null, chronicCarrier: 'FIV', isPregnant: false, hasSevereTrauma: false, isLostOrPurebred: false, isKittenSeason: false }
+          };
+        },
+        // 9. Внешне здоровая кошка со скрытым ВЛК (Лейкоз)
+        () => {
+          const coat = randomItem([COAT_CATALOG.calico_spices, COAT_CATALOG.white_ginger, COAT_CATALOG.grey]);
+          return {
+            id: 'healthy_look_felv_cat',
+            species: 'cat',
+            speciesLabel: 'Молодая кошка (ВЛК?)',
+            title: `Нежная ${coat.adjFemale} кошечка у подъезда (Скрытый ВЛК)`,
+            visualDescription: `Ручная молодая кошечка (~1 год), бежит за каждым прохожим и просится на ручки. Внешне выглядит абсолютно здоровой.`,
+            coatTier: coat.tier,
+            coatLabel: `${coat.name} (${coat.popularity}x)`,
+            coatPopularity: coat.popularity,
+            ageCategory: 'adult',
+            count: 1,
+            visibleState: 'Внешне здорова и игрива! Но скрытый вирус лейкемии (ВЛК) заразен для ваших котов через общие миски и выявляется только ПЦР-тестом.',
+            hiddenState: { isNewborn: false, ringworm: false, deadlyVirus: null, chronicCarrier: 'FeLV', isPregnant: false, hasSevereTrauma: false, isLostOrPurebred: false, isKittenSeason: false }
+          };
+        },
+        // 10. Голубоглазый Колор-пойнт (Тайский/Сиамский фенотип)
+        () => {
+          const coat = COAT_CATALOG.colorpoint;
+          return {
+            id: 'colorpoint_blue_eyes_cat',
+            species: 'cat',
+            speciesLabel: 'Кошка колор-пойнт',
+            title: 'Голубоглазая красавица окраса колор-пойнт (Тайский фенотип)',
+            visualDescription: 'Кремовая шерсть, темные пойнты на мордочке и лапах, бездонные синие глаза. В стрессе шипит из угла, но при ласке мурчит.',
+            coatTier: coat.tier,
+            coatLabel: `${coat.name} (${coat.popularity}x)`,
+            coatPopularity: coat.popularity,
+            ageCategory: 'adult',
+            count: 1,
+            visibleState: 'Окрас вызывает шквал звонков! Требуется 10 дней поиска старых хозяев, стерилизация и жесткий отсев разведенцев и любителей кормить рыбой.',
+            hiddenState: { isNewborn: false, ringworm: false, deadlyVirus: null, chronicCarrier: null, isPregnant: false, hasSevereTrauma: false, isLostOrPurebred: true, requiresLostOwnerSearchDays: 10, isKittenSeason: false }
+          };
+        },
+        // 11. Дачный выводок с инфекцией глаз (Ринотрахеит + Лишай)
+        () => {
+          const coat = randomItem([COAT_CATALOG.tabby, COAT_CATALOG.white_tabby, COAT_CATALOG.cow, COAT_CATALOG.calico_spices]);
+          return {
+            id: 'dacha_kittens_herpes_eyes',
+            species: 'cat',
+            speciesLabel: '4 котенка с дач',
+            title: `Осенний дачный выводок (${coat.name}) с больными глазами`,
+            visualDescription: 'Дачники уехали в город, бросив четырех котят (2 мес.) под холодным крыльцом. Глаза залеплены гноем, котята чихают.',
+            coatTier: coat.tier,
+            coatLabel: `${coat.name} (${coat.popularity}x)`,
+            coatPopularity: coat.popularity,
+            ageCategory: 'kitten',
+            count: 4,
+            visibleState: 'Острый ринотрахеит (угроза слепоты без лечения у офтальмолога) + скрытая микроспория!',
+            hiddenState: { isNewborn: false, ringworm: true, ringwormIncubationDays: 4, deadlyVirus: 'rhinotracheitis_eyes', virusIncubationDays: 2, chronicCarrier: null, isPregnant: false, hasSevereTrauma: false, isLostOrPurebred: false, isKittenSeason: false }
+          };
+        },
+        // 12. Беременная кошка на таймере (8 дней до родов)
+        () => {
+          const coat = randomItem([COAT_CATALOG.tabby, COAT_CATALOG.cow, COAT_CATALOG.calico_spices, COAT_CATALOG.grey]);
+          return {
+            id: 'pregnant_stray_cat_timer',
+            species: 'cat',
+            speciesLabel: 'Взрослая кошка',
+            title: `Круглобокая ${coat.adjFemale} кошка у магазина (Таймер родов)`,
+            visualDescription: 'Ласковая уличная кошка жадно просит еду и трется о ноги. Живот плотный — то ли глисты, то ли глубокая беременность.',
+            coatTier: coat.tier,
+            coatLabel: `${coat.name} (${coat.popularity}x)`,
+            coatPopularity: coat.popularity,
+            ageCategory: 'adult',
+            count: 1,
+            visibleState: 'Если не успеть сделать экстренную стерилизацию до 8-го дня — ночью в шкафу родится 5 слепых котят!',
+            hiddenState: { isNewborn: false, ringworm: false, deadlyVirus: null, chronicCarrier: null, isPregnant: true, daysUntilBirth: 8, hasSevereTrauma: false, isLostOrPurebred: false, isKittenSeason: false }
+          };
+        },
+        // 13. Популярный котенок «Троянский конь» (Скрытая панлейкопения + лишай)
+        () => {
+          const coat = randomItem([COAT_CATALOG.ginger, COAT_CATALOG.white_ginger, COAT_CATALOG.calico_spices]);
+          return {
+            id: 'ginger_kitten_trojan_horse',
+            species: 'cat',
+            speciesLabel: 'Маленький котенок',
+            title: `Пушистый ${coat.adjMale} котенок из подвала (Скрытая угроза)`,
+            visualDescription: `Очаровательный малыш (2.5 месяца) окраса «${coat.name}». В первый день бодро играет и мурчит.`,
+            coatTier: coat.tier,
+            coatLabel: `${coat.name} (${coat.popularity}x)`,
+            coatPopularity: coat.popularity,
+            ageCategory: 'kitten',
+            count: 1,
+            visibleState: 'Внешне чистый и бодрый, но внутри идет инкубация панлейкопении (4 дня) и микроспории (5 дней)! Без клетки заразит весь дом.',
+            hiddenState: { isNewborn: false, ringworm: true, ringwormIncubationDays: 5, deadlyVirus: 'panleukopenia', virusIncubationDays: 4, chronicCarrier: null, isPregnant: false, hasSevereTrauma: false, isLostOrPurebred: false, isKittenSeason: false }
+          };
+        },
+        // 14. Породистый потеряшка (Шотландец / Британец / Хаски / Лабрадор) — Магнит мошенников
+        () => {
+          const isDog = Math.random() < 0.35;
+          const coat = COAT_CATALOG.purebred;
+          return {
+            id: 'purebred_scam_magnet',
+            species: isDog ? 'dog' : 'cat',
+            speciesLabel: isDog ? 'Породистый пес' : 'Породистый кот',
+            title: isDog
+              ? 'Породистый лабрадор со следом от ошейника на остановке'
+              : 'Породистый шотландский вислоухий кот в подъезде',
+            visualDescription: isDog
+              ? 'Палевый лабрадор растерянно бегает за прохожими и ищет хозяина. Чистый, знает команды.'
+              : 'Плюшевый голубой скоттиш-фолд с янтарными глазами сидит под батареей в шоке. Явно домашний.',
+            coatTier: coat.tier,
+            coatLabel: `${coat.name} (2.0x — Магнит мошенников)`,
+            coatPopularity: 2.0,
+            ageCategory: 'adult',
+            count: 1,
+            visibleState: 'Обязательны 10 дней поиска старых хозяев! По объявлениям тут же начнут звонить мошенники с курьером и перекупы.',
+            hiddenState: { isNewborn: false, ringworm: false, deadlyVirus: null, chronicCarrier: null, isPregnant: false, hasSevereTrauma: false, isLostOrPurebred: true, requiresLostOwnerSearchDays: 10, isKittenSeason: false }
+          };
+        },
+        // 15. Тяжелый «Сбитыш» или «Летунья с 8 этажа» (Экстренная хирургия + донор)
+        () => {
+          const isDogMkad = Math.random() < 0.5;
+          return {
+            id: 'severe_trauma_emergency',
+            species: isDogMkad ? 'dog' : 'cat',
+            speciesLabel: isDogMkad ? 'Сбитая собака' : 'Кошка после падения',
+            title: isDogMkad
+              ? 'Сбитая собака на обочине МКАД (Кейс Шери)'
+              : 'Кошка «летунья» под окнами многоэтажки (Разрыв челюсти)',
+            visualDescription: isDogMkad
+              ? 'Крупная рыжая собака лежит на мокром асфальте, не может встать на задние лапы. Очевидцы уже вызвали отлов.'
+              : 'Бело-рыжая домашняя кошка выпала из окна без сеток: перелом лапы и симфизиолиз (разрыв челюсти), хозяева не объявились.',
+            coatTier: isDogMkad ? 'unpopular_cow_tabby' : 'popular_ginger_calico',
+            coatLabel: isDogMkad ? 'Крупный метис (0.30x)' : 'Бело-рыжая (0.75x)',
+            coatPopularity: isDogMkad ? 0.30 : 0.75,
+            ageCategory: 'adult',
+            count: 1,
+            visibleState: 'КРИТИЧЕСКАЯ ТРАВМА: счет идет на часы! Требуется экстренная операция (остеосинтез) и поиск донора крови!',
+            hiddenState: { isNewborn: false, ringworm: false, deadlyVirus: null, chronicCarrier: null, isPregnant: false, hasSevereTrauma: true, needsBloodDonor: true, isLostOrPurebred: false, isKittenSeason: false }
+          };
+        },
+        // 16. Узники квартиры-накопителя (Угроза отлова на Гурского, 42)
+        () => {
+          const coat = randomItem([COAT_CATALOG.cow, COAT_CATALOG.black, COAT_CATALOG.grey, COAT_CATALOG.calico_spices]);
+          return {
+            id: 'hoarder_flat_cats',
+            species: 'cat',
+            speciesLabel: '2 кошки из накопителя',
+            title: `Две ${coat.adjPlural} кошки из «бабушкиной квартиры» (Угроза отлова)`,
+            visualDescription: 'В Серебрянке умерла хозяйка 15 кошек. Наследники дали сутки до вызова отлова (Гурского, 42). Вы забрали двух пугливых кошек.',
+            coatTier: coat.tier,
+            coatLabel: `${coat.name} (${coat.popularity}x)`,
+            coatPopularity: coat.popularity,
+            ageCategory: 'adult',
+            count: 2,
+            visibleState: 'Сильный блошиный дерматит, ушной клещ и страх рук, но без смертельных вирусов. Нужна клетка, двукратная обработка и стерилизация.',
+            hiddenState: { isNewborn: false, ringworm: false, deadlyVirus: null, chronicCarrier: null, isPregnant: false, hasSevereTrauma: false, isLostOrPurebred: false, isKittenSeason: false }
+          };
+        },
+        // 17. Кошка «Летунья» с разрывом челюсти (Шприцевое кормление 18 дней)
+        () => {
+          const coat = randomItem([COAT_CATALOG.white_ginger, COAT_CATALOG.grey, COAT_CATALOG.white_tabby]);
+          return {
+            id: 'window_fall_jaw_cat',
+            species: 'cat',
+            speciesLabel: 'Кошка после падения',
+            title: `Бывшедомашняя ${coat.adjFemale} кошка «летунья» у мусорного бака`,
+            visualDescription: 'Выпала из окна без сеток: симфизиолиз (разрыв нижней челюсти) и ушиб легких. Бывшие хозяева выставили коробку к бакам из-за цены операции.',
+            coatTier: coat.tier,
+            coatLabel: `${coat.name} (${coat.popularity}x)`,
+            coatPopularity: coat.popularity,
+            ageCategory: 'adult',
+            count: 1,
+            visibleState: 'Требуется шинирование челюсти у хирурга и аккуратное кормление жидким паштетом через шприц/стому!',
+            hiddenState: { isNewborn: false, ringworm: false, deadlyVirus: null, chronicCarrier: null, isPregnant: false, hasSevereTrauma: true, needsBloodDonor: false, isLostOrPurebred: false, isKittenSeason: false }
+          };
+        },
+        // 18. Кошка с хронической диареей (Кейс Селесты — трихомоноз)
+        () => {
+          const coat = randomItem([COAT_CATALOG.calico_spices, COAT_CATALOG.tabby, COAT_CATALOG.black]);
+          return {
+            id: 'chronic_gi_celesta_cat',
+            species: 'cat',
+            speciesLabel: 'Молодая кошка (ЖКТ)',
+            title: `Ласковая ${coat.adjFemale} кошка с хроническим расстройством ЖКТ (Кейс Селесты)`,
+            visualDescription: 'Очаровательная ручная кошка (~1 год), но с непрекращающейся диареей, которую не берут обычные смекта и рис.',
+            coatTier: coat.tier,
+            coatLabel: `${coat.name} (${coat.popularity}x)`,
+            coatPopularity: coat.popularity,
+            ageCategory: 'adult',
+            count: 1,
+            visibleState: 'Внешне бодрая, но требует ПЦР на простейших (трихомоноз/лямблиоз), ронидазола и диеты Gastrointestinal.',
+            hiddenState: { isNewborn: false, ringworm: false, deadlyVirus: null, chronicCarrier: null, isPregnant: false, hasSevereTrauma: false, isLostOrPurebred: false, isKittenSeason: false, hasChronicGI: true }
+          };
+        }
+      ];
+
+      return randomItem(scenarioTemplates)();
+    }
+
+    // ---------------------------------------------------------------------------
+    // 3. ПУЛ ЗВОНКОВ: МОШЕННИКИ, КРАСНЫЕ ФЛАГИ, «СРЕДНИЕ РУЧКИ» (КОМПРОМИСС) И ИДЕАЛЬНЫЕ
+    // ---------------------------------------------------------------------------
+    const SCAMMER_CALLS = [
+      {
+        id: 'scam_courier_prepayment',
+        caller: 'Взволнованный мужчина (звонит через 20 минут после публикации поста)',
+        dialogue: '«Алло! Господи, это же наш Марсель, вы его нашли! Жена с дочкой плачут от радости! Слушайте, я сейчас на фуре под Барановичами, сам приехать не могу. Я уже оформил Яндекс-Доставку к вашему подъезду и перевел вам 200 рублей вознаграждения, но курьеру нужно прямо сейчас скинуть на карту 45 рублей ($15) за страховку зоо-перевозки, а я вам через час всё верну с бонусом!»',
+        extraQuestionReply: 'На просьбу назвать особые приметы или скинуть домашнее фото животного в Вайбер мужчина начинает кричать: «Вы что, на чужом горе нажиться хотите?! У меня интернет в роуминге фото не грузит, переводите курьеру быстрей!»',
+        isSafe: false,
+        type: 'scam_prepay',
+        consequenceText: 'Классический развод мошенников, мониторящих группы потеряшек по всей Беларуси. Вы перевели деньги «курьеру», после чего номер заблокировали. Вы потеряли $25 и веру в людей, а животное всё еще у вас.'
+      },
+      {
+        id: 'scam_reseller_no_proof',
+        caller: 'Деловая женщина без эмоций',
+        dialogue: '«Здравствуйте, видела ваше объявление о найденном породистом коте. Это наш, убежал позавчера. Нет, фотографий в телефоне нет — телефон вчера сбросила до заводских настроек, ветпаспорт потеряли при переезде. Вы его еще не кастрировали? Отлично, не вздумайте резать! Выносите к метро прямо сейчас, заберу без лишних вопросов».',
+        extraQuestionReply: 'На вопрос о цвете ошейника и корме отвечает раздраженно: «Какая вам разница, чем кормили? Обычной едой! Отдавайте быстрее, пока я не передумала».',
+        isSafe: false,
+        type: 'tragic_reseller',
+        consequenceText: 'Вы отдали нестерилизованное породистое животное перекупщице без единого доказательства. Уже через 2 дня вы увидели его фото на Куфаре за 250 рублей в разделе «Для вязки и разведения». Животное попало в клеточную плодильню.'
+      }
+    ];
+
+    const ADOPTER_CALLS = [
+      {
+        id: 'call_village_mousetrap',
+        caller: 'Мужчина с хриплым голосом из Минского района',
+        dialogue: '«Алло, кота отдаете? Нам в деревню в частный дом надо, мыши одолели в сарае. Спать будет на сене, кормить будем кашей с ливеркой и тем, что сам наловит. Зачем его кастрировать и прививать? Природа сама разберется! Правда, прошлый кот весной куда-то пропал — то ли лиса утащила, то ли собаки порвали, вот нового ищем».',
+        extraQuestionReply: '«Какой еще договор и сетки? Он же деревенский кот будет, на свободном выгуле по всей улице!»',
+        isSafe: false,
+        consequenceText: 'Вы отдали подопечного на самовыгул в деревню как расходный материал для ловли мышей. Через 11 дней кот погиб под колесами машины на трассе. Хозяева даже не расстроились: «Ну, бог дал — бог взял, возьмем другого».'
+      },
+      {
+        id: 'call_no_nets_high_floor',
+        caller: 'Самоуверенный парень (9-й этаж на Притыцкого)',
+        dialogue: '«Хочу забрать вашего котика. Сетки-антикошка? Вы серьезно? Это развод для дураков и лишние дырки в пластиковых окнах! Я всю жизнь с котами живу, животные не идиоты — они чувствуют высоту и не прыгают. Правда, прошлый кот в мае с балкона за голубем сорвался, ну то случайность была, теперь просто присматривать будем».',
+        extraQuestionReply: '«Вертикальное проветривание у нас всегда открыто, дома жарко. Никаких решеток ставить не собираюсь и видео окон слать не буду!»',
+        isSafe: false,
+        consequenceText: 'Через 14 дней вам позвонили со слезами: хозяин ушел в магазин, оставив окно на вертикальном проветривании, кот прыгнул за мухой и сорвался с 9-го этажа. Шансов выжить не было.'
+      },
+      {
+        id: 'call_toddler_toy',
+        caller: 'Молодая мама на фоне громкого детского плача',
+        dialogue: '«Здравствуйте! Моему сыночку на 2 годика срочно нужна живая игрушка, он увидел котика в мультике и требует! Главное, чтобы питомец спал с ним в кроватке и терпел, когда малыш тянет за хвост. Если вдруг поцарапает или укусит — мы сразу выставим за дверь. И еще у мужа вроде аллергия была, но мы надеемся, что пронесет!»',
+        extraQuestionReply: '«Сдавать аллергопробы заранее мы не будем — это дорого, проще взять кота и проверить на муже вживую».',
+        isSafe: false,
+        consequenceText: 'Животное взяли как плюшевую игрушку для двухлетнего ребенка. Через 2 дня ребенок дернул кота за уши, получил царапину, и разъяренные родители в полночь выставили переноску на лестничную клетку.'
+      },
+      {
+        id: 'call_anti_spay_aesthetic',
+        caller: 'Интеллигентная женщина из центра Минска',
+        dialogue: '«Добрый день! Какая чудесная у вас подопечная! Только скажите, вы ведь еще не успели сделать ей эту ужасную операцию по стерилизации? Мы хотим обязательно дать ей родить хотя бы пару раз "для здоровья", ведь кошке так нужно познать радость материнства, а котят мы потом на рынке раздадим добрым людям!»',
+        extraQuestionReply: '«Кормить планируем тем, что сами едим: супчиком, жареной мойвой и сметаной. Никаких паспортов при подписании договора я показывать не буду».',
+        isSafe: false,
+        consequenceText: 'Попытка отдать животное сторонникам «родов для здоровья» и кормления со стола приводит к плодильничеству, пиометре и новым коробкам с бездомными котятами у мусорных баков.'
+      },
+      {
+        id: 'call_fiv_to_second_cat_ignore',
+        onlyForCarrier: true,
+        caller: 'Сердобольная девушка из Уручья',
+        dialogue: '«Я прочитала в вашем объявлении, что у котика положительный анализ на ВИК/ВЛК и он ищет дом строго одним котом... Но мне так его жалко! У нас дома живет свой непривитый кот Барсик, он очень добрый, они точно не будут драться, будут есть из одной миски и спать в обнимку! Давайте мы его заберем к нашему коту!»',
+        extraQuestionReply: '«Изолировать их в разных комнатах я не буду, зачем мучить котиков? Авось не заразятся!»',
+        isSafe: false,
+        consequenceText: 'Ночью коты не поделили территорию и подрались до глубоких прокусов. Домашний кот заразился неизлечимым вирусом. Хозяева в истерике вернули вашего подопечного и обвинили вас во всех бедах.'
+      },
+      {
+        id: 'call_puppy_on_chain_village',
+        onlyForDogs: true,
+        caller: 'Хозяйственный мужчина из-под Молодечно',
+        dialogue: '«Собаку отдаете? Нам во двор на цепь надо, старый пес зимой в будке замерз. Цепь железная, два метра, будка из досок есть. Кормить будем тем, что от поросят остается — кости вареные трубчатые да хлеб в воде. Таблетки от клещей? Да никто в деревне собак от клещей не обрабатывает, сами выживают!»',
+        extraQuestionReply: '«В дом пускать даже в -25°C не будем — собака должна знать свое место на цепи у забора».',
+        isSafe: false,
+        consequenceText: 'Необработанный пес на двухметровой цепи в будке через три недели погиб в мучениях от пироплазмоза после укуса клеща и прободения желудка вареными костями.'
+      },
+      {
+        id: 'call_colorpoint_fish_feeder',
+        onlyForColorpoint: true,
+        caller: 'Любительница «сиамских кошек» по старинке',
+        dialogue: '«Ой, какая голубоглазая сиамочка! У нас в 90-е такой был, злющий страшно, всех гостей драл, мы его веником воспитывали! Кормили одной сырой речной рыбой и молоком. Окна? Мы на 5-м этаже живем, кот у нас по карнизу за окном к соседям гулял, пока не упал. Привозите скорее!»',
+        extraQuestionReply: '«Ветеринарам я не верю, если заболеет — водки с яйцом зальем, дедовский метод!»',
+        isSafe: false,
+        consequenceText: 'Стереотипное отношение к «злым сиамам», кормление сырой рыбой и прогулки по карнизу 5-го этажа закончились трагическим падением уже на первой неделе.'
+      },
+      // КАТЕГОРИЯ «СРЕДНИЕ РУЧКИ» (КОМПРОМИСС КУРАТОРА: 65% без сопровождения -> 95% с контролем и связью!)
+      {
+        id: 'call_compromise_normal_family',
+        caller: 'Обычная семья из Малиновки (Средние ручки)',
+        dialogue: '«Здравствуйте! Хотим взять вашего хвостика в свою двухкомнатную квартиру. Самовыгула мы не признаем, любить будем как члена семьи. Кормить планируем обычным Purina One или Brit Care из зоомагазина — супер-премиум по 40 рублей за килограмм нам дороговат. Сетки-антикошки пока не ставили, пользуемся металлическими гребенками-ограничителями на окнах, но если подскажете мастера — готовы поставить и быть с вами на связи в Вайбере!»',
+        extraQuestionReply: '«Мы обычные рабочие люди, миллионы не зарабатываем, но прошлый кот прожил у нас 15 лет в любви и тепле, лечили в клинике, когда болел. Договор подпишем без проблем».',
+        isSafe: true,
+        isCompromise: true,
+        consequenceText: 'Ваше кураторское сопровождение сработало на 100%! Семья прислала фото установленных защитных решеток на окнах, вы помогли им подобрать хороший рацион по карману и подсказали, как адаптировать питомца в первые дни. Хвостик счастлив в новом доме!'
+      },
+      {
+        id: 'call_compromise_pensioner_with_daughter',
+        caller: 'Добрая пенсионерка Анна Ивановна (64 года, средние ручки)',
+        dialogue: '«Добрый день, деточка! Живу одна в своей квартире, очень одиноко без котика. На дачу не езжу, окна на балкон застеклены и затянуты крепкой сеткой. Пенсия у меня небольшая, но на хороший сухой корм и наполнитель всегда отложу. Единственное — если вдруг тяжело заболеет, мне самой везти переноску в клинику тяжело, но дочка живет через две остановки, обещала помогать».',
+        extraQuestionReply: '«Дочка может прямо сейчас взять трубку и подтвердить, что подстрахует с клиникой и расходами в любой момент, и фото в Телеграм вам присылать будет!»',
+        isSafe: true,
+        isCompromise: true,
+        consequenceText: 'Золотой компромисс! Вы взяли контакт взрослой дочери Анны Ивановны, остались с ними на связи и помогли в первые недели. Питомец спит на теплых подушках и окружен круглосуточной заботой!'
+      },
+      {
+        id: 'call_good_trial_allergy_return',
+        caller: 'Адекватная молодая пара (по договору с испытательным сроком)',
+        dialogue: '«Здравствуйте! Нам очень понравился ваш питомец. На окнах стоят ограничители и сетки, купили корм супер-премиум класса Monge, когтеточку и лоток. С договором полностью согласны! Единственное — давайте оговорим честный испытательный срок 2 недели, мы всегда за ответственность».',
+        extraQuestionReply: 'Ребята прислали в Телеграм видео установленных сеток на окнах и фото купленного корма. Всё выглядит надежно.',
+        isSafe: true,
+        isTrialReturn: true,
+        consequenceText: 'На 6-й день ребята позвонили чуть не плача: у мужа началась тяжелая бронхиальная астма с отеком (прислали справку от пульмонолога). Благодаря договоренности об испытательном сроке они сами бережно привезли питомца обратно, передали мешок отличного корма и $25 на содержание. Это нормальный рабочий момент — продолжаем поиск!'
+      },
+      {
+        id: 'call_perfect_forever_home',
+        caller: 'Семья (34 и 36 лет), собственная квартира в Минске',
+        dialogue: '«Добрый день! Мы давно читаем канал Зоошанса и подготовились к появлению хвостика: установили металлические сварные сетки «Антикошка» (Pet Screen) на окна и балкон, знаем про ежегодную вакцинацию, качественный рацион и безопасный быт без ниток и дождика. Если у котика ВИК/ВЛК — берем строго единственным любимцем. С радостью приедем познакомиться и подпишем договор передачи с ненавязчивым отслеживанием судьбы!»',
+        extraQuestionReply: 'Семья сразу прислала видео квартиры с сетками «Антикошка», контакты своего ратолога/терапевта в «Доктор Вет» и показала паспорт для договора.',
+        isSafe: true,
+        isTrialReturn: false,
+        consequenceText: 'Блестящая победа! Испытательный срок прошел идеально: вам регулярно присылают фото и видео, где ваш спасенный подопечный спит кверху пузом на диване в окружении любви и безопасности!'
+      }
+    ];
+
+    // ---------------------------------------------------------------------------
+    // 4. ГЛОБАЛЬНОЕ СОСТОЯНИЕ ПАРТИИ (STATE)
+    // ---------------------------------------------------------------------------
+    let state = {};
+    let tickTimer = null;
+    let currentSpeed = 0; // 0 = пауза, 1 = 2500мс, 2 = 1200мс, 5 = 500мс
+    let activeTab = 'vet';
+
+    function startNewRun() {
+      stopTimer();
+      document.getElementById('endGameModal').classList.add('hidden');
+      document.getElementById('eventOverlayBox').classList.add('hidden');
+      document.getElementById('actionsDashboard').classList.remove('hidden');
+
+      // 1. Случайный выбор параметров игрока по 5 осям
+      const inc = randomItem(PLAYER_AXES.incomes);
+      const hous = randomItem(PLAYER_AXES.housing);
+      const fam = randomItem(PLAYER_AXES.family);
+      const pets = randomItem(PLAYER_AXES.ownPets);
+      const mob = randomItem(PLAYER_AXES.mobility);
+
+      // 2. Случайная комбинаторная генерация животного и окраса (18+ архетипов × 10 окрасов)
+      const arch = generateRandomAnimalScenario();
+
+      state = {
+        day: 1,
+        gameOver: false,
+        victory: false,
+
+        // Ресурсы игрока
+        cash: inc.startingCash,
+        personalMoneySpent: 0,
+        voucherFundsUsed: 0,
+        mental: 100,
+        energy: 100,
+        filteredBadCalls: 0,
+
+        // Профиль игрока
+        player: {
+          income: inc,
+          housing: hous,
+          family: fam,
+          ownPets: pets,
+          mobility: mob
+        },
+
+        // Подопечное животное + Двукратная глистогонка и Карантин
+        animal: {
+          ...arch,
+          health: arch.hiddenState.hasSevereTrauma ? 45 : 88,
+          quarantineDaysDone: 0,
+          quarantineCompletedNotified: false,
+          examinedWood: false,
+          pcrTested: false,
+          knownRingworm: false,
+          knownVirus: null,
+          knownCarrier: null,
+          knownPregnant: false,
+
+          // Механика двукратной глистогонки (интервал 10 дней) и срока действия 6 месяцев (180 дней)
+          dewormStage: 0, // 0 = нет, 1 = первая таблетка дана, 2 = двукратно обработан
+          daysSinceDeworm1: 0,
+          daysSinceDeworm2: 0,
+          dewormExpiredNotified: false,
+
+          parasitesAndVaccinated: false,
+          isSterilized: false,
+          traumaOperated: !arch.hiddenState.hasSevereTrauma,
+          bloodDonorFound: !arch.hiddenState.needsBloodDonor
+        },
+
+        // Механика выкорма слепышей (Игрок на старте НЕ ЗНАЕТ про спецсмесь от волонтеров!)
+        newborn: {
+          active: arch.hiddenState.isNewborn === true,
+          daysFedCount: 0,
+          fedToday: false,
+          milkDaysLeft: 0,
+          knowsAboutFormula: false,
+          receivedFreeStarterPacket: false
+        },
+
+        // Взаимодействие с Зоошансом, Со-кураторством и Вещественной помощью
+        zooshans: {
+          askedToTakeAnimal: false,
+          // 'home_floor', 'home_cage', 'paid_foster', 'temp_volunteer_10d', 'full_volunteer_fincuration', 'social_foster_volunteer', 'social_foster_novice'
+          locationStatus: 'home_floor',
+          tempVolunteerDaysLeft: 0,
+          socialFosterDaysElapsed: 0,
+          socialFosterConflictTriggered: false,
+          hasCage: false,
+          hasVoucher: false,
+          voucherBlocked: false,
+          voucherDebt: 0,
+          voucherDaysLeft: 30,
+          officialFundraiserActive: false,
+          personalFundraiserActive: false,
+          daysSinceLastFinReport: 0,
+          personalDonationsBanned: false,
+          hasProPhotos: false,
+
+          // Вещественная помощь («Посылки добра» от подписчиков)
+          giftedFoodDaysLeft: 0,
+          hasGiftedDewormPill: false,
+          hasGiftedItraconazole: false,
+          pendingGiftThankYou: false,
+          storytellingTrustBonus: 0
+        },
+
+        // Пристройство за границу (ЕС / Грузия) и титры на бешенство
+        abroad: {
+          rabiesVaccineAndChipDone: false,
+          daysSinceRabiesVaccine: 0, // Нужно 30 дней до забора крови на титры
+          titerBloodTaken: false,
+          daysInEuQuarantine: 0, // Нужно 90 дней после забора крови
+          titerFundraiserActive: false,
+          titerCollectedAmount: 0
+        },
+
+        // Поиск старых хозяев и Пиар
+        pr: {
+          lostSearchActive: false,
+          lostSearchDaysDone: 0,
+          prActive: false,
+          daysInPr: 0
+        },
+
+        // Флаги сработавших событий, чтобы не дублировать
+        triggeredEvents: {},
+        logs: []
+      };
+
+      addLog(`День 1: Вы нашли животное — «${state.animal.title}». Вся ответственность теперь на вас.`, 'info');
+      renderAll();
+
+      // Стартовая развилка Дня 1 (Включая возможность сделать SOS-пост для со-кураторства с улицы!)
+      triggerDay1IntroModal();
+    }
+
+    // ---------------------------------------------------------------------------
+    // 5. СТАРТОВОЕ ОКНО ДНЯ 1 (БЕЗ СПОЙЛЕРА ПРО СМЕСЬ + ОПЦИЯ SOS-ПОСТА ДЛЯ СО-КУРАТОРСТВА)
+    // ---------------------------------------------------------------------------
+    function triggerDay1IntroModal() {
+      const a = state.animal;
+      let choices = [
+        {
+          label: 'Забрать с улицы к себе и разбираться по ходу дела',
+          style: 'primary',
+          action: () => {
+            addLog('День 1: Вы принесли найденыша домой. Изучите чек-лист подготовки и вкладки действий.', 'success');
+            closeEventModal();
+          }
+        },
+        {
+          label: 'Написать волонтерам «Зоошанса»: попросить забрать или спросить совета (-10⚡)',
+          style: 'info',
+          action: () => {
+            closeEventModal();
+            actionAskZooshansTakeover();
+          }
+        },
+        {
+          label: 'Сфотографировать, покормить и кинуть SOS-пост в соцсети: искать со-куратора / передержку (-15⚡)',
+          style: 'info',
+          action: () => {
+            closeEventModal();
+            actionSearchSocialFosterFromStreet();
+          }
+        }
+      ];
+
+      // Если слепыши — игрок видит ловушку с обычным молоком из холодильника (про смесь он еще не знает!)
+      if (state.newborn.active) {
+        choices.push({
+          label: 'Напоить слепышей обычным теплым коровьим молоком из холодильника ($0)',
+          style: 'danger',
+          action: () => {
+            closeEventModal();
+            feedCowMilkTrap();
+          }
+        });
+      }
+
+      // Ловушка малодушия («Оставить в подъезде / вызвать отлов»)
+      choices.push({
+        label: 'Пройти мимо / Оставить в подъезде с миской молока и забыть',
+        style: 'secondary',
+        action: () => {
+          closeEventModal();
+          triggerEndGame(
+            false,
+            'МУКИ СОВЕСТИ: Чуда само по себе не произошло',
+            'Вы оставили животное в подъезде с блюдцем молока и ушли спать с мыслью «кто-нибудь другой заберет». Утром недовольные соседи вызвали государственную службу отлова (в Минске — ул. Гурского, 42).\n\nВ Беларуси нет государственных приютов пожизненного содержания: невостребованных и больных животных усыпляют. Спасение начинается только тогда, когда конкретный человек берет на себя роль куратора или со-куратора.'
+          );
+        }
+      });
+
+      showEventModal(
+        'ТОЧКА НЕВОЗВРАТА: ДЕНЬ 1',
+        `Перед вами: ${a.title}.\n${a.visualDescription}\n\nВидимое состояние: ${a.visibleState}\n\nВы случайный неравнодушный человек, а не профессиональный волонтер. У вас ${state.player.housing.label.toLowerCase()}, ${state.player.income.label.toLowerCase()} и $${state.cash} на руках. Как поступите?`,
+        choices
+      );
+    }
+
+    // Поиск со-куратора или бесплатной передержки прямо с улицы (или при лишае) в соцсетях
+    function actionSearchSocialFosterFromStreet() {
+      if (!spendEnergy(15)) return;
+      const roll = Math.random();
+      if (roll < 0.25 && state.day === 1) {
+        // Животное дождалось, откликнулся опытный волонтер!
+        state.zooshans.locationStatus = 'social_foster_volunteer';
+        state.zooshans.hasCage = true;
+        showEventModal(
+          'ОТКЛИК НА SOS-ПОСТ: Опытный волонтер взяла животное на передержку!',
+          'Ваш эмоциональный пост с фотографиями разлетелся по чатам и группам! Откликнулась опытная волонтер Катя:\n\n«Я заберу его с улицы к себе в карантинную клетку и буду сама обрабатывать, даже если вылезет лишай! Но с вас — роль со-куратора: оплата клиники по талонам, покупка корма и активный пиар в соцсетях. Спасаем вместе!»',
+          [
+            {
+              label: 'Согласиться на со-кураторство (Животное в безопасности у волонтера)',
+              style: 'primary',
+              action: () => {
+                addLog(`День ${state.day}: 🤝 Со-кураторство! Опытный волонтер приютила животное у себя, а вы ведете сборы, оплату лечения и пиар.`, 'success');
+                closeEventModal();
+              }
+            }
+          ]
+        );
+      } else {
+        // Откликнулся обычный неравнодушный человек из соцсетей (70% случаев — может переоценить свои силы через 12 дней!)
+        state.zooshans.locationStatus = 'social_foster_novice';
+        state.zooshans.socialFosterDaysElapsed = 0;
+        showEventModal(
+          'ОТКЛИК В СОЦСЕТЯХ: Обычный человек согласился бесплатно приютить найденыша!',
+          'На ваш пост в Инстаграме откликнулась девушка Алина — не волонтер, просто добрый человек:\n\n«Мне так жалко малыша, я не могу пройти мимо! Давайте я заберу его к себе домой бесплатно на время поиска хозяев, даже если его нужно лечить от лишая или капать глаза. Только помогайте мне с кормом, врачами и пиаром!»',
+          [
+            {
+              label: 'Передать животное Алине на бесплатную передержку (Со-кураторство)',
+              style: 'primary',
+              action: () => {
+                addLog(`День ${state.day}: 🏠 Неравнодушный человек из соцсетей бесплатно приютил питомца! Помните: новички иногда переоценивают свои силы.`, 'success');
+                closeEventModal();
+              }
+            }
+          ]
+        );
+      }
+      renderAll();
+    }
+
+    // ---------------------------------------------------------------------------
+    // 6. УМНАЯ ПЕРЕМОТКА ВРЕМЕНИ («⏩ ПРОМОТАТЬ ШТИЛЬ») С АВТО-СТОПОМ ЗА 1 ДЕНЬ ДО ДЕДЛАЙНА
+    // ---------------------------------------------------------------------------
+    function fastForwardCalmDays() {
+      if (state.gameOver) return;
+      if (!document.getElementById('eventOverlayBox').classList.contains('hidden')) return;
+      stopTimer();
+
+      if (state.newborn.active && state.zooshans.locationStatus.startsWith('home')) {
+        addLog(`День ${state.day}: ⛔ Нельзя включить быструю перемотку, пока на руках слепые котята на ежедневном ручном выкорме!`, 'warn');
+        return;
+      }
+
+      let skipped = 0;
+      const maxSkip = 15;
+      let stopReason = '';
+
+      while (skipped < maxSkip && !state.gameOver) {
+        // Проверяем, не наступит ли ЗАВТРА (за 1 день) критический дедлайн
+        const stopCheck = getTomorrowDeadlineWarning();
+        if (stopCheck) {
+          stopReason = stopCheck;
+          break;
+        }
+
+        // Выполняем 1 день
+        processDayTick();
+        skipped += 1;
+
+        // Если во время тика открылось модальное окно события/звонка — мгновенно тормозим!
+        if (!document.getElementById('eventOverlayBox').classList.contains('hidden') || state.gameOver) {
+          break;
+        }
+      }
+
+      if (skipped > 0 && document.getElementById('eventOverlayBox').classList.contains('hidden')) {
+        const msg = stopReason
+          ? `⏩ Промотано ${skipped} дн. Авто-стоп за 1 день до события: ${stopReason}`
+          : `⏩ Промотано ${skipped} спокойных дней в пиаре и ожидании.`;
+        addLog(`День ${state.day}: ${msg}`, 'info');
+      }
+      renderAll();
+    }
+
+    // Проверка дедлайнов, до которых остался ровно 1 день (для автоматической остановки перемотки)
+    function getTomorrowDeadlineWarning() {
+      const a = state.animal;
+      if (state.zooshans.voucherDebt > 0 && state.zooshans.voucherDaysLeft === 4) {
+        return 'завтра остается 3 дня до истечения срока оплаты талона Зоошанса!';
+      }
+      if (state.zooshans.personalFundraiserActive && !state.zooshans.personalDonationsBanned && state.zooshans.daysSinceLastFinReport === 6) {
+        return 'завтра истекает 7-дневный срок обязательного финотчета по сбору!';
+      }
+      if (state.zooshans.giftedFoodDaysLeft === 2) {
+        return 'через день заканчивается запас подаренного корма!';
+      }
+      if (a.dewormStage === 1 && a.daysSinceDeworm1 === 9) {
+        return 'завтра (10-й день) пора давать вторую таблетку глистогонки перед прививкой!';
+      }
+      if (a.dewormStage === 2 && a.daysSinceDeworm2 === 179) {
+        return 'завтра истекает 6 месяцев (180 дней) действия обработки от паразитов!';
+      }
+      if (state.abroad.rabiesVaccineAndChipDone && !state.abroad.titerBloodTaken && state.abroad.daysSinceRabiesVaccine === 29) {
+        return 'завтра исполняется 30 дней после вакцинации от бешенства — можно сдавать титры для ЕС!';
+      }
+      if (state.abroad.titerBloodTaken && state.abroad.daysInEuQuarantine === 89) {
+        return 'завтра завершается 90-дневный карантин после титров — питомец готов к выезду в Европу!';
+      }
+      if (state.cash < calculateDailyCost() * 2) {
+        return 'бюджет на исходе (осталось денег меньше чем на 2 дня корма)!';
+      }
+      return null;
+    }
+
+    // ---------------------------------------------------------------------------
+    // 7. УПРАВЛЕНИЕ ТАЙМЕРОМ И СКОРОСТЬЮ ИГРЫ (1 ТИК = 1 ДЕНЬ)
+    // ---------------------------------------------------------------------------
+    function setSpeed(speed) {
+      if (state.gameOver) return;
+      // Нельзя запустить время, если открыто модальное событие
+      if (!document.getElementById('eventOverlayBox').classList.contains('hidden') && speed > 0) {
+        return;
+      }
+      currentSpeed = speed;
+      if (tickTimer) clearInterval(tickTimer);
+
+      const delays = { 1: 2500, 2: 1200, 5: 500 };
+      if (speed > 0 && delays[speed]) {
+        tickTimer = setInterval(processDayTick, delays[speed]);
+      }
+      updateSpeedButtonsUI();
+    }
+
+    function stopTimer() {
+      currentSpeed = 0;
+      if (tickTimer) clearInterval(tickTimer);
+      updateSpeedButtonsUI();
+    }
+
+    function updateSpeedButtonsUI() {
+      const mapping = [
+        { id: 'btnSpeed0', s: 0 },
+        { id: 'btnSpeed1', s: 1 },
+        { id: 'btnSpeed2', s: 2 },
+        { id: 'btnSpeed5', s: 5 }
+      ];
+      mapping.forEach(item => {
+        const el = document.getElementById(item.id);
+        if (!el) return;
+        if (currentSpeed === item.s) {
+          el.className = 'px-2.5 py-1 rounded text-xs font-mono font-bold bg-emerald-500 text-slate-950 border border-emerald-400 transition';
+        } else {
+          el.className = 'px-2.5 py-1 rounded text-xs font-mono font-semibold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 transition';
+        }
+      });
+
+      const dot = document.getElementById('tickIndicator');
+      if (dot) {
+        if (currentSpeed === 0) {
+          dot.className = 'inline-flex items-center justify-center w-2.5 h-2.5 rounded-full bg-amber-400';
+        } else {
+          dot.className = 'inline-flex items-center justify-center w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping';
+        }
+      }
+    }
+
+    // ---------------------------------------------------------------------------
+    // 7. ГЛАВНЫЙ ЕЖЕДНЕВНЫЙ ТИК (ОБРАБОТКА ЭКОНОМИКИ, БОЛЕЗНЕЙ, СОБЫТИЙ И ЗВОНКОВ)
+    // ---------------------------------------------------------------------------
+    function processDayTick() {
+      if (state.gameOver) {
+        stopTimer();
+        return;
+      }
+
+      // 1. Проверка ручного выкорма слепышей за прошедший день
+      if (state.newborn.active && state.zooshans.locationStatus !== 'temp_volunteer_10d' && state.zooshans.locationStatus !== 'full_volunteer_fincuration') {
+        if (!state.newborn.fedToday) {
+          state.animal.health -= 38;
+          state.mental -= 18;
+          addLog(`День ${state.day}: ПРОПУЩЕНО КОРМЛЕНИЕ СЛЕПЫШЕЙ! Котята кричат от голода и переохлаждения (-38% жизни)!`, 'danger');
+          if (state.animal.health <= 0) {
+            triggerEndGame(
+              false,
+              'ТРАГЕДИЯ: Слепые котята не пережили пропуск кормления',
+              'Новорожденные котята не умеют регулировать температуру тела и умирают от гипогликемии уже через несколько часов без теплой смеси. Пропуск ежедневного выкорма из соски привел к гибели выводка.'
+            );
+            return;
+          }
+        }
+        // Сброс флага на новый день и проверка окончания возраста слепышей (21 день)
+        state.newborn.fedToday = false;
+        state.mental -= 10; // Недосып от ночных кормлений по будильнику
+        if (state.day >= 21) {
+          state.newborn.active = false;
+          state.animal.ageCategory = 'kitten';
+          state.animal.visibleState = 'Котята открыли глаза, окрепли и сами едят мусс Babycat!';
+          addLog(`День ${state.day}: ПОБЕДА НАД БЕССОННИЦЕЙ! Слепыши выросли до 3 недель, открыли глазки и начали сами лакать паштет!`, 'success');
+        }
+      }
+
+      // Переход к следующему дню
+      state.day += 1;
+
+      // 2. Таймеры карантина (14 дней), двукратной глистогонки (10 дней) и полугодового повтора (180 дней)
+      if (state.animal.quarantineDaysDone < 14) {
+        state.animal.quarantineDaysDone += 1;
+        if (state.animal.quarantineDaysDone === 14 && !state.animal.quarantineCompletedNotified) {
+          state.animal.quarantineCompletedNotified = true;
+          addLog(`День ${state.day}: ✅ КАРАНТИН (14 дней) ПРОЙДЕН! Первичный инкубационный период позади — не забудьте завершить двукратную обработку от паразитов и вакцинацию.`, 'success');
+        }
+      }
+
+      if (state.animal.dewormStage === 1) {
+        state.animal.daysSinceDeworm1 += 1;
+        if (state.animal.daysSinceDeworm1 === 10) {
+          addLog(`День ${state.day}: 📌 НАПОМИНАНИЕ: Прошло 10 дней после 1-й глистогонки! Пора дать вторую таблетку от паразитов, чтобы открыть доступ к прививке.`, 'warn');
+        }
+      } else if (state.animal.dewormStage === 2) {
+        state.animal.daysSinceDeworm2 += 1;
+        // Если животное сидит 6 месяцев (180 дней) — глистогонка сгорает и требует повтора!
+        if (state.animal.daysSinceDeworm2 >= 180) {
+          state.animal.dewormStage = 1;
+          state.animal.daysSinceDeworm1 = 10;
+          state.animal.daysSinceDeworm2 = 0;
+          addLog(`День ${state.day}: ⚠️ ПРОШЛО 6 МЕСЯЦЕВ (180 дней) долгого пристройства! Срок действия обработки от глистов истек — необходимо повторить обработку ($8)!`, 'danger');
+        }
+      }
+
+      // 2б. Таймеры подготовки за границу (30 дней до титров + 90 дней карантина ЕС)
+      if (state.abroad.rabiesVaccineAndChipDone && !state.abroad.titerBloodTaken) {
+        state.abroad.daysSinceRabiesVaccine += 1;
+        if (state.abroad.daysSinceRabiesVaccine === 30) {
+          addLog(`День ${state.day}: 🌍 ЕВРОПА: Прошло 30 дней после чипирования и прививки от бешенства! Иммунитет сформирован — теперь можно сдать кровь на титры антител ($190).`, 'success');
+        }
+      }
+      if (state.abroad.titerBloodTaken && state.abroad.daysInEuQuarantine < 90) {
+        state.abroad.daysInEuQuarantine += 1;
+        if (state.abroad.daysInEuQuarantine === 90) {
+          triggerEuAdoptionReadyModal();
+          renderAll();
+          return;
+        }
+      }
+      if (state.abroad.titerFundraiserActive && state.abroad.titerCollectedAmount < 190) {
+        const tDon = randomInt(8, 22);
+        state.abroad.titerCollectedAmount = Math.min(190, state.abroad.titerCollectedAmount + tDon);
+        state.cash = +(state.cash + tDon).toFixed(1);
+        if (state.abroad.titerCollectedAmount >= 190) {
+          state.abroad.titerFundraiserActive = false;
+          addLog(`День ${state.day}: 🎉 Целевой сбор на титры бешенства ($190) полностью закрыт подписчиками! Можно ехать сдавать кровь.`, 'success');
+        }
+      }
+
+      // 3. Зарплата каждые 30 дней
+      if (state.day % 30 === 0) {
+        const sal = state.player.income.monthlyFreeCash;
+        state.cash = +(state.cash + sal).toFixed(1);
+        addLog(`День ${state.day}: 💰 Пришла зарплата! Свободный остаток +$${sal} добавлен в бюджет.`, 'success');
+      }
+
+      // 4. Ежедневное восстановление Энергии и изменения Менталки от семьи/жилья
+      state.energy = Math.min(100, state.energy + state.player.family.energyBonus);
+      state.mental = Math.min(100, Math.max(0, state.mental + state.player.family.mentalBonus - state.player.housing.dailyMentalDrain));
+
+      // Если это щенки дома — вой по ночам и пеленки
+      if (state.animal.ageCategory === 'puppy' && state.zooshans.locationStatus.startsWith('home')) {
+        state.mental -= 5;
+      }
+
+      // 5. Ежедневные расходы на корм, пеленки и передержку (с учетом подаренного корма!)
+      if (state.zooshans.giftedFoodDaysLeft > 0) {
+        state.zooshans.giftedFoodDaysLeft -= 1;
+        if (state.zooshans.giftedFoodDaysLeft === 0) {
+          addLog(`День ${state.day}: 🥣 Запас подаренного подписчиками корма и наполнителя закончился. Напишите новый пост-историю или оплачивайте из бюджета.`, 'info');
+        }
+      }
+      const dailyCost = calculateDailyCost();
+      if (dailyCost > 0) {
+        if (state.cash >= dailyCost) {
+          state.cash = +(state.cash - dailyCost).toFixed(1);
+          state.personalMoneySpent = +(state.personalMoneySpent + dailyCost).toFixed(1);
+        } else {
+          state.mental -= 8;
+          state.animal.health -= 6;
+          addLog(`День ${state.day}: Не хватает денег даже на базовый корм и передержку ($${dailyCost})!`, 'danger');
+        }
+      }
+
+      // 5б. Проверка конфликта с бесплатной передержкой у обычного человека из соцсетей (переоценил силы на 12-й день!)
+      if (state.zooshans.locationStatus === 'social_foster_novice') {
+        state.zooshans.socialFosterDaysElapsed += 1;
+        if (state.zooshans.socialFosterDaysElapsed === 12 && !state.zooshans.socialFosterConflictTriggered) {
+          state.zooshans.socialFosterConflictTriggered = true;
+          triggerSocialFosterConflictModal();
+          renderAll();
+          return;
+        }
+      }
+
+      // 6. Обработка временного перехвата волонтером (10 дней)
+      if (state.zooshans.locationStatus === 'temp_volunteer_10d') {
+        state.zooshans.tempVolunteerDaysLeft -= 1;
+        if (state.zooshans.tempVolunteerDaysLeft <= 0) {
+          triggerReturnFromTempVolunteerModal();
+          renderAll();
+          return;
+        }
+      }
+
+      // 6. Поступления по официальному сбору (на погашение долга по талону) и личному сбору
+      if (state.zooshans.officialFundraiserActive && state.zooshans.voucherDebt > 0) {
+        const donation = Math.min(state.zooshans.voucherDebt, randomInt(6, 16));
+        state.zooshans.voucherDebt = +(state.zooshans.voucherDebt - donation).toFixed(1);
+        state.voucherFundsUsed = +(state.voucherFundsUsed + donation).toFixed(1);
+        if (state.zooshans.voucherDebt <= 0) {
+          state.zooshans.officialFundraiserActive = false;
+          addLog(`День ${state.day}: 🎉 Официальный сбор через «Зоошанс» полностью закрыл долг перед клиникой!`, 'success');
+        }
+      }
+
+      if (state.zooshans.personalFundraiserActive && !state.zooshans.personalDonationsBanned) {
+        state.zooshans.daysSinceLastFinReport += 1;
+        if (Math.random() < 0.55) {
+          const cardDon = randomInt(4, 11);
+          state.cash = +(state.cash + cardDon).toFixed(1);
+        }
+        if (state.zooshans.daysSinceLastFinReport === 7) {
+          triggerFinReportAuditModal();
+          renderAll();
+          return;
+        }
+      }
+
+      // 7. Таймер талона Зоошанса (30 дней)
+      if (state.zooshans.voucherDebt > 0) {
+        state.zooshans.voucherDaysLeft -= 1;
+        if (state.zooshans.voucherDaysLeft === 3 && !state.triggeredEvents.voucherWarn) {
+          state.triggeredEvents.voucherWarn = true;
+          triggerVoucherDeadlineModal();
+          renderAll();
+          return;
+        }
+        if (state.zooshans.voucherDaysLeft <= 0 && !state.zooshans.voucherBlocked) {
+          state.zooshans.voucherBlocked = true;
+          state.mental -= 25;
+          addLog(`День ${state.day}: ⛔ Просрочен 30-дневный долг по талону Зоошанса ($${state.zooshans.voucherDebt})! Выдача новых талонов заблокирована.`, 'danger');
+        }
+      }
+
+      // 8. Проверка ветеринарных таймеров (Травма, Вирусы, Лишай, Роды)
+      if (checkMedicalAndCrisisTriggers()) {
+        renderAll();
+        return;
+      }
+
+      // 9. Прогресс 10-дневного поиска СТАРЫХ хозяев (для породистых/потеряшек)
+      if (state.pr.lostSearchActive && state.pr.lostSearchDaysDone < 10) {
+        state.pr.lostSearchDaysDone += 1;
+        // На 3-й или 6-й день поиска старых хозяев звонят мошенники или перекупы!
+        if ((state.pr.lostSearchDaysDone === 3 || state.pr.lostSearchDaysDone === 6) && !state.triggeredEvents['scam_' + state.pr.lostSearchDaysDone]) {
+          state.triggeredEvents['scam_' + state.pr.lostSearchDaysDone] = true;
+          const scam = state.pr.lostSearchDaysDone === 3 ? SCAMMER_CALLS[0] : SCAMMER_CALLS[1];
+          triggerIncomingCallModal(scam, true);
+          renderAll();
+          return;
+        }
+        if (state.pr.lostSearchDaysDone === 10) {
+          state.pr.lostSearchActive = false;
+          // 30% шанс, что найдутся реальные старые хозяева с ветпаспортом и фото!
+          if (Math.random() < 0.30) {
+            triggerEndGame(
+              true,
+              'ЧУДО ПОИСКА: Настоящие хозяева нашлись!',
+              'Ваши объявления в группах потеряшек и проверка чипа сработали! На 10-й день приехала настоящая хозяйка со старым ветпаспортом, десятками домашних фотографий и слезами счастья (питомец выскочил через дверь курьера). Семья полностью компенсировала ваши расходы и пожертвовала деньги в «Зоошанс»!'
+            );
+            return;
+          } else {
+            addLog(`День ${state.day}: 10 дней поиска старых хозяев позади. Настоящие владельцы не откликнулись — теперь вы имеете полное право стерилизовать питомца и искать ему новую семью!`, 'info');
+          }
+        }
+      }
+
+      // 10. Если животное полностью передано под финкураторство волонтеру — шанс пристройства самим волонтером
+      if (state.zooshans.locationStatus === 'full_volunteer_fincuration' && state.day >= 18) {
+        if (Math.random() < 0.12) {
+          triggerEndGame(
+            true,
+            'ПОБЕДА ФИНКУРАТОРА: Подопечный обрел дом!',
+            'Опытная передержка «Зоошанса», приютившая вашего найденыша под ваше полное финансовое кураторство, провела собеседования и нашла для него замечательную семью с сетками на окнах и договором! Благодаря вашей своевременной оплате счетов и корма еще одна жизнь спасена.'
+          );
+          return;
+        }
+      }
+
+      // 11. Активный ПИАР и звонки потенциальных хозяев («Фильтр ручек»)
+      if (state.pr.prActive) {
+        state.pr.daysInPr += 1;
+        // Благотворительный фестиваль «Хвостатый двор» на 14-й день пиара (особенно спасает непопулярных шпротов!)
+        if (state.pr.daysInPr === 12 && !state.triggeredEvents.festivalTailYard) {
+          state.triggeredEvents.festivalTailYard = true;
+          triggerFestivalModal();
+          renderAll();
+          return;
+        }
+
+        // Расчет вероятности звонка в день на основе популярности окраса и наличия ПРОФИ-фото
+        let callChance = 0.22 * state.animal.coatPopularity;
+        if (state.zooshans.hasProPhotos) callChance *= 2.8;
+        if (state.animal.hiddenState.isKittenSeason && !state.zooshans.hasProPhotos) callChance *= 0.4;
+
+        if (Math.random() < callChance) {
+          triggerRandomAdopterCall();
+          renderAll();
+          return;
+        }
+      }
+
+      // 12. Проверка поражения по здоровью или менталке
+      if (state.animal.health <= 0) {
+        triggerEndGame(
+          false,
+          'ПОРАЖЕНИЕ: Спасти жизнь не удалось',
+          'Состояние животного упало до критической отметки. Без своевременной диагностики, стационара и интенсивной терапии организм не справился.'
+        );
+        return;
+      }
+
+      if (state.mental <= 0) {
+        triggerBurnoutModal();
+        renderAll();
+        return;
+      }
+
+      renderAll();
+    }
+
+    // ---------------------------------------------------------------------------
+    // 8. ТРИГГЕРЫ БОЛЕЗНЕЙ, РОДОВ, ТАКСИСТОВ И ХОЗЯЕВ КВАРТИРЫ
+    // ---------------------------------------------------------------------------
+    function checkMedicalAndCrisisTriggers() {
+      const a = state.animal;
+      const h = a.hiddenState;
+
+      // А) Сбитыш без экстренной операции и донора крови
+      if (h.hasSevereTrauma && !a.traumaOperated) {
+        a.health -= 18;
+        addLog(`День ${state.day}: 🚨 Сбитое животное в тяжелом шоке теряет силы (-18% жизни)! Срочно нужна операция и донор крови!`, 'danger');
+        if (state.day === 2 && !state.triggeredEvents.donorAlert) {
+          state.triggeredEvents.donorAlert = true;
+          triggerBloodDonorModal();
+          return true;
+        }
+      }
+
+      // Б) Вспышка смертельного вируса (Панлейкопения / Парвовирусный энтерит / Ринотрахеит с глазами)
+      if (h.deadlyVirus && state.day >= (h.virusIncubationDays || 4) && !state.triggeredEvents.virusOutbreak) {
+        state.triggeredEvents.virusOutbreak = true;
+        a.knownVirus = h.deadlyVirus;
+        a.health -= 30;
+        state.mental -= 25;
+
+        let virusTitle = 'ВСПЫШКА ПАНЛЕЙКОПЕНИИ (Кошачья чумка)!';
+        let virusDesc = 'Инкубационный период закончился! У котенка начались неукротимая рвота, отказ от еды и лихорадка. Без круглосуточного инфекционного стационара и капельниц смертность составляет 90%!';
+        if (h.deadlyVirus === 'parvovirus_enteritis') {
+          virusTitle = 'ПАРВОВИРУСНЫЙ ЭНТЕРИТ У ЩЕНКОВ!';
+          virusDesc = 'Щенки вялые, начался кровавый понос и стремительное обезвоживание. Счет идет на часы — требуется срочная госпитализация в инфекционный стационар!';
+        } else if (h.deadlyVirus === 'rhinotracheitis_eyes') {
+          virusTitle = 'УГРОЗА ПОТЕРИ ЗРЕНИЯ: Острый ринотрахеит и язва роговицы!';
+          virusDesc = 'Глаза котят полностью заплыли гноем, роговица мутнеет. Нужен срочный прием офтальмолога, антибиотики и капли каждые 3 часа!';
+        }
+
+        // Если дома свой НЕпривитый кот и найденыш на полу без клетки!
+        if (state.player.ownPets.id === 'unvaccinated_cat' && state.zooshans.locationStatus === 'home_floor') {
+          state.cash -= 65;
+          state.mental -= 30;
+          virusDesc += '\n\n💥 КАТАСТРОФА КАРАНТИНА: Так как вы не взяли клетку в «Зоошансе», заразился ваш собственный непривитый домашний кот! На его экстренное лечение ушло $65 из бюджета!';
+        }
+
+        showEventModal(virusTitle, virusDesc, [
+          {
+            label: `Экстренно поместить в стационар на курс инфузий (${state.zooshans.hasVoucher && !state.zooshans.voucherBlocked ? '$34 по талону' : '$42 нал'})`,
+            style: 'primary',
+            action: () => {
+              payVetBill(42, true, 'Экстренный инфекционный стационар и капельницы');
+              a.health = Math.min(100, a.health + 35);
+              h.deadlyVirus = null;
+              a.knownVirus = 'Пролечен в стационаре';
+              closeEventModal();
+            }
+          },
+          {
+            label: 'Пытаться отпаивать дома водой из шприца ($0 — огромный риск гибели)',
+            style: 'danger',
+            action: () => {
+              a.health -= 45;
+              addLog(`День ${state.day}: Вы отказались от стационара при смертельном вирусе. Состояние критическое!`, 'danger');
+              closeEventModal();
+            }
+          }
+        ]);
+        return true;
+      }
+
+      // В) Вылезла скрытая микроспория (Лишай) на 5-й день без просвета и клетки
+      if (h.ringworm && state.day >= (h.ringwormIncubationDays || 5) && !a.knownRingworm && !state.triggeredEvents.ringwormExplosion) {
+        state.triggeredEvents.ringwormExplosion = true;
+        a.knownRingworm = true;
+        const panicMult = state.player.family.ringwormPanic;
+        const mentalHit = Math.round(25 * panicMult);
+        state.mental -= mentalHit;
+
+        let rwText = 'На ушах и лапах животного появились характерные круглые залысины — это микроспория (стригущий лишай)!';
+        if (state.zooshans.locationStatus === 'home_floor') {
+          state.cash -= 45;
+          rwText += `\n\nПоскольку вы не сделали просвет лампой Вуда в 1-й день и не изолировали животное в клетку Зоошанса, споры грибка разлетелись по всей квартире и дивану! Дома грандиозный скандал (-${mentalHit}% Менталки, -$45 на противогрибковые мази, имаверол и дезинфекцию)!`;
+        } else {
+          rwText += '\n\nК счастью, животное сидело в изолированной клетке! Вы вовремя начали обработки без заражения квартиры.';
+        }
+
+        showEventModal('МИКРОСПОРИЯ (ЛИШАЙ): Сюрприз инкубационного периода', rwText, [
+          {
+            label: state.zooshans.hasGiftedItraconazole
+              ? 'Использовать подаренный подписчиками Итраконазол и Имаверол ($0!)'
+              : 'Закупить Итраконазол и Имаверол, начать курс обработок (-$18)',
+            style: 'primary',
+            action: () => {
+              if (state.zooshans.hasGiftedItraconazole) {
+                state.zooshans.hasGiftedItraconazole = false;
+                addLog(`День ${state.day}: 💊 Вы вылечили лишай бесплатным Итраконазолом, который передали добрые люди из соцсетей!`, 'success');
+              } else {
+                state.cash -= 18;
+                state.personalMoneySpent += 18;
+                addLog(`День ${state.day}: Проведен курс лечения микроспории до чистых посевов (-$18).`, 'success');
+              }
+              h.ringworm = false;
+              a.knownRingworm = 'Пролечен (Чисто)';
+              closeEventModal();
+            }
+          },
+          {
+            label: 'Дать SOS-пост в соцсетях: «Ищу бесплатную передержку или дом с лечением лишая!» (-15⚡)',
+            style: 'info',
+            action: () => {
+              state.energy = Math.max(0, state.energy - 15);
+              h.ringworm = false;
+              a.knownRingworm = 'Долечивается на передержке';
+              state.zooshans.locationStatus = Math.random() < 0.4 ? 'social_foster_volunteer' : 'social_foster_novice';
+              state.zooshans.socialFosterDaysElapsed = 0;
+              addLog(`День ${state.day}: Чудо соцсетей! На ваш честный пост откликнулся человек без других животных, готовый забрать лишайного хвостика к себе и домазать курс!`, 'success');
+              closeEventModal();
+            }
+          }
+        ]);
+        return true;
+      }
+
+      // Г) Таймер родов у нестерилизованной беременной кошки (День 8)
+      if (h.isPregnant && !a.isSterilized && state.day >= (h.daysUntilBirth || 8) && !state.triggeredEvents.surpriseBirth) {
+        state.triggeredEvents.surpriseBirth = true;
+        h.isPregnant = false;
+        a.count += 5;
+        state.newborn.active = true;
+        state.newborn.fedToday = true;
+        state.newborn.milkDaysLeft = 2;
+        state.mental -= 30;
+
+        showEventModal(
+          'НОЧНОЕ ПОПОЛНЕНИЕ: Кошка родила 5 слепых котят в шкафу!',
+          'Вы отложили экстренную стерилизацию («пусть сначала отъестся и привыкнет»). Сегодня ночью кошка родила пятерых слепых котят прямо на вашей зимней куртке в шкафу!\n\nТеперь стерилизовать кошку нельзя до окончания лактации, расходы на корм выросли в 2.5 раза, а пристраивать придется шестерых!',
+          [
+            {
+              label: 'Выдохнуть, оборудовать гнездо и кормить маму-кошку усиленно',
+              style: 'primary',
+              action: () => {
+                addLog(`День ${state.day}: Роды дома! Теперь у вас на кураторстве кошка и 5 новорожденных котят.`, 'warn');
+                closeEventModal();
+              }
+            }
+          ]
+        );
+        return true;
+      }
+
+      // Д) Скрытое заражение домашнего кота ВЛК (лейкозом), если найденыш с ВЛК живет на полу без клетки
+      if (h.chronicCarrier === 'FeLV' && state.player.ownPets.id === 'unvaccinated_cat' && state.zooshans.locationStatus === 'home_floor' && state.day === 7 && !state.triggeredEvents.felvHomeSpread) {
+        state.triggeredEvents.felvHomeSpread = true;
+        state.mental -= 45;
+        showEventModal(
+          'ТРАГЕДИЯ БЕЗ КАРАНТИНА: Заражение домашнего кота лейкозом (ВЛК)',
+          'Внешне здоровая кошечка оказалась носителем вирусной лейкемии кошек (ВЛК), которая передается через общие миски и вылизывание. Так как вы выпустили ее к своему непривитому коту без клетки и сдачи ПЦР, ваш домашний питомец заразился неизлечимым вирусом.',
+          [
+            {
+              label: 'Принять горький урок и немедленно разделить кошек',
+              style: 'danger',
+              action: () => {
+                a.knownCarrier = 'FeLV';
+                closeEventModal();
+              }
+            }
+          ]
+        );
+        return true;
+      }
+
+      // Е) Внезапный визит хозяина съемной квартиры (День 9)
+      if (state.player.housing.id === 'rent_strict' && state.zooshans.locationStatus.startsWith('home') && state.day === 9 && !state.triggeredEvents.landlordVisit) {
+        state.triggeredEvents.landlordVisit = true;
+        const fosterCost = state.animal.species === 'dog' ? 10 : 5;
+        showEventModal(
+          'ЗВОНОК В ДВЕРЬ: Внезапная проверка хозяина квартиры!',
+          'На пороге стоит арендодатель: «Я проезжал мимо, решил забрать жировки за коммуналку». В вашем договоре найма животные строго запрещены, а из комнаты доносится шум!',
+          [
+            {
+              label: 'Честно показать идеальную чистоту и доплатить гарантийный залог (-$45)',
+              style: 'primary',
+              action: () => {
+                state.cash -= 45;
+                state.personalMoneySpent += 45;
+                state.mental -= 10;
+                addLog(`День ${state.day}: Вы уладили конфликт с хозяином квартиры залоговым платежом $45.`, 'warn');
+                closeEventModal();
+              }
+            },
+            {
+              label: `Срочно перевезти питомца на платную передержку ($${fosterCost}/сутки)`,
+              style: 'info',
+              action: () => {
+                state.zooshans.locationStatus = 'paid_foster';
+                addLog(`День ${state.day}: Животное переехало на платную домашнюю передержку ($${fosterCost}/сутки).`, 'info');
+                closeEventModal();
+              }
+            }
+          ]
+        );
+        return true;
+      }
+
+      // Ж) Бытовой кризис «Понос побеждает» (Трихомоноз / ЖКТ) на 11-й день
+      if (state.day === 11 && state.zooshans.locationStatus.startsWith('home') && !state.triggeredEvents.chronicDiarrhea) {
+        state.triggeredEvents.chronicDiarrhea = true;
+        showEventModal(
+          'БЫТОВОЙ КРИЗИС: «Понос побеждает...» (Кейс Селесты)',
+          'Всю неделю лоток напоминает поле боя. Обычный корм не подходит, животное с боем выплевывает горькие таблетки на обои и вашу одежду. Вы не высыпаетесь и находитесь на грани нервного срыва.',
+          [
+            {
+              label: 'Сдать ПЦР на простейших и купить лечебный корм Gastrointestinal (-$34)',
+              style: 'primary',
+              action: () => {
+                state.cash -= 34;
+                state.personalMoneySpent += 34;
+                state.animal.health = Math.min(100, state.animal.health + 15);
+                state.mental = Math.min(100, state.mental + 10);
+                addLog(`День ${state.day}: Выявлен трихомоноз, подобран лечебный рацион Gastrointestinal. Стул наладился!`, 'success');
+                closeEventModal();
+              }
+            },
+            {
+              label: 'Поить рисовым отваром по советам из интернета ($0)',
+              style: 'secondary',
+              action: () => {
+                state.mental -= 22;
+                state.animal.health -= 15;
+                addLog(`День ${state.day}: Народные средства не помогли, диарея и обезвоживание продолжаются.`, 'danger');
+                closeEventModal();
+              }
+            }
+          ]
+        );
+        return true;
+      }
+
+      return false;
+    }
+
+    // ---------------------------------------------------------------------------
+    // 9. СПЕЦИАЛЬНЫЕ МОДАЛКИ: КОНФЛИКТ СО-КУРАТОРА, ВЫЕЗД В ЕС, ДОНОР, ТАЛОН, ВЫГОРАНИЕ
+    // ---------------------------------------------------------------------------
+    function triggerSocialFosterConflictModal() {
+      const fosterPrice = state.animal.species === 'dog' ? 10 : 5;
+      showEventModal(
+        'КРИЗИС БЕСПЛАТНОЙ ПЕРЕДЕРЖКИ: Человек из соцсетей переоценил свои силы!',
+        'Прошло 12 дней с тех пор, как неравнодушная подписчица Алина бесплатно приютила вашего подопечного по SOS-посту. Сегодня в 23:00 она звонит вам в слезах:\n\n«Я больше так не могу! Я думала, он будет просто спать и мурчать, а он носится по ночам, подрал съемный диван, промахнулся мимо лотка, и муж поставил ультиматум: или кот уезжает сегодня, или я! Забирайте его куда хотите прямо сейчас!»',
+        [
+          {
+            label: 'Экстренно забрать питомца к себе домой (в карантинную клетку Зоошанса)',
+            style: 'primary',
+            action: () => {
+              state.zooshans.locationStatus = state.zooshans.hasCage ? 'home_cage' : 'home_floor';
+              state.mental -= 12;
+              addLog(`День ${state.day}: Вы не бросили передержку в беде и забрали питомца к себе домой.`, 'warn');
+              closeEventModal();
+            }
+          },
+          {
+            label: `Срочно найти и оплатить надежную платную передержку ($${fosterPrice}/сутки)`,
+            style: 'info',
+            action: () => {
+              state.zooshans.locationStatus = 'paid_foster';
+              addLog(`День ${state.day}: Животное перевезено от паникующего новичка на опытную платную передержку ($${fosterPrice}/сутки).`, 'info');
+              closeEventModal();
+            }
+          },
+          {
+            label: 'Попытаться успокоить Алину, привезти подарок, спрей-антигадин и клетку (-$15, -20⚡)',
+            style: 'info',
+            action: () => {
+              state.cash -= 15;
+              state.personalMoneySpent += 15;
+              state.energy = Math.max(0, state.energy - 20);
+              state.zooshans.locationStatus = 'social_foster_volunteer'; // Конфликт погашен
+              addLog(`День ${state.day}: Вы приехали с клеткой, ферментным спреем и тортиком — конфликт в семье передержки улажен, питомец остается у них до пристройства!`, 'success');
+              closeEventModal();
+            }
+          },
+          {
+            label: 'Темный выбор: Заблокировать номер и «кинуть» человека разгребать самому',
+            style: 'danger',
+            action: () => {
+              closeEventModal();
+              triggerEndGame(
+                false,
+                'ВЫ ПЕРЕЛОЖИЛИ ОТВЕТСТВЕННОСТЬ И КИНУЛИ ЧЕЛОВЕКА',
+                'Вы решили, что раз человек сам вызвался помочь в соцсетях, то теперь это его проблемы, и добавили номер Алины в черный список.\n\nВ реальной жизни такое предательство убивает волонтерское движение: обманутый новичок больше никогда не возьмет животное с улицы, а ваше имя попало в черный список всех зоозащитных чатов Минска как недобросовестного куратора, подбрасывающего животных.'
+              );
+            }
+          }
+        ]
+      );
+    }
+
+    function triggerEuAdoptionReadyModal() {
+      showEventModal(
+        '🌍 КАРАНТИН ЕС (90 ДНЕЙ) ЗАВЕРШЕН: Семья из Германии ждет вашего питомца!',
+        'Поздравляем! Вы прошли весь многомесячный путь международного пристройства: чипирование, вакцинация от бешенства, 30 дней ожидания, оплата титров антител ($190) и 90 дней официального карантина!\n\nЗамечательная семья из Мюнхена уже оплатила международный зоо-трансфер ($130 за их счет!). Вам осталось только оформить евросертификат в госветстанции ($15).',
+        [
+          {
+            label: 'Оформить евросертификат (-$15, -10⚡) и проводить питомца в новую жизнь в ЕС!',
+            style: 'primary',
+            action: () => {
+              state.cash -= 15;
+              state.personalMoneySpent += 15;
+              closeEventModal();
+              triggerEndGame(
+                true,
+                'МЕЖДУНАРОДНЫЙ ХЭППИ-ЭНД: Счастливая жизнь в Европе!',
+                'Благодаря вашему упорству, сдаче титров на бешенство и терпению во время 90-дневного карантина ваш подопечный благополучно пересек границу и приехал в свой новый дом в Германии! Хозяева полностью оплатили перевозчика ($130) и прислали вам фото довольного хвостика на балконе с защитной сеткой!'
+              );
+            }
+          }
+        ]
+      );
+    }
+
+    function triggerBloodDonorModal() {
+      showEventModal(
+        'КРИТИЧЕСКАЯ СИТУАЦИЯ: Срочно нужен донор крови!',
+        'Врач реанимации «Доктор Вет» звонит вам среди ночи: гематокрит упал до 11%, без экстренного переливания крови животное не доживет до утра! Нужен привитый донор весом от 4.5 кг.',
+        [
+          {
+            label: 'Дать SOS-клич в чат @zooshans_chat с просьбой о доноре (-15⚡)',
+            style: 'primary',
+            action: () => {
+              state.energy = Math.max(0, state.energy - 15);
+              state.animal.bloodDonorFound = true;
+              state.animal.health = Math.min(100, state.animal.health + 30);
+              addLog(`День ${state.day}: Добро возвращается! Волонтеры из @zooshans_chat за полчаса нашли вакцинированного донора Коннора и спасли жизнь вашему подопечному!`, 'success');
+              closeEventModal();
+            }
+          },
+          {
+            label: 'Купить коммерческую донорскую эритроцитарную массу в банке крови (-$65)',
+            style: 'info',
+            action: () => {
+              state.cash -= 65;
+              state.personalMoneySpent += 65;
+              state.animal.bloodDonorFound = true;
+              state.animal.health = Math.min(100, state.animal.health + 30);
+              addLog(`День ${state.day}: Вы оплатили коммерческую донорскую кровь ($65). Кризис миновал.`, 'info');
+              closeEventModal();
+            }
+          }
+        ]
+      );
+    }
+
+    function triggerReturnFromTempVolunteerModal() {
+      const fosterPrice = state.animal.species === 'dog' ? 10 : 5;
+      showEventModal(
+        'СРОК ВЫШЕЛ: Пора забирать подопечного с временной передержки!',
+        'Прошло 10 дней! Опытный волонтер «Зоошанса», которая выручила вас в самый острый период (выкормила слепышей в первые дни / проколола острый курс уколов), пишет вам:\n\n«Привет! Малыш окреп и стабилен, а мне завтра привозят тяжелого кота после операции. Как и договаривались, сегодня нужно забрать твоего подопечного обратно до пристройства!»',
+        [
+          {
+            label: 'Сдержать слово: забрать животное домой (в клетку Зоошанса)',
+            style: 'primary',
+            action: () => {
+              state.zooshans.locationStatus = state.zooshans.hasCage ? 'home_cage' : 'home_floor';
+              state.animal.health = 95;
+              state.newborn.active = false;
+              addLog(`День ${state.day}: Вы честно забрали стабилизированного питомца у волонтера и продолжаете кураторство до пристройства!`, 'success');
+              closeEventModal();
+            }
+          },
+          {
+            label: `Оплатить коммерческую передержку ($${fosterPrice}/сутки), если дома держать нельзя`,
+            style: 'info',
+            action: () => {
+              state.zooshans.locationStatus = 'paid_foster';
+              state.animal.health = 95;
+              state.newborn.active = false;
+              addLog(`День ${state.day}: Вы перевезли питомца на платную передержку ($${fosterPrice}/сутки).`, 'info');
+              closeEventModal();
+            }
+          },
+          {
+            label: 'Перестать брать трубку и бросить животное на волонтера',
+            style: 'danger',
+            action: () => {
+              closeEventModal();
+              triggerEndGame(
+                false,
+                'ПОЗОР КУРАТОРА: Вы предали доверие волонтера',
+                'Вы заблокировали номер человека, который бесплатно протянул вам руку помощи в трудную минуту и поверил вашему слову. Из-за таких случаев волонтеры выгорают и боятся брать животных на временную стабилизацию. Вы внесены в черный список.'
+              );
+            }
+          }
+        ]
+      );
+    }
+
+    function triggerVoucherDeadlineModal() {
+      showEventModal(
+        'ВНИМАНИЕ: Через 3 дня истекает срок погашения талона «Зоошанса»!',
+        `Ваш текущий долг перед клиникой по талону составляет $${state.zooshans.voucherDebt}. По правилам организации талон дается с отсрочкой на 30 дней. Если не закрыть долг или не согласовать пролонгацию с координатором, выдача новых направлений будет заблокирована.`,
+        [
+          {
+            label: `Погасить весь долг из личных средств (-$${state.zooshans.voucherDebt})`,
+            style: 'primary',
+            action: () => {
+              state.cash = +(state.cash - state.zooshans.voucherDebt).toFixed(1);
+              state.personalMoneySpent = +(state.personalMoneySpent + state.zooshans.voucherDebt).toFixed(1);
+              state.zooshans.voucherDebt = 0;
+              addLog(`День ${state.day}: Вы полностью погасили долг по талону Зоошанса и отправили фото чека координатору.`, 'success');
+              closeEventModal();
+            }
+          },
+          {
+            label: 'Вежливо написать координатору, показать отчеты и попросить пролонгацию (+20 дней, -10⚡)',
+            style: 'info',
+            action: () => {
+              state.energy = Math.max(0, state.energy - 10);
+              state.zooshans.voucherDaysLeft += 20;
+              addLog(`День ${state.day}: Координатор Зоошанса вошел в положение и продлил срок погашения талона на 20 дней!`, 'info');
+              closeEventModal();
+            }
+          }
+        ]
+      );
+    }
+
+    function triggerFinReportAuditModal() {
+      showEventModal(
+        'ШТОРМ В КОММЕНТАРИЯХ: «Где финотчет по личным сборам?!»',
+        'Вы открыли сбор на личную карту на корм, смесь и передержку, но уже 7 дней не выкладывали баланс и фотографии чеков. В комментариях под постом люди требуют отчета!',
+        [
+          {
+            label: 'Срочно свести все чеки, сфотографировать и выложить финотчет (-25⚡)',
+            style: 'primary',
+            action: () => {
+              state.energy = Math.max(0, state.energy - 25);
+              state.zooshans.daysSinceLastFinReport = 0;
+              addLog(`День ${state.day}: Прозрачный финотчет опубликован! Доверие жертвователей сохранено.`, 'success');
+              closeEventModal();
+            }
+          },
+          {
+            label: 'Огрызнуться: «Мне некогда считать копейки, я спасаю животное!»',
+            style: 'danger',
+            action: () => {
+              state.mental -= 40;
+              state.zooshans.personalDonationsBanned = true;
+              state.zooshans.personalFundraiserActive = false;
+              addLog(`День ${state.day}: Модераторы пабликов удалили ваши посты и заблокировали сборы за отказ предоставить финотчет (-40% Менталки)!`, 'danger');
+              closeEventModal();
+            }
+          }
+        ]
+      );
+    }
+
+    function triggerFestivalModal() {
+      showEventModal(
+        'БЛАГОТВОРИТЕЛЬНЫЙ ФЕСТИВАЛЬ «ХВОСТАТЫЙ ДВОР»!',
+        'МБООПЖ «Зоошанс» проводит большой городской фестиваль пристройства животных в Минске! Это лучший шанс найти дом даже для взрослых кошек непопулярного окраса («шпротов» и «коровок»). Ваш подопечный привит, стерилизован и готов к встрече с будущей семьей.',
+        [
+          {
+            label: 'Поехать с питомцем на весь день на фестиваль (-35⚡)',
+            style: 'primary',
+            action: () => {
+              state.energy = Math.max(0, state.energy - 35);
+              closeEventModal();
+              triggerIncomingCallModal(ADOPTER_CALLS[ADOPTER_CALLS.length - 1], false);
+            }
+          },
+          {
+            label: 'Передать только фото на стенд поиска дома (-5⚡)',
+            style: 'secondary',
+            action: () => {
+              state.energy = Math.max(0, state.energy - 5);
+              state.animal.coatPopularity += 0.35;
+              addLog(`День ${state.day}: Фото вашего питомца размещено на стенде фестиваля «Зоошанса»! Звонков стало больше.`, 'info');
+              closeEventModal();
+            }
+          }
+        ]
+      );
+    }
+
+    function triggerBurnoutModal() {
+      showEventModal(
+        'ЭМОЦИОНАЛЬНОЕ ВЫГОРАНИЕ: Ментальный ресурс на нуле (0%)',
+        'Бессонные ночи, поездки в клиники, финансовое напряжение и бытовые трудности полностью истощили вас. У вас опускаются руки.',
+        [
+          {
+            label: 'Попросить моральной поддержки и дежурства у волонтеров в @zooshans_chat (Шанс второго дыхания)',
+            style: 'primary',
+            action: () => {
+              if (!state.triggeredEvents.usedSecondWind) {
+                state.triggeredEvents.usedSecondWind = true;
+                state.mental = 45;
+                addLog(`День ${state.day}: Сообщество @zooshans_chat поддержало вас добрым словом и советом! Вы нашли силы идти дальше (+45% Менталки).`, 'success');
+                closeEventModal();
+              } else {
+                closeEventModal();
+                triggerEndGame(
+                  false,
+                  'ЭМОЦИОНАЛЬНОЕ ВЫГОРАНИЕ: Силы полностью иссякли',
+                  'Кураторство без передышки привело к полному нервному истощению. В реальной жизни выгорание — главная причина, почему даже самые добрые люди не выдерживают потока бездомных животных без поддержки общества.'
+                );
+              }
+            }
+          },
+          {
+            label: 'Сдаться и прекратить игру',
+            style: 'danger',
+            action: () => {
+              closeEventModal();
+              triggerEndGame(
+                false,
+                'ЭМОЦИОНАЛЬНОЕ ВЫГОРАНИЕ: Силы полностью иссякли',
+                'Вы не рассчитали свои ментальные и временные ресурсы. Спасение животных в одиночку — это тяжелый труд на грани человеческих возможностей.'
+              );
+            }
+          }
+        ]
+      );
+    }
+
+    // ---------------------------------------------------------------------------
+    // 10. СИМУЛЯТОР ЗВОНКОВ «РУЧЕК» И МОШЕННИКОВ (БЕЗ ПОДСКАЗОК!)
+    // ---------------------------------------------------------------------------
+    function triggerRandomAdopterCall() {
+      const a = state.animal;
+      // Фильтруем подходящие звонки под конкретное животное
+      const pool = ADOPTER_CALLS.filter(call => {
+        if (call.onlyForCarrier && !a.hiddenState.chronicCarrier) return false;
+        if (call.onlyForDogs && a.species !== 'dog') return false;
+        if (call.onlyForColorpoint && a.coatTier !== 'colorpoint_phenotype') return false;
+        return true;
+      });
+      const chosen = randomItem(pool);
+      triggerIncomingCallModal(chosen, false);
+    }
+
+    function triggerIncomingCallModal(callObj, isScammerDuringLostSearch) {
+      stopTimer();
+      const overlay = document.getElementById('eventOverlayBox');
+      const dash = document.getElementById('actionsDashboard');
+      const extraBox = document.getElementById('extraQuestionBox');
+
+      overlay.classList.remove('hidden');
+      overlay.classList.add('flex');
+      dash.classList.add('hidden');
+      extraBox.classList.add('hidden');
+      extraBox.textContent = '';
+
+      document.getElementById('eventBadge').textContent = '📞 ВХОДЯЩИЙ ЗВОНОК ПО ОБЪЯВЛЕНИЮ';
+      document.getElementById('eventBadge').className = 'text-xs font-mono uppercase px-2 py-0.5 rounded bg-sky-400 text-slate-950 font-bold';
+      document.getElementById('eventTitle').textContent = callObj.caller;
+      document.getElementById('eventBody').textContent = callObj.dialogue;
+
+      const choicesDiv = document.getElementById('eventChoicesContainer');
+      choicesDiv.innerHTML = '';
+
+      // 1. Кнопка задать уточняющий вопрос (-5 Энергии)
+      const btnAsk = document.createElement('button');
+      btnAsk.className = 'col-span-1 sm:col-span-2 px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-300 border border-sky-500/40 text-xs font-mono font-semibold transition text-left';
+      btnAsk.innerHTML = '🔍 Задать уточняющие вопросы (про окна, сетки, прошлых животных и документы) [-5⚡]';
+      btnAsk.onclick = () => {
+        if (state.energy < 5) {
+          extraBox.classList.remove('hidden');
+          extraBox.textContent = 'Недостаточно энергии для долгого разговора!';
+          return;
+        }
+        state.energy -= 5;
+        extraBox.classList.remove('hidden');
+        extraBox.textContent = 'Ответ собеседника: ' + callObj.extraQuestionReply;
+        btnAsk.disabled = true;
+        btnAsk.classList.add('opacity-50');
+        renderTopBar();
+      };
+      choicesDiv.appendChild(btnAsk);
+
+      // 2. Кнопка «Согласиться / Отдать животное»
+      const btnAccept = document.createElement('button');
+      btnAccept.className = 'px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-extrabold text-xs sm:text-sm transition';
+      btnAccept.textContent = isScammerDuringLostSearch
+        ? '✅ Поверить и согласиться на условия'
+        : (callObj.isCompromise ? '🎲 Просто отдать как есть без контроля (Успех 65%)' : '✅ Одобрить и передать животное');
+      btnAccept.onclick = () => {
+        closeEventModal();
+        handleCallAcceptance(callObj, false);
+      };
+      choicesDiv.appendChild(btnAccept);
+
+      // 2б. Если это «Средние ручки» (Компромисс куратора) — добавляем кнопку сопровождения и контроля (95% успеха!)
+      if (callObj.isCompromise && !isScammerDuringLostSearch) {
+        const btnCompromiseSupport = document.createElement('button');
+        btnCompromiseSupport.className = 'col-span-1 sm:col-span-2 px-4 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs sm:text-sm transition';
+        btnCompromiseSupport.innerHTML = '🤝 Пойти на компромисс + Кураторское сопровождение: проконтролировать гребенки/сетки и быть на связи (-15⚡ → Успех 95%!)';
+        btnCompromiseSupport.onclick = () => {
+          if (!spendEnergy(15)) return;
+          closeEventModal();
+          handleCallAcceptance(callObj, true);
+        };
+        choicesDiv.appendChild(btnCompromiseSupport);
+      }
+
+      // 3. Кнопка «Отказать и внести в ЧС»
+      const btnReject = document.createElement('button');
+      btnReject.className = 'px-4 py-2.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs sm:text-sm transition';
+      btnReject.textContent = '❌ Отказать в передаче';
+      btnReject.onclick = () => {
+        closeEventModal();
+        if (!callObj.isSafe) {
+          state.filteredBadCalls += 1;
+          addLog(`День ${state.day}: 🛡️ Вы распознали подвох и отказали опасному кандидату (${callObj.caller}).`, 'success');
+        } else {
+          addLog(`День ${state.day}: Вы отказали кандидату (${callObj.caller}). Поиск дома продолжается.`, 'warn');
+        }
+        renderAll();
+      };
+      choicesDiv.appendChild(btnReject);
+    }
+
+    function handleCallAcceptance(callObj, withCuratorSupport = false) {
+      // Если это мошенник с предоплатой курьеру
+      if (callObj.type === 'scam_prepay') {
+        state.cash = Math.max(0, state.cash - 25);
+        state.personalMoneySpent += 25;
+        state.mental -= 35;
+        showEventModal('ВЫ СТАЛИ ЖЕРТВОЙ ТЕЛЕФОННЫХ МОШЕННИКОВ!', callObj.consequenceText, [
+          {
+            label: 'Заблокировать номер и больше никогда не переводить предоплату',
+            style: 'danger',
+            action: () => {
+              addLog(`День ${state.day}: Мошенники с курьерской доставкой списали у вас $25 (-35% Менталки)!`, 'danger');
+              closeEventModal();
+            }
+          }
+        ]);
+        return;
+      }
+
+      // Если человек опасный («красный флаг»)
+      if (!callObj.isSafe) {
+        triggerEndGame(
+          false,
+          'ТРАГИЧЕСКАЯ ОШИБКА ПРИ ОТБОРЕ ХОЗЯЕВ («РУЧЕК»)',
+          callObj.consequenceText + '\n\nИменно поэтому волонтеры «Зоошанса» так строго проводят собеседования, требуют сетки на окнах и отдают животных только по договору.'
+        );
+        return;
+      }
+
+      // Обработка «Средних ручек» (Компромисс куратора)
+      if (callObj.isCompromise) {
+        const successChance = withCuratorSupport ? 0.95 : 0.65;
+        if (Math.random() > successChance) {
+          // Неудача (35% без сопровождения или 5% с сопровождением) — бытовой возврат
+          state.mental -= 15;
+          showEventModal(
+            'БЫТОВОЙ ВОЗВРАТ ОТ «СРЕДНИХ РУЧЕК»',
+            withCuratorSupport
+              ? 'Несмотря на все ваши старания и советы, новые хозяева все-таки не рассчитали силы и через неделю бережно вернули питомца обратно. Продолжаем поиск!'
+              : 'Вы отдали питомца «средним ручкам» без кураторского сопровождения и подсказок по адаптации. В первые дни хвостик от стресса мяукал ночью и промахнулся мимо лотка — растерянные люди вернули его вам обратно (-15% Менталки).',
+            [
+              {
+                label: 'Принять питомца обратно и продолжить пиар',
+                style: 'primary',
+                action: () => {
+                  addLog(`День ${state.day}: Возврат от «средних ручек» — в следующий раз используйте кураторское сопровождение (-15⚡) для повышения шанса до 95%!`, 'warn');
+                  closeEventModal();
+                }
+              }
+            ]
+          );
+          return;
+        }
+      }
+
+      // Если человек хороший, но срабатывает честный возврат с испытательного срока из-за астмы
+      if (callObj.isTrialReturn) {
+        state.cash += 25;
+        showEventModal('ВОЗВРАТ С ИСПЫТАТЕЛЬНОГО СРОКА (По договору)', callObj.consequenceText, [
+          {
+            label: 'Принять питомца обратно и продолжить пиар',
+            style: 'primary',
+            action: () => {
+              addLog(`День ${state.day}: Питомец бережно возвращен с испытательного срока по договору (аллергия/астма). Хозяева передали корм и $25.`, 'info');
+              closeEventModal();
+            }
+          }
+        ]);
+        return;
+      }
+
+      // Если человек проверенный, но у животного скрытый ВИК/ВЛК, а игрок НЕ сдавал ПЦР!
+      if (state.animal.hiddenState.chronicCarrier && !state.animal.pcrTested && Math.random() < 0.65) {
+        triggerEndGame(
+          false,
+          'БЕДА ИЗ-ЗА ЭКОНОМИИ НА ПЦР-ДИАГНОСТИКЕ',
+          `Ваш подопечный выглядел здоровым, и вы не стали сдавать ПЦР-профиль ($26 по талону) на скрытые инфекции (${state.animal.hiddenState.chronicCarrier}). В новой семье уже жил другой кот — через две недели после драки выяснилось, что ваш найденыш заразил хозяйского питомца неизлечимым вирусом. Животное со скандалом вернули.`
+        );
+        return;
+      }
+
+      // ПОЛНАЯ ПОБЕДА!
+      triggerEndGame(
+        true,
+        'СЧАСТЛИВЫЙ ДОМ НАЙДЕН: Вы прошли путь куратора до конца!',
+        callObj.consequenceText
+      );
+    }
+
+    // ---------------------------------------------------------------------------
+    // 11. ДЕЙСТВИЯ КУРАТОРА: ВЕЩЕСТВЕННАЯ ПОМОЩЬ («ПОСЫЛКИ ДОБРА») И БЛАГОДАРНОСТЬ
+    // ---------------------------------------------------------------------------
+    function actionWriteStorytellingPost() {
+      if (!spendEnergy(10)) return;
+      const roll = Math.random() + (state.zooshans.storytellingTrustBonus * 0.08);
+
+      if (roll < 0.42) {
+        // Подарок 1: Мешок хорошего корма и наполнитель на 15 дней!
+        state.zooshans.giftedFoodDaysLeft += 15;
+        state.zooshans.pendingGiftThankYou = true;
+        document.getElementById('giftBannerText').textContent = 'Девушка из соседнего района прочитала ваш пост и передала мешок отличного корма (3 кг) и комкующийся наполнитель (+15 дней бесплатного содержания!).';
+        addLog(`День ${state.day}: 🎁 ВЕЩЕСТВЕННАЯ ПОМОЩЬ: Подписчица подарила корм и наполнитель на 15 дней! Сделайте фото-отчет с благодарностью (-5⚡).`, 'success');
+      } else if (roll < 0.72) {
+        // Подарок 2: Нужные лекарства и таблетки от глистов (Мильбемакс + Итраконазол)
+        state.zooshans.hasGiftedDewormPill = true;
+        state.zooshans.hasGiftedItraconazole = true;
+        state.zooshans.pendingGiftThankYou = true;
+        document.getElementById('giftBannerText').textContent = 'Откликнулись в чате: вам бесплатно передали упаковки Мильбемакса (глистогонка $0!) и флакон Итраконазола!';
+        addLog(`День ${state.day}: 🎁 ВЕЩЕСТВЕННАЯ ПОМОЩЬ: Люди поделились лекарствами (Мильбемакс для глистогонки и Итраконазол теперь бесплатны!).`, 'success');
+      } else {
+        // Подарок 3: Паштеты, пеленки и небольшой перевод на карту
+        const cashGift = randomInt(10, 18);
+        state.cash = +(state.cash + cashGift).toFixed(1);
+        state.zooshans.giftedFoodDaysLeft += 6;
+        state.zooshans.pendingGiftThankYou = true;
+        document.getElementById('giftBannerText').textContent = `Подписчики заказали вам на пункт выдачи пачку пеленок, баночки паштета (+6 дней корма) и перевели $${cashGift}!`;
+        addLog(`День ${state.day}: 🎁 ВЕЩЕСТВЕННАЯ ПОМОЩЬ: За душевный пост вам прислали пеленки, паштеты (+6 дн.) и $${cashGift}!`, 'success');
+      }
+      renderAll();
+    }
+
+    function thankForMaterialGift() {
+      if (!spendEnergy(5)) return;
+      state.zooshans.pendingGiftThankYou = false;
+      state.zooshans.storytellingTrustBonus += 1;
+      state.mental = Math.min(100, state.mental + 6);
+      addLog(`День ${state.day}: 📸 Вы опубликовали милое фото подопечного в обнимку с подаренным кормом и лекарствами! Люди счастливы видеть честную обратную связь (+6% Менталки, шанс новых посылок вырос).`, 'success');
+      renderAll();
+    }
+
+    // Оплата клиники (с учетом талона Зоошанса -20% и транспортной логистики без авто)
+    function payVetBill(baseCost, voucherEligible, serviceTitle) {
+      // Если нет машины — вероятность конфликта с таксистом при поездке в клинику
+      if (state.player.mobility.id === 'no_car' && Math.random() < 0.35 && !state.triggeredEvents['taxi_' + state.day]) {
+        state.triggeredEvents['taxi_' + state.day] = true;
+        addLog(`День ${state.day}: 🚕 Таксист отказался везти переноску по обычному тарифу! Пришлось искать попутку в районном чате и доплатить за зоотакси (-$6, -8% Менталки).`, 'warn');
+        state.cash = +(state.cash - 6).toFixed(1);
+        state.personalMoneySpent = +(state.personalMoneySpent + 6).toFixed(1);
+        state.mental = Math.max(0, state.mental - 8);
+      }
+
+      const useVoucher = voucherEligible && state.zooshans.hasVoucher && !state.zooshans.voucherBlocked;
+      if (useVoucher) {
+        const discounted = Math.round(baseCost * 0.8);
+        state.zooshans.voucherDebt = +(state.zooshans.voucherDebt + discounted).toFixed(1);
+        addLog(`День ${state.day}: 🏥 ${serviceTitle} — оформлено в долг по талону «Зоошанса» ($${discounted} со скидкой 20%).`, 'info');
+      } else {
+        state.cash = +(state.cash - baseCost).toFixed(1);
+        state.personalMoneySpent = +(state.personalMoneySpent + baseCost).toFixed(1);
+        addLog(`День ${state.day}: 🏥 ${serviceTitle} — оплачено из личных средств (-$${baseCost}).`, 'info');
+      }
+    }
+
+    // Обращение в «Зоошанс» (Рулетка 75% / 20% / 5% + бесплатный стартовый пакетик смеси для слепышей!)
+    function actionAskZooshansTakeover() {
+      if (!spendEnergy(10)) return;
+      state.zooshans.askedToTakeAnimal = true;
+      state.zooshans.hasCage = true;
+      state.zooshans.hasVoucher = true;
+
+      let milkBonusText = '';
+      if (state.newborn.active && !state.newborn.receivedFreeStarterPacket) {
+        state.newborn.knowsAboutFormula = true;
+        state.newborn.receivedFreeStarterPacket = true;
+        state.newborn.milkDaysLeft += 3;
+        milkBonusText = '\n\n🍼 ВАЖНЫЙ СОВЕТ ПО СЛЕПЫШАМ: Волонтеры строго предупредили, что обычное коровье молоко убьет новорожденных котят! У волонтера Оли остался 1 пакетик специализированной смеси Royal Canin Babycat Milk (100 г) и соска — вам передали его БЕСПЛАТНО на первые 3 дня!';
+      }
+
+      const roll = Math.random();
+      if (roll < 0.75) {
+        if (state.zooshans.locationStatus === 'home_floor') {
+          state.zooshans.locationStatus = 'home_cage';
+        }
+        showEventModal(
+          'ОТВЕТ ВОЛОНТЕРОВ «ЗООШАНСА»: Мест нет, но мы дадим всё для старта!',
+          'Вы написали в чат волонтеров с просьбой забрать животное. Вам вежливо объяснили: у «Зоошанса» нет приюта — это обычные люди, у которых дома уже сидит от 5 до 15 спасенных котов.\n\nЗабрать физически некуда, НО вам бесплатно выдали со склада просторную карантинную клетку-четверку, лоток, выписали талон на скидку 20% в клинику «Доктор Вет» (с отсрочкой 30 дней) и добавили в чат взаимопомощи!' + milkBonusText,
+          [
+            {
+              label: 'Принять помощь (Клетка + Талон -20% активны)',
+              style: 'primary',
+              action: () => {
+                addLog(`День ${state.day}: 🛡️ Получена бесплатная клетка со склада Зоошанса, талон -20% в клинику и инструкции!`, 'success');
+                closeEventModal();
+              }
+            }
+          ]
+        );
+      } else if (roll < 0.95) {
+        state.zooshans.locationStatus = 'temp_volunteer_10d';
+        state.zooshans.tempVolunteerDaysLeft = 10;
+        showEventModal(
+          'ВРЕМЕННЫЙ ПЕРЕХВАТ НА 10 ДНЕЙ: Опытный волонтер пришла на выручку!',
+          'Увидев ваше отчаяние, откликнулась опытная волонтер Таня:\n\n«Ладно, давай перехвачу на 10 дней! Я сама выкормлю слепышей / проколю острый курс уколов и стабилизирую животное. Но через 10 дней ты ОБЯЗАН(А) забрать его обратно до пристройства, иначе мне некуда будет изолировать послеоперационных. Договорились?»' + milkBonusText,
+          [
+            {
+              label: 'Обещать забрать через 10 дней и передать на стабилизацию',
+              style: 'primary',
+              action: () => {
+                addLog(`День ${state.day}: ⏳ Волонтер забрала питомца на 10 дней интенсивной стабилизации с условием возврата!`, 'success');
+                closeEventModal();
+              }
+            }
+          ]
+        );
+      } else {
+        state.zooshans.locationStatus = 'full_volunteer_fincuration';
+        showEventModal(
+          'РЕДКОЕ ЧУДО (5%): Животное забрали насовсем под ваше финкураторство!',
+          'Невероятное везение! У одного из кураторов вчера уехал домой кот, и освободилось место в карантине:\n\n«Мы заберем вашего найденыша к себе до самого пристройства и сами будем фильтровать ручки! Но с вас — полное финансовое кураторство (оплата счетов клиники и корма)».' + milkBonusText,
+          [
+            {
+              label: 'Стать финкуратором (Животное переехало к волонтеру!)',
+              style: 'primary',
+              action: () => {
+                addLog(`День ${state.day}: 🎉 Редкая удача! Волонтеры забрали животное к себе насовсем под ваше полное финкураторство.`, 'success');
+                closeEventModal();
+              }
+            }
+          ]
+        );
+      }
+      renderAll();
+    }
+
+    // Функции выкорма слепышей
+    function feedCowMilkTrap() {
+      triggerEndGame(
+        false,
+        'ТРАГИЧЕСКАЯ ОШИБКА НОВИЧКА: Коровье молоко смертельно для слепышей',
+        'По незнанию вы напоили новорожденных котят обычным коровьим молоком из магазина. Организм слепышей не переваривает высокую лактозу и казеин коровьего молока: уже через сутки у котят начались острое вздутие, профузная диарея и фатальное обезвоживание.\n\nЕсли бы вы сначала написали в чат волонтеров @zooshans_chat за советом, вам бы бесплатно передали первый пакетик специализированного заменителя кошачьего молока (Royal Canin Babycat Milk)!'
+      );
+    }
+
+    function buyBabycatFormula() {
+      if (state.cash < 32) {
+        addLog(`День ${state.day}: Не хватает денег на банку специализированной смеси Babycat Milk ($32)!`, 'danger');
+        return;
+      }
+      state.cash = +(state.cash - 32).toFixed(1);
+      state.personalMoneySpent = +(state.personalMoneySpent + 32).toFixed(1);
+      state.newborn.milkDaysLeft += 7;
+      addLog(`День ${state.day}: 🍼 Куплена банка специализированной смеси для выкорма котят (-$32, запас +7 дней).`, 'success');
+      renderAll();
+    }
+
+    function feedNewbornKittens() {
+      if (state.newborn.fedToday) return;
+      if (!state.newborn.knowsAboutFormula) {
+        showEventModal(
+          'ЧЕМ КОРМИТЬ СЛЕПЫХ КОТЯТ?',
+          'Котята слепые и ищут соску. В холодильнике есть только обычное коровье молоко, но вы сомневаетесь, можно ли его давать новорожденным.',
+          [
+            {
+              label: 'Спросить совета в чате волонтеров «Зоошанса» (-10⚡)',
+              style: 'primary',
+              action: () => {
+                closeEventModal();
+                actionAskZooshansTakeover();
+              }
+            },
+            {
+              label: 'Напоить обычным коровьим молоком из пакета ($0)',
+              style: 'danger',
+              action: () => {
+                closeEventModal();
+                feedCowMilkTrap();
+              }
+            }
+          ]
+        );
+        return;
+      }
+      if (state.newborn.milkDaysLeft <= 0) {
+        addLog(`День ${state.day}: 🚨 Закончилась специализированная смесь! Срочно купите банку смеси за $32!`, 'danger');
+        return;
+      }
+      if (!spendEnergy(15)) return;
+      state.newborn.milkDaysLeft -= 1;
+      state.newborn.fedToday = true;
+      state.newborn.daysFedCount += 1;
+      state.animal.health = Math.min(100, state.animal.health + 4);
+      addLog(`День ${state.day}: 🍼 Вы покормили слепышей теплой смесью из соски по часам и помассировали животики (осталось смеси на ${state.newborn.milkDaysLeft} дн.).`, 'success');
+      renderAll();
+    }
+
+    // ---------------------------------------------------------------------------
+    // 12. РЕНДЕРИНГ ИНТЕРФЕЙСА, ЧЕК-ЛИСТА И КНОПОК ДЕЙСТВИЙ
+    // ---------------------------------------------------------------------------
+    function calculateDailyCost() {
+      if (state.zooshans.locationStatus === 'temp_volunteer_10d') return 1.0;
+      let foodCost = state.animal.species === 'dog' ? 3.0 : 1.5;
+      if (state.animal.count > 1 && !state.newborn.active) foodCost *= 2.2;
+      if (state.animal.ageCategory === 'puppy') foodCost = 3.5;
+
+      // Если есть подаренный подписчиками корм — ежедневная еда стоит $0!
+      if (state.zooshans.giftedFoodDaysLeft > 0) {
+        foodCost = 0;
+      }
+
+      let fosterCost = 0;
+      if (state.zooshans.locationStatus === 'paid_foster') {
+        fosterCost = state.animal.species === 'dog' ? 10.0 : 5.0;
+      }
+      return +(foodCost + fosterCost).toFixed(1);
+    }
+
+    function switchTab(tabName) {
+      activeTab = tabName;
+      ['vet', 'zooshans', 'care'].forEach(t => {
+        const content = document.getElementById('tabContent_' + t);
+        const btn = document.getElementById('tabBtn_' + t);
+        if (t === tabName) {
+          content.classList.remove('hidden');
+          btn.className = 'px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-emerald-500 text-slate-950 transition';
+        } else {
+          content.classList.add('hidden');
+          btn.className = 'px-3 py-1.5 rounded-lg text-xs font-mono font-semibold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 transition';
+        }
+      });
+    }
+
+    function renderAll() {
+      renderTopBar();
+      renderPlayerAndAnimalCards();
+      renderActionTabs();
+      renderLog();
+    }
+
+    function renderTopBar() {
+      document.getElementById('dayCounter').textContent = state.day;
+      document.getElementById('cashValue').textContent = `$${state.cash}`;
+      document.getElementById('cashValue').className = state.cash < 20
+        ? 'font-mono font-bold text-sm sm:text-base text-rose-400'
+        : 'font-mono font-bold text-sm sm:text-base text-emerald-400';
+
+      document.getElementById('mentalValue').textContent = `${state.mental}%`;
+      document.getElementById('mentalBar').style.width = `${state.mental}%`;
+
+      document.getElementById('energyValue').textContent = `${state.energy}⚡`;
+      document.getElementById('energyBar').style.width = `${state.energy}%`;
+
+      document.getElementById('animalHealthValue').textContent = `${state.animal.health}%`;
+      document.getElementById('healthBar').style.width = `${state.animal.health}%`;
+
+      const seasonBadge = document.getElementById('seasonBadge');
+      if (state.animal.hiddenState.isKittenSeason) {
+        seasonBadge.classList.remove('hidden');
+      } else {
+        seasonBadge.classList.add('hidden');
+      }
+
+      // Долг по талону
+      const vDebtEl = document.getElementById('voucherDebtText');
+      const vTimerEl = document.getElementById('voucherTimerText');
+      if (state.zooshans.voucherDebt > 0) {
+        vDebtEl.textContent = `Долг по талону: $${state.zooshans.voucherDebt}`;
+        vDebtEl.className = 'text-amber-300 font-semibold';
+        vTimerEl.textContent = state.zooshans.voucherBlocked ? 'БЛОК' : `${state.zooshans.voucherDaysLeft} дн.`;
+        vTimerEl.classList.remove('hidden');
+      } else {
+        vDebtEl.textContent = state.zooshans.hasVoucher ? 'Талон активен (-20%)' : 'Талон: не выписан';
+        vDebtEl.className = state.zooshans.hasVoucher ? 'text-emerald-400' : 'text-slate-500';
+        vTimerEl.classList.add('hidden');
+      }
+
+      // Шкалы
+      // Баннер выкорма слепышей (скрываем покупку смеси и скрываем спойлер про Зоошанс, пока игрок не узнал!)
+      const nbBanner = document.getElementById('newbornUrgentBanner');
+      if (state.newborn.active && state.zooshans.locationStatus !== 'temp_volunteer_10d' && state.zooshans.locationStatus !== 'full_volunteer_fincuration') {
+        nbBanner.classList.remove('hidden');
+        const btnCow = document.getElementById('btnCowMilkTrap');
+        const btnBuy = document.getElementById('btnBuyFormula');
+
+        if (!state.newborn.knowsAboutFormula) {
+          document.getElementById('milkSupplyTag').textContent = 'Чем кормить: Неизвестно (Спросите совета у волонтеров!)';
+          btnCow.classList.remove('hidden');
+          btnBuy.classList.add('hidden');
+        } else {
+          document.getElementById('milkSupplyTag').textContent = `Запас спецсмеси: ${state.newborn.milkDaysLeft} дн. (До открытия глаз: ${Math.max(1, 21 - state.day)} дн.)`;
+          btnCow.classList.add('hidden');
+          btnBuy.classList.remove('hidden');
+        }
+
+        const btnFeed = document.getElementById('btnFeedNewborns');
+        if (state.newborn.fedToday) {
+          btnFeed.textContent = '✅ Слепыши накормлены сегодня';
+          btnFeed.className = 'flex-1 sm:flex-initial px-3.5 py-2 rounded-lg bg-emerald-700 text-white font-bold text-xs sm:text-sm opacity-80 cursor-default';
+        } else {
+          btnFeed.textContent = state.newborn.knowsAboutFormula
+            ? '🍼 Покормить спецсмесью из соски (-15⚡)'
+            : '🍼 Попытаться накормить слепышей (-15⚡)';
+          btnFeed.className = 'urgent-btn flex-1 sm:flex-initial px-3.5 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs sm:text-sm transition';
+        }
+      } else {
+        nbBanner.classList.add('hidden');
+      }
+    }
+
+    function renderPlayerAndAnimalCards() {
+      const p = state.player;
+      const daysToSal = 30 - (state.day % 30);
+      document.getElementById('salaryCountdown').textContent = `До ЗП (+$${p.income.monthlyFreeCash}): ${daysToSal} дн.`;
+      document.getElementById('dailyExpenseLabel').textContent = `Расход: $${calculateDailyCost()}/день`;
+
+      const giftFoodEl = document.getElementById('giftedFoodBadge');
+      if (state.zooshans.giftedFoodDaysLeft > 0) {
+        giftFoodEl.textContent = `🎁 Корм в подарок: ${state.zooshans.giftedFoodDaysLeft} дн.`;
+        giftFoodEl.classList.remove('hidden');
+      } else {
+        giftFoodEl.classList.add('hidden');
+      }
+
+      const giftBanner = document.getElementById('giftThankYouBanner');
+      if (state.zooshans.pendingGiftThankYou) {
+        giftBanner.classList.remove('hidden');
+      } else {
+        giftBanner.classList.add('hidden');
+      }
+
+      const locMap = {
+        'home_floor': '⚠️ Живет дома на полу (без изоляции)',
+        'home_cage': '🛡️ Дома в карантинной клетке Зоошанса',
+        'paid_foster': '🏡 На платной передержке',
+        'temp_volunteer_10d': `⏳ У волонтера на стабилизации (осталось ${state.zooshans.tempVolunteerDaysLeft} дн.)`,
+        'full_volunteer_fincuration': '🤝 Живет у волонтера (Вы — финкуратор)',
+        'social_foster_volunteer': '🤝 Со-кураторство (Бесплатно у опытного волонтера)',
+        'social_foster_novice': `🏠 Со-кураторство (Бесплатно у человека из соцсетей, ${state.zooshans.socialFosterDaysElapsed} дн.)`
+      };
+      document.getElementById('fosterStatusBadge').textContent = locMap[state.zooshans.locationStatus] || 'Дома';
+
+      const pTags = [
+        p.income.label,
+        p.housing.label,
+        p.family.label,
+        p.ownPets.label,
+        p.mobility.label
+      ];
+      document.getElementById('playerTagsContainer').innerHTML = pTags.map(t =>
+        `<span class="px-2.5 py-1 rounded-md bg-slate-900 border border-slate-700 text-slate-200 font-medium">${t}</span>`
+      ).join('');
+
+      // Карточка животного
+      const a = state.animal;
+      document.getElementById('animalSpeciesBadge').textContent = a.speciesLabel;
+      document.getElementById('animalTitle').textContent = a.title;
+      document.getElementById('coatPopularityBadge').textContent = `Окрас: ${a.coatLabel}`;
+      document.getElementById('animalDescription').textContent = a.visualDescription;
+      document.getElementById('visibleStateText').textContent = `Статус: ${a.visibleState}`;
+
+      // ================= ЖИВОЙ ЧЕК-ЛИСТ КУРАТОРА И ТАЙМЕРЫ ОБРАБОТОК =================
+      const qDone = a.quarantineDaysDone >= 14;
+      const qTag = {
+        t: qDone ? '✓ Карантин: 14/14 дн. (Пройден)' : `⏳ Карантин: ${a.quarantineDaysDone}/14 дн.`,
+        c: qDone ? 'bg-emerald-950/70 text-emerald-300 border-emerald-500/50' : 'bg-slate-800 text-amber-300 border-amber-500/40'
+      };
+
+      let dwTag = { t: '💊 Глистогонка: 0/2 (Не начата)', c: 'bg-rose-950/60 text-rose-300 border-rose-500/40' };
+      if (a.dewormStage === 1) {
+        const waitLeft = Math.max(0, 10 - a.daysSinceDeworm1);
+        dwTag = waitLeft > 0
+          ? { t: `⏳ Глистогонка: 1/2 (2-я через ${waitLeft} дн.)`, c: 'bg-amber-950/70 text-amber-300 border-amber-500/50' }
+          : { t: '🔔 Глистогонка: 1/2 (ПОРА ДАТЬ 2-Ю ТАБЛЕТКУ!)', c: 'bg-amber-500 text-slate-950 font-bold border-amber-300 animate-pulse' };
+      } else if (a.dewormStage === 2) {
+        const validLeft = Math.max(0, 180 - a.daysSinceDeworm2);
+        dwTag = {
+          t: `✓ Глистогонка: 2/2 (Действует еще ${validLeft}/180 дн.)`,
+          c: validLeft < 20 ? 'bg-amber-950 text-amber-300 border-amber-500' : 'bg-emerald-950/70 text-emerald-300 border-emerald-500/50'
+        };
+      }
+
+      const vacTag = {
+        t: a.parasitesAndVaccinated ? '✓ Комплексная прививка: Да' : '💉 Прививка: Ждет 2/2 глистогонки',
+        c: a.parasitesAndVaccinated ? 'bg-emerald-950/70 text-emerald-300 border-emerald-500/50' : 'bg-slate-800 text-slate-400 border-slate-700'
+      };
+
+      let euTag = { t: '🌍 ЕС / Титры: Не начато', c: 'bg-slate-800 text-slate-400 border-slate-700' };
+      if (state.abroad.rabiesVaccineAndChipDone && !state.abroad.titerBloodTaken) {
+        const rWait = Math.max(0, 30 - state.abroad.daysSinceRabiesVaccine);
+        euTag = rWait > 0
+          ? { t: `🌍 Бешенство+Чип: ждем ${rWait}/30 дн. до титров`, c: 'bg-sky-950/80 text-sky-300 border-sky-500/50' }
+          : { t: '🌍 Бешенство: 30 дн. прошло — СДАЙТЕ ТИТРЫ ($190)!', c: 'bg-sky-400 text-slate-950 font-bold border-sky-200' };
+      } else if (state.abroad.titerBloodTaken) {
+        const qEuLeft = Math.max(0, 90 - state.abroad.daysInEuQuarantine);
+        euTag = { t: `🌍 Титры готовы! Карантин ЕС: осталось ${qEuLeft}/90 дн.`, c: 'bg-indigo-950 text-indigo-200 border-indigo-400' };
+      }
+
+      document.getElementById('animalChecklistTags').innerHTML = [qTag, dwTag, vacTag, euTag]
+        .map(item => `<span class="text-[11px] font-mono px-2 py-0.5 rounded border ${item.c}">${item.t}</span>`).join('');
+
+      // Подсказка следующего шага для новичка
+      let nextHint = 'Питомец полностью готов к пиару и пристройству!';
+      if (!a.examinedWood) nextHint = 'Шаг 1: Сделайте первичный осмотр и просвет Вуда в клинике';
+      else if (a.dewormStage === 0) nextHint = 'Шаг 2: Дайте 1-ю таблетку от глистов и блох (вкладка Ветеринария)';
+      else if (a.dewormStage === 1 && a.daysSinceDeworm1 < 10) nextHint = `Шаг 3: Подождите еще ${10 - a.daysSinceDeworm1} дн. до 2-й глистогонки`;
+      else if (a.dewormStage === 1 && a.daysSinceDeworm1 >= 10) nextHint = 'Шаг 3: СРОЧНО дайте 2-ю таблетку от глистов!';
+      else if (!a.parasitesAndVaccinated) nextHint = 'Шаг 4: Сделайте вакцинацию после двукратной глистогонки';
+      else if (a.ageCategory === 'adult' && !a.isSterilized) nextHint = 'Шаг 5: Проведите обязательную стерилизацию/кастрацию';
+      else if (!state.pr.prActive) nextHint = 'Шаг 6: Сделайте профи-фото и запустите ПИАР (вкладка 3)!';
+      document.getElementById('checklistHintText').textContent = nextHint;
+
+      // Диагностические теги
+      const woodText = !a.examinedWood
+        ? 'Просвет Вуда: ???'
+        : (a.knownRingworm === true ? 'Просвет: МИКРОСПОРИЯ!' : 'Просвет Вуда: Чисто');
+      const woodClass = !a.examinedWood
+        ? 'bg-slate-800 text-slate-400 border-slate-700'
+        : (a.knownRingworm === true ? 'bg-rose-950 text-rose-300 border-rose-500' : 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40');
+
+      let pcrText = 'ПЦР ВИК/ВЛК и вирусы: ???';
+      let pcrClass = 'bg-slate-800 text-slate-400 border-slate-700';
+      if (a.pcrTested || a.knownCarrier || a.knownVirus) {
+        const parts = [];
+        if (a.knownCarrier) parts.push(`Носитель ${a.knownCarrier}+`);
+        if (a.knownVirus) parts.push(`Вирус: ${a.knownVirus}`);
+        if (parts.length === 0) {
+          pcrText = 'ПЦР-профиль: Чисто (Отрицательно)';
+          pcrClass = 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40';
+        } else {
+          pcrText = `ПЦР: ${parts.join(', ')}`;
+          pcrClass = 'bg-amber-950/80 text-amber-300 border-amber-500/60';
+        }
+      }
+
+      let sterText = 'Стерилизация: Нет';
+      let sterClass = 'bg-rose-950/50 text-rose-300 border-rose-500/40';
+      if (a.ageCategory !== 'adult') {
+        sterText = 'Стерилизация: По возрасту (котенок/щенок)';
+        sterClass = 'bg-slate-800 text-slate-300 border-slate-700';
+      } else if (a.isSterilized) {
+        sterText = 'Стерилизация: Проведена ✓';
+        sterClass = 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40';
+      }
+
+      const photoText = state.zooshans.hasProPhotos ? 'Фото: ПРОФИ Зоошанс (x2.8 звонков)' : 'Фото: на телефон';
+      const photoClass = state.zooshans.hasProPhotos ? 'bg-sky-950/70 text-sky-300 border-sky-500/50' : 'bg-slate-800 text-slate-400 border-slate-700';
+
+      document.getElementById('animalStatusTags').innerHTML = [
+        { t: woodText, c: woodClass },
+        { t: pcrText, c: pcrClass },
+        { t: sterText, c: sterClass },
+        { t: photoText, c: photoClass }
+      ].map(item => `<span class="text-[11px] font-mono px-2 py-0.5 rounded border ${item.c}">${item.t}</span>`).join('');
+
+      // Статус пиара
+      let prLabel = 'Пиар: Не запущен';
+      if (state.pr.lostSearchActive) {
+        prLabel = `🔎 Поиск старых хозяев: ${state.pr.lostSearchDaysDone}/10 дн.`;
+      } else if (state.pr.prActive) {
+        prLabel = `📢 Идет активный пиар (${state.pr.daysInPr} дн.) — ждите звонков или жмите «⏩ Промотать штиль»`;
+      }
+      document.getElementById('prProgressText').textContent = prLabel;
+    }
+
+    function renderActionTabs() {
+      const a = state.animal;
+      const h = a.hiddenState;
+      const hasV = state.zooshans.hasVoucher && !state.zooshans.voucherBlocked;
+      const priceLabel = (base, eligible) => eligible && hasV ? `$${Math.round(base * 0.8)} по талону` : `$${base}`;
+
+      // Логика кнопки двукратной глистогонки (Этап 1 -> 10 дней -> Этап 2 -> повтор через 180 дней)
+      const pillCost = state.zooshans.hasGiftedDewormPill ? 0 : 8;
+      let dewormTitle = `1-я обработка от блох и глистов (${pillCost === 0 ? '$0 подарок!' : '$8'})`;
+      let dewormSub = 'Этап 1/2: убивает взрослых паразитов. Повтор строго через 10 дней!';
+      let dewormDisabled = false;
+      let dewormDoneText = '';
+
+      if (state.newborn.active) {
+        dewormDisabled = true;
+        dewormDoneText = 'Слепышам до 3 недель глистогонка запрещена';
+      } else if (a.dewormStage === 1 && a.daysSinceDeworm1 < 10) {
+        dewormDisabled = true;
+        dewormDoneText = `⏳ Ждем ${10 - a.daysSinceDeworm1} дн. до 2-й таблетки от глистов`;
+      } else if (a.dewormStage === 1 && a.daysSinceDeworm1 >= 10) {
+        dewormTitle = `🔔 2-я глистогонка через 10 дней (${pillCost === 0 ? '$0 подарок!' : '$8'})`;
+        dewormSub = 'Этап 2/2: обязателен перед вакцинацией! Действует 6 месяцев (180 дней).';
+        dewormDisabled = false;
+      } else if (a.dewormStage === 2) {
+        dewormDisabled = true;
+        dewormDoneText = `✓ Двукратно обработан (повтор через ${180 - a.daysSinceDeworm2} дн.)`;
+      }
+
+      // 1. Вкладка ВЕТЕРИНАРИЯ
+      const vetButtons = [
+        {
+          title: 'Первичный осмотр + лампа Вуда',
+          sub: `${priceLabel(16, true)} | -12⚡ | Раскрывает лишай и беременность`,
+          disabled: a.examinedWood,
+          doneText: '✓ Осмотр и просвет проведены',
+          onClick: () => {
+            if (!spendEnergy(12)) return;
+            payVetBill(16, true, 'Первичный прием и просвет лампой Вуда');
+            a.examinedWood = true;
+            a.knownRingworm = h.ringworm === true;
+            a.knownPregnant = h.isPregnant === true;
+            if (a.knownRingworm) {
+              addLog(`День ${state.day}: 🔦 Лампа Вуда засветила изумрудное свечение — обнаружена микроспория (лишай)!`, 'warn');
+            } else if (a.knownPregnant) {
+              addLog(`День ${state.day}: 🩺 Врач на осмотре нащупал плоды: кошка глубоко беременна (родит на ${h.daysUntilBirth}-й день)! Требуется экстренная стерилизация.`, 'warn');
+            } else {
+              addLog(`День ${state.day}: 🔦 Просвет лампой Вуда чистый!`, 'success');
+            }
+            renderAll();
+          }
+        },
+        {
+          title: dewormTitle,
+          sub: dewormSub,
+          disabled: dewormDisabled,
+          doneText: dewormDoneText,
+          onClick: () => {
+            if (!spendEnergy(5)) return;
+            if (state.zooshans.hasGiftedDewormPill) {
+              state.zooshans.hasGiftedDewormPill = false;
+              addLog(`День ${state.day}: 💊 Использована подаренная подписчиками таблетка Мильбемакса ($0)!`, 'success');
+            } else {
+              state.cash = +(state.cash - 8).toFixed(1);
+              state.personalMoneySpent = +(state.personalMoneySpent + 8).toFixed(1);
+            }
+            if (a.dewormStage === 0) {
+              a.dewormStage = 1;
+              a.daysSinceDeworm1 = 0;
+              addLog(`День ${state.day}: 💊 Проведена 1-я обработка от паразитов. Вторая таблетка строго через 10 дней!`, 'info');
+            } else {
+              a.dewormStage = 2;
+              a.daysSinceDeworm2 = 0;
+              addLog(`День ${state.day}: ✅ Проведена 2-я глистогонка! Теперь открыт доступ к вакцинации (срок действия обработки — 180 дней).`, 'success');
+            }
+            renderAll();
+          }
+        },
+        {
+          title: 'Комплексная вакцинация с паспортом',
+          sub: `$18 (без скидки) | -10⚡ | Доступна строго после 2-й глистогонки!`,
+          disabled: a.parasitesAndVaccinated || a.dewormStage < 2,
+          doneText: a.parasitesAndVaccinated ? '✓ Привит с ветпаспортом' : 'Сначала сделайте двукратную глистогонку (2/2)!',
+          onClick: () => {
+            if (!spendEnergy(10)) return;
+            payVetBill(18, false, 'Комплексная вакцинация и оформление ветпаспорта');
+            a.parasitesAndVaccinated = true;
+            a.health = Math.min(100, a.health + 10);
+            addLog(`День ${state.day}: 💉 Питомец привит, оформлен ветеринарный паспорт!`, 'success');
+            renderAll();
+          }
+        },
+        {
+          title: 'ПЦР-профиль (ВИК, ВЛК, Вирусы)',
+          sub: `${priceLabel(32, true)} | -10⚡ | Выявляет скрытые ВИК/ВЛК и чумку/энтерит`,
+          disabled: a.pcrTested,
+          doneText: '✓ ПЦР-профиль сдан',
+          onClick: () => {
+            if (!spendEnergy(10)) return;
+            payVetBill(32, true, 'Развернутый ПЦР-профиль инфекций');
+            a.pcrTested = true;
+            a.knownCarrier = h.chronicCarrier;
+            a.knownVirus = h.deadlyVirus;
+            if (a.knownCarrier) {
+              addLog(`День ${state.day}: 🧬 ПЦР выявил скрытое носительство (${a.knownCarrier}+)! Внешне питомец здоров, но пристраивать его можно СТРОГО единственным животным в семью!`, 'warn');
+            } else if (a.knownVirus) {
+              addLog(`День ${state.day}: 🧬 ПЦР перехватил вирус (${a.knownVirus}) еще до пика симптомов!`, 'warn');
+            } else {
+              addLog(`День ${state.day}: 🧬 ПЦР-профиль полностью чистый (ВИК/ВЛК отрицательно)!`, 'success');
+            }
+            renderAll();
+          }
+        },
+        {
+          title: h.isPregnant ? 'Экстренная стерилизация беременной' : 'Кастрация / Стерилизация',
+          sub: `${priceLabel(a.species === 'dog' ? 90 : (h.isPregnant ? 68 : 48), true)} | -20⚡ | Обязательный этап для взрослых`,
+          disabled: a.isSterilized || a.ageCategory !== 'adult' || (h.isLostOrPurebred && state.pr.lostSearchDaysDone < 10),
+          doneText: a.isSterilized
+            ? '✓ Стерилизован(а)'
+            : (a.ageCategory !== 'adult' ? 'Пристраивается под договор стерилизации по возрасту' : 'Сначала 10 дней поиска старых хозяев!'),
+          onClick: () => {
+            if (!spendEnergy(20)) return;
+            const cost = a.species === 'dog' ? 90 : (h.isPregnant ? 68 : 48);
+            payVetBill(cost, true, 'Хирургическая стерилизация/кастрация');
+            a.isSterilized = true;
+            h.isPregnant = false;
+            addLog(`День ${state.day}: ✂️ Стерилизация прошла успешно! Теперь животное не пополнит ряды бездомных.`, 'success');
+            renderAll();
+          }
+        },
+        {
+          title: 'Остеосинтез / Операция + Стационар',
+          sub: `${priceLabel(140, true)} | -25⚡ | Спасает при тяжелой травме, вирусе или лишае`,
+          disabled: a.traumaOperated && !h.deadlyVirus && !a.knownRingworm && a.health >= 90,
+          doneText: '✓ Экстренное лечение не требуется',
+          onClick: () => {
+            if (!spendEnergy(25)) return;
+            payVetBill(140, true, 'Хирургическая операция и интенсивный стационар');
+            a.traumaOperated = true;
+            h.hasSevereTrauma = false;
+            h.deadlyVirus = null;
+            h.ringworm = false;
+            a.knownRingworm = false;
+            a.health = 95;
+            a.visibleState = 'Стабилизирован после лечения в клинике!';
+            addLog(`День ${state.day}: 🏥 Проведено полноценное лечение в «Доктор Вет»! Жизнь вне опасности.`, 'success');
+            renderAll();
+          }
+        }
+      ];
+
+      // 2. Вкладка ЗООШАНС, СОЦСЕТИ И ВЕЩЕСТВЕННАЯ ПОМОЩЬ
+      const zooButtons = [
+        {
+          title: 'Обратиться в «Зоошанс»: попросить забрать или спросить совета',
+          sub: '-10⚡ | Узнаете правила, получите клетку, талон -20% и совет по слепышам',
+          disabled: state.zooshans.askedToTakeAnimal,
+          doneText: '✓ Вы уже связались с волонтерами',
+          onClick: actionAskZooshansTakeover
+        },
+        {
+          title: 'Написать живой пост-историю с фото будней (Вещественная помощь)',
+          sub: '-10⚡ | Подписчики могут прислать корм на 15 дней, пеленки или лекарства!',
+          disabled: false,
+          doneText: '',
+          onClick: actionWriteStorytellingPost
+        },
+        {
+          title: 'Искать бесплатную передержку / со-куратора в соцсетях',
+          sub: '-15⚡ | Может откликнуться волонтер (30%) или обычный человек (70%)',
+          disabled: state.zooshans.locationStatus.startsWith('social_foster') || state.zooshans.locationStatus === 'full_volunteer_fincuration',
+          doneText: '✓ Животное уже на волонтерской/социальной передержке',
+          onClick: actionSearchSocialFosterFromStreet
+        },
+        {
+          title: 'Выписать талон «Зоошанса» в клинику (-20% и отсрочка 30 дн.)',
+          sub: '$0 | -8⚡ | Позволяет лечить в долг и собирать на р/с Зоошанса',
+          disabled: state.zooshans.hasVoucher,
+          doneText: '✓ Талон в клинику активен (-20%)',
+          onClick: () => {
+            if (!spendEnergy(8)) return;
+            state.zooshans.hasVoucher = true;
+            addLog(`День ${state.day}: 🎫 Координатор выписал талон Зоошанса в клинику (скидка 20% и отсрочка 30 дней).`, 'success');
+            renderAll();
+          }
+        },
+        {
+          title: 'Запустить официальный сбор на р/с «Зоошанса» (на клинику)',
+          sub: '-15⚡ | Гасит долг по талону; или запустите личный сбор на карту',
+          disabled: state.zooshans.officialFundraiserActive && state.zooshans.personalFundraiserActive,
+          doneText: '✓ Все сборы уже запущены',
+          onClick: () => {
+            if (!spendEnergy(15)) return;
+            if (state.zooshans.voucherDebt > 0) state.zooshans.officialFundraiserActive = true;
+            if (!state.zooshans.personalDonationsBanned) state.zooshans.personalFundraiserActive = true;
+            addLog(`День ${state.day}: 📢 Запущены финансовые сборы! Помните: каждые 7 дней нужно делать финотчет с чеками.`, 'success');
+            renderAll();
+          }
+        },
+        {
+          title: 'Свести чеки: Опубликовать финотчет / Погасить талон',
+          sub: state.zooshans.voucherDebt > 0 ? `Закрыть $${state.zooshans.voucherDebt} талона и обновить отчет (-10⚡)` : 'Опубликовать свежий финотчет (-10⚡)',
+          disabled: !state.zooshans.personalFundraiserActive && state.zooshans.voucherDebt <= 0,
+          doneText: 'Нет активных сборов или долга',
+          onClick: () => {
+            if (!spendEnergy(10)) return;
+            state.zooshans.daysSinceLastFinReport = 0;
+            if (state.zooshans.voucherDebt > 0 && state.cash >= state.zooshans.voucherDebt) {
+              const paid = state.zooshans.voucherDebt;
+              state.cash = +(state.cash - paid).toFixed(1);
+              state.personalMoneySpent = +(state.personalMoneySpent + paid).toFixed(1);
+              state.zooshans.voucherDebt = 0;
+              state.zooshans.voucherBlocked = false;
+              addLog(`День ${state.day}: Вы полностью закрыли долг по талону ($${paid}) и выложили финотчет с чеками!`, 'success');
+            } else {
+              addLog(`День ${state.day}: Вы свели все чеки и опубликовали свежий финотчет. Жертвователи благодарны (+5% Менталки)!`, 'success');
+              state.mental = Math.min(100, state.mental + 5);
+            }
+            renderAll();
+          }
+        }
+      ];
+
+      // 3. Вкладка БЫТ, ПИАР И ПРИСТРОЙСТВО ЗА ГРАНИЦУ (ЕС / ТИТРЫ)
+      const canStartPr = a.examinedWood && a.dewormStage === 2 && a.parasitesAndVaccinated && (a.ageCategory !== 'adult' || a.isSterilized) && !state.newborn.active && a.traumaOperated && (!h.isLostOrPurebred || state.pr.lostSearchDaysDone >= 10);
+
+      // Кнопки ветки ЕС (Чип+Бешенство -> 30 дн -> Титры $190 -> 90 дн карантина)
+      let abroadBtnTitle = '🌍 Шаг 1 в ЕС: Чипирование + Вакцина от бешенства ($24)';
+      let abroadBtnSub = 'Запускает 30-дневный отсчет выработки антител перед сдачей титров';
+      let abroadDisabled = false;
+      let abroadDoneText = '';
+
+      if (state.newborn.active || a.dewormStage < 2) {
+        abroadDisabled = true;
+        abroadDoneText = 'Сначала пройдите двукратную глистогонку (2/2)!';
+      } else if (!state.abroad.rabiesVaccineAndChipDone) {
+        abroadDisabled = false;
+      } else if (state.abroad.daysSinceRabiesVaccine < 30) {
+        abroadDisabled = true;
+        abroadDoneText = `⏳ Ждем выработки антител: ${state.abroad.daysSinceRabiesVaccine}/30 дн. (жмите «⏩ Промотать штиль»)`;
+      } else if (!state.abroad.titerBloodTaken) {
+        abroadBtnTitle = '🌍 Шаг 2 в ЕС: Сдать кровь на титры антител к бешенству ($190)';
+        abroadBtnSub = 'Оплачивает куратор! После сдачи пойдет честный карантин 90 дней до выезда в ЕС.';
+        abroadDisabled = false;
+      } else {
+        abroadDisabled = true;
+        abroadDoneText = `🌍 Титры сданы! Карантин ЕС: ${state.abroad.daysInEuQuarantine}/90 дн. (Трансфер $130 оплатит хозяин)`;
+      }
+
+      const careButtons = [
+        {
+          title: 'Попросить бесплатную ПРОФИ-фотосессию',
+          sub: '$0 | -15⚡ | Фотограф Зоошанса сделает кадры (звонки x2.8!)',
+          disabled: state.zooshans.hasProPhotos || a.health < 70,
+          doneText: state.zooshans.hasProPhotos ? '✓ Профи-фото готовы' : 'Сначала подлечите животное',
+          onClick: () => {
+            if (!spendEnergy(15)) return;
+            state.zooshans.hasProPhotos = true;
+            addLog(`День ${state.day}: 📸 Волонтер-фотограф приехал с фоном и светом! Сделаны шикарные пиарные портреты (конверсия звонков выросла почти в 3 раза).`, 'success');
+            renderAll();
+          }
+        },
+        {
+          title: 'Подать посты о поиске СТАРЫХ хозяев (10 дней)',
+          sub: '$0 | -10⚡ | Обязательный карантин для породистых и потеряшек',
+          disabled: !h.isLostOrPurebred || state.pr.lostSearchActive || state.pr.lostSearchDaysDone >= 10,
+          doneText: state.pr.lostSearchDaysDone >= 10 ? '✓ 10 дней поиска позади' : (state.pr.lostSearchActive ? '🔎 Поиск старых хозяев идет...' : 'Не требуется для этого животного'),
+          onClick: () => {
+            if (!spendEnergy(10)) return;
+            state.pr.lostSearchActive = true;
+            addLog(`День ${state.day}: 🔎 Размещены объявления в группах потеряшек Минска. Осторожно: на породистых животных часто звонят мошенники с предоплатой и перекупы!`, 'warn');
+            renderAll();
+          }
+        },
+        {
+          title: 'Запустить ПИАР и поиск НОВЫХ хозяев в Беларуси',
+          sub: 'Нужны: просвет Вуда, 2/2 глистогонка, прививка и стерилизация (взрослым)',
+          disabled: state.pr.prActive || !canStartPr,
+          doneText: state.pr.prActive ? '📢 Пиар активен — ждите звонков' : 'Завершите чек-лист (2/2 глистогонка, прививка, стерилизация)',
+          onClick: () => {
+            if (!spendEnergy(15)) return;
+            state.pr.prActive = true;
+            addLog(`День ${state.day}: 🚀 Объявления размещены по базе пабликов из @zooshans_info_bot! Используйте кнопку «⏩ Промотать штиль», если звонков долго нет.`, 'success');
+            renderAll();
+          }
+        },
+        {
+          title: abroadBtnTitle,
+          sub: abroadBtnSub,
+          disabled: abroadDisabled,
+          doneText: abroadDoneText,
+          onClick: () => {
+            if (!state.abroad.rabiesVaccineAndChipDone) {
+              if (!spendEnergy(12)) return;
+              payVetBill(24, false, 'Микрочип + Вакцинация от бешенства Nobivac Rabies');
+              state.abroad.rabiesVaccineAndChipDone = true;
+              state.abroad.daysSinceRabiesVaccine = 0;
+              a.parasitesAndVaccinated = true;
+              addLog(`День ${state.day}: 🌍 Поставлен микрочип и прививка от бешенства! Через 30 дней можно сдавать кровь на титры антител.`, 'success');
+            } else {
+              if (state.cash < 190) {
+                addLog(`День ${state.day}: На титры нужно $190 (у вас $${state.cash}). Откройте целевой сбор на титры соседней кнопкой!`, 'warn');
+                return;
+              }
+              if (!spendEnergy(15)) return;
+              state.cash = +(state.cash - 190).toFixed(1);
+              state.personalMoneySpent = +(state.personalMoneySpent + 190).toFixed(1);
+              state.abroad.titerBloodTaken = true;
+              state.abroad.daysInEuQuarantine = 0;
+              addLog(`День ${state.day}: 🧪 Кровь на титры антител к бешенству отправлена в лабораторию (-$190)! Начался 90-дневный карантин ЕС (используйте «⏩ Промотать штиль»).`, 'success');
+            }
+            renderAll();
+          }
+        },
+        {
+          title: 'Целевой сбор в соцсетях на оплату титров ЕС ($190)',
+          sub: '-15⚡ | «Собираем хвостику на шанс уехать домой в Германию!»',
+          disabled: !state.abroad.rabiesVaccineAndChipDone || state.abroad.titerBloodTaken || state.abroad.titerFundraiserActive || state.abroad.titerCollectedAmount >= 190,
+          doneText: state.abroad.titerCollectedAmount >= 190 ? '✓ $190 на титры собрано!' : (state.abroad.titerFundraiserActive ? `Собрано $${state.abroad.titerCollectedAmount}/$190...` : 'Сначала поставьте чип и прививку от бешенства'),
+          onClick: () => {
+            if (!spendEnergy(15)) return;
+            state.abroad.titerFundraiserActive = true;
+            addLog(`День ${state.day}: 🌍 Открыт целевой сбор на титры бешенства ($190) для выезда в Европу!`, 'info');
+            renderAll();
+          }
+        },
+        {
+          title: `Перевезти на платную передержку ($${a.species === 'dog' ? 10 : 5}/день)`,
+          sub: 'Спасает от конфликтов с арендодателем и родственниками дома',
+          disabled: state.zooshans.locationStatus === 'paid_foster' || state.zooshans.locationStatus === 'full_volunteer_fincuration',
+          doneText: '✓ Уже на передержке',
+          onClick: () => {
+            state.zooshans.locationStatus = 'paid_foster';
+            addLog(`День ${state.day}: Подопечный переехал на платную передержку ($${a.species === 'dog' ? 10 : 5}/сутки).`, 'info');
+            renderAll();
+          }
+        }
+      ];
+
+      renderButtonGrid('tabContent_vet', vetButtons);
+      renderButtonGrid('tabContent_zooshans', zooButtons);
+      renderButtonGrid('tabContent_care', careButtons);
+    }
+
+    function renderButtonGrid(containerId, buttons) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      buttons.forEach(b => {
+        const btn = document.createElement('button');
+        if (b.disabled) {
+          btn.className = 'p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-left flex flex-col justify-between opacity-60 cursor-not-allowed';
+          btn.innerHTML = `
+            <div class="text-xs font-bold text-slate-400">${b.title}</div>
+            <div class="text-[11px] font-mono text-emerald-400/90 mt-1.5">${b.doneText}</div>
+          `;
+        } else {
+          btn.className = 'p-3 rounded-xl bg-slate-900 hover:bg-slate-800/90 border border-slate-700 hover:border-emerald-500/60 text-left flex flex-col justify-between transition group shadow-sm';
+          btn.innerHTML = `
+            <div class="text-xs sm:text-sm font-bold text-white group-hover:text-emerald-400 transition">${b.title}</div>
+            <div class="text-[11px] font-mono text-slate-400 mt-1.5">${b.sub}</div>
+          `;
+          btn.onclick = b.onClick;
+        }
+        container.appendChild(btn);
+      });
+    }
+
+    // ---------------------------------------------------------------------------
+    // 13. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ МОДАЛОК, ЛОГА И ФИНАЛА
+    // ---------------------------------------------------------------------------
+    function spendEnergy(amount) {
+      if (state.energy < amount) {
+        addLog(`День ${state.day}: ⚡ Не хватает энергии и времени (нужно ${amount}⚡)! Включите скорость 1x, чтобы передохнуть до завтра.`, 'warn');
+        return false;
+      }
+      state.energy -= amount;
+      return true;
+    }
+
+    function showEventModal(title, bodyText, choices) {
+      stopTimer();
+      const overlay = document.getElementById('eventOverlayBox');
+      const dash = document.getElementById('actionsDashboard');
+      const extraBox = document.getElementById('extraQuestionBox');
+
+      overlay.classList.remove('hidden');
+      overlay.classList.add('flex');
+      dash.classList.add('hidden');
+      extraBox.classList.add('hidden');
+
+      document.getElementById('eventBadge').textContent = '⚡ СОБЫТИЕ (ИГРА НА ПАУЗЕ)';
+      document.getElementById('eventBadge').className = 'text-xs font-mono uppercase px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-bold';
+      document.getElementById('eventTitle').textContent = title;
+      document.getElementById('eventBody').textContent = bodyText;
+
+      const choicesDiv = document.getElementById('eventChoicesContainer');
+      choicesDiv.innerHTML = '';
+
+      choices.forEach(c => {
+        const btn = document.createElement('button');
+        let styleClass = 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-600';
+        if (c.style === 'primary') styleClass = 'bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-extrabold';
+        if (c.style === 'info') styleClass = 'bg-sky-600 hover:bg-sky-500 text-white font-bold';
+        if (c.style === 'danger') styleClass = 'bg-rose-600 hover:bg-rose-500 text-white font-bold';
+
+        btn.className = `px-3.5 py-2.5 rounded-lg text-xs sm:text-sm transition text-left ${styleClass}`;
+        btn.textContent = c.label;
+        btn.onclick = c.action;
+        choicesDiv.appendChild(btn);
+      });
+    }
+
+    function closeEventModal() {
+      document.getElementById('eventOverlayBox').classList.add('hidden');
+      document.getElementById('eventOverlayBox').classList.remove('flex');
+      document.getElementById('actionsDashboard').classList.remove('hidden');
+      renderAll();
+    }
+
+    function triggerEndGame(isVictory, title, description) {
+      stopTimer();
+      state.gameOver = true;
+      state.victory = isVictory;
+
+      const modal = document.getElementById('endGameModal');
+      const badge = document.getElementById('endModalBadge');
+      modal.classList.remove('hidden');
+
+      if (isVictory) {
+        badge.textContent = '🏆 МИССИЯ ВЫПОЛНЕНА: ЖИЗНЬ СПАСЕНА!';
+        badge.className = 'text-xs font-mono uppercase px-2.5 py-1 rounded font-bold bg-emerald-500 text-slate-950';
+      } else {
+        badge.textContent = '💔 ПАРТИЯ ОКОНЧЕНА: СУРОВАЯ РЕАЛЬНОСТЬ';
+        badge.className = 'text-xs font-mono uppercase px-2.5 py-1 rounded font-bold bg-rose-600 text-white';
+      }
+
+      document.getElementById('endModalTitle').textContent = title;
+      document.getElementById('endModalDescription').textContent = description;
+
+      document.getElementById('statDays').textContent = state.day;
+      document.getElementById('statPersonalSpent').textContent = `$${state.personalMoneySpent}`;
+      document.getElementById('statVoucherUsed').textContent = `$${ +(state.voucherFundsUsed + state.zooshans.voucherDebt).toFixed(1) }`;
+      document.getElementById('statFilteredCalls').textContent = state.filteredBadCalls;
+    }
+
+    function addLog(text, type = 'info') {
+      state.logs.unshift({ text, type });
+      renderLog();
+    }
+
+    function renderLog() {
+      const box = document.getElementById('chronicleLog');
+      if (!box) return;
+      document.getElementById('logCountInfo').textContent = `Записей: ${state.logs.length}`;
+      const colorMap = {
+        info: 'text-slate-300 border-l-2 border-sky-500 pl-2',
+        success: 'text-emerald-300 border-l-2 border-emerald-500 pl-2',
+        warn: 'text-amber-300 border-l-2 border-amber-500 pl-2',
+        danger: 'text-rose-300 border-l-2 border-rose-500 pl-2 font-semibold'
+      };
+      box.innerHTML = state.logs.map(item =>
+        `<div class="py-1 ${colorMap[item.type] || colorMap.info}">${item.text}</div>`
+      ).join('');
+    }
+
+    function randomItem(arr) {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function randomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    // Запуск при загрузке страницы
+    window.onload = function () {
+      switchTab('vet');
+      startNewRun();
+    };
+  </script>
+</body>
+</html>

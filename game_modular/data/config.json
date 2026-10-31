@@ -1,0 +1,56 @@
+{
+  "currency": "BYN",
+  "zooshansVoucherDebtLimitBYN": 1000,
+  "personalCardLimitBYN": 6500,
+  "officialFundraiserThresholdBYN": 330,
+  "tickSpeeds": {
+    "pause": 0,
+    "speed1": 2500,
+    "speed2": 1200,
+    "speed5": 500
+  },
+  "fastForward": {
+    "maxDaysPerClick": 15
+  },
+  "prices": {
+    "vetCheckup": 50,
+    "vetSpecialist": 70,
+    "dewormPill1": 26,
+    "dewormPill2": 20,
+    "vaccine": 60,
+    "pcrProfile": 105,
+    "spayCat": 160,
+    "spayPregnantCat": 225,
+    "spayDog": 300,
+    "traumaSurgery": 450,
+    "dentalSurgery": 115,
+    "icuDaily": 140,
+    "suppliesCatPack": 65,
+    "suppliesDogPack": 120,
+    "babycatMilkCan": 105,
+    "cageDisinfectant": 16,
+    "paidFosterCatDaily": 16,
+    "paidFosterDogDaily": 33,
+    "antiEscapeHarness": 60,
+    "rabiesVaccineAndChip": 80,
+    "rabiesTitersLab": 630,
+    "euCertificate": 50,
+    "euTransferPaidByAdopter": 430,
+    "unvaccinatedCatTreatment": 215,
+    "rentDeposit": 150,
+    "puppyChewDamage": 85,
+    "extraTaxiCost": 20,
+    "storytellingFanDonation": 85,
+    "noviceFosterExtra": 50,
+    "scamPrepay": 45,
+    "scamLoss": 80
+  },
+  "contacts": {
+    "eripCode": "4346991",
+    "eripPath": "Благотворительность, общественные объединения -> Защита животных -> Зоошанс -> Пожертвование",
+    "donationSite": "https://zooshans.by/help-us",
+    "chat": "https://t.me/zooshans_chat",
+    "infoBot": "https://t.me/zooshans_info_bot",
+    "channel": "https://t.me/zooshans"
+  }
+}
