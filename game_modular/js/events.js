@@ -40,7 +40,8 @@ function checkMedicalAndCrisisTriggers() {
           action: () => {
             a.eyeDropsCompleted = true;
             a.coatPopularity = +(a.coatPopularity * 0.33).toFixed(2);
-            state.mental -= 25;
+            state.mental = Math.max(0, state.mental - 25);
+            checkMentalHealth();
             a.visibleState = 'Котята частично потеряли зрение из-за нелеченой язвы роговицы.';
             addLog(`День ${state.day}: 💔 Без офтальмолога котята ослепли на один глаз. Пристроить особенных малышей будет в 3 раза сложнее.`, 'danger');
             closeEventModal();
@@ -56,7 +57,8 @@ function checkMedicalAndCrisisTriggers() {
     state.triggeredEvents.virusOutbreak = true;
     a.knownVirus = h.deadlyVirus === 'parvovirus_enteritis' ? 'Парвовирусный энтерит' : 'Панлейкопения';
     a.health -= 32;
-    state.mental -= 25;
+    state.mental = Math.max(0, state.mental - 25);
+    checkMentalHealth();
 
     const vTitle = h.deadlyVirus === 'parvovirus_enteritis'
       ? 'ЖИЗНЕУГРОЖАЮЩЕЕ СОСТОЯНИЕ: Парвовирусный энтерит у щенков!'
@@ -137,7 +139,8 @@ function checkMedicalAndCrisisTriggers() {
     state.triggeredEvents.felvCrisis = true;
     if (Math.random() < 0.35) {
       a.health -= 35;
-      state.mental -= 20;
+      state.mental = Math.max(0, state.mental - 20);
+      checkMentalHealth();
       showEventModal(
         'КРИЗИС ВЛК: Острая гемолитическая анемия!',
         `У кошки побелели десны, температура упала, тяжелое дыхание. Вирусная лейкемия (FeLV+) перешла в фазу подавления костного мозга. Требуется срочная реанимация и переливание крови!`,
@@ -175,10 +178,13 @@ function checkMedicalAndCrisisTriggers() {
     a.motherLactating = true;
     a.count = 6;
     a.initialCount = 6;
+    a.totalCount = 6;
+    a.activeCount = 6;
     a.ageDays = 1;
     a.speciesLabel = 'Мама-кошка + 5 новорожденных котят';
     a.visibleState = 'Кошка родила 5 котят! Расход корма увеличен в 2.5 раза. Стерилизация возможна через 45 дней лактации.';
-    state.mental -= 20;
+    state.mental = Math.max(0, state.mental - 20);
+    checkMentalHealth();
     showEventModal(
       'НОВОРОЖДЕННЫЕ В ШКАФУ: Кошка родила 5 котят!',
       `Вы не успели сделать экстренную стерилизацию до 8-го дня. Ночью кошка родила 5 пищащих слепых котят в вашем шкафу!\n\nТеперь у вас на руках 6 хвостов! Мама кормит молоком сама (соска не нужна), но расход корма вырос в 2.5 раза, а стерилизовать кошку нельзя до окончания 45 дней лактации. Пристроить нужно всех шестерых!`,
@@ -203,7 +209,8 @@ function checkMedicalAndCrisisTriggers() {
     state.escapeQuest.daysRemaining = 4;
     state.escapeQuest.searchProgress = 0;
     state.escapeQuest.reason = 'Срыв с ошейника от рева мотоцикла';
-    state.mental -= 25;
+    state.mental = Math.max(0, state.mental - 25);
+    checkMentalHealth();
     showEventModal(
       '🚨 ПОБЕГ СОБАКИ! Срыв с обычного ошейника на прогулке!',
       `Во время вечерней прогулки рядом с ревом пронесся мотоцикл. Собака в панике вывернулась из обычного ошейника и умчалась в темные дворы!\n\nЗапущен 4-ДНЕВНЫЙ ЭКСТРЕННЫЙ КВЕСТ ПОИСКА: нужно расклеивать макеты (-15⚡), прочесывать теплотрассы и подвалы в 4 утра с фонариком (-20⚡) и опрашивать районные чаты (-10⚡), чтобы довести шкалу поиска до 100% за 4 дня!\n\nВолонтеры «Зоошанса» всегда предупреждают: собакам с улицы жизненно необходима анатомическая трехремневая шлейка-антипобег с адресником (60 BYN в магазине или бесплатно б/у в чате)!`,
@@ -228,7 +235,8 @@ function checkMedicalAndCrisisTriggers() {
     state.escapeQuest.daysRemaining = 4;
     state.escapeQuest.searchProgress = 0;
     state.escapeQuest.reason = 'Побег из открытого окна на передержке';
-    state.mental -= 25;
+    state.mental = Math.max(0, state.mental - 25);
+    checkMentalHealth();
     showEventModal(
       '🚨 ЧП НА ПЕРЕДЕРЖКЕ: Кот выпрыгнул в открытое окно без сетки!',
       `Девушка с бесплатной передержки в слезах звонит вам: «Я открыла окно проветрить, он увидел воробья и выпрыгнул со 2 этажа в кусты! Я его не нашла!»\n\nЗапущен 4-ДНЕВНЫЙ ЭКСТРЕННЫЙ КВЕСТ ПОИСКА! Бросайте силы на расклейку макетов и ночной прочес подвалов!`,
@@ -443,14 +451,14 @@ function triggerFinReportAuditModal() {
   stopTimer();
   showEventModal(
     'ОБЯЗАТЕЛЬНЫЙ ФИНОТЧЕТ ПО СБОРУ НА КАРТУ (Прошло 7 дней!)',
-    `Прошло ровно 7 дней с момента сбора пожертвований на вашу личную банковскую карту. В сообществе волонтеров и доноров действуют строгие правила прозрачности!\n\nЕсли вы не сведете баланс и не выложите чеки (-15⚡), подписчики обвинят вас в токсичном сборе («токсосборщик»), Менталка упадет на -35%, а модераторы навсегда заблокируют сбор пожертвований!`,
+    `Прошло ровно 7 дней с момента сбора пожертвований на вашу личную банковскую карту. В сообществе волонтеров и доноров действуют строгие правила прозрачности!\n\nЕсли вы не сведете баланс и не выложите чеки (-20⚡), подписчики обвинят вас в токсичном сборе («токсосборщик»), Менталка упадет на -35%, а модераторы навсегда заблокируют сбор пожертвований!`,
     [
       {
-        label: 'Свести чеки, выписки и опубликовать финотчет в соцсетях (-15⚡)',
+        label: 'Свести чеки, выписки и опубликовать финотчет в соцсетях (-20⚡)',
         style: 'primary',
         action: () => {
-          if (!spendEnergy(15)) {
-            addLog(`День ${state.day}: Не хватило энергии на финотчет — сделайте это в первую очередь завтра!`, 'warn');
+          if (!spendEnergy(20)) {
+            addLog(`День ${state.day}: Не хватило энергии (20⚡) на финотчет — сделайте это в первую очередь завтра!`, 'warn');
             closeEventModal();
             return;
           }
@@ -583,32 +591,258 @@ function triggerBurnoutModal() {
 
 function triggerDay1IntroModal() {
   stopTimer();
+  const choices = [];
+  if (getSavedAlbum().length > 0) {
+    choices.push({
+      label: '🎓 Я уже опытный куратор: открыть контакты «Зоошанса» (0⚡)',
+      style: 'primary',
+      action: () => {
+        closeEventModal();
+        toggleExperiencedCurator(true);
+      }
+    });
+  }
+
+  choices.push(
+    {
+      label: '🔍 Погуглить: «Нашел животное в Минске, что делать?» (-5⚡)',
+      style: getSavedAlbum().length > 0 ? 'info' : 'primary',
+      action: () => {
+        closeEventModal();
+        actionGoogleSearch();
+      }
+    },
+    {
+      label: '🏛 Позвонить в «государственный приют» (Фауна города, Гурского, 42) (-5⚡)',
+      style: 'info',
+      action: () => {
+        closeEventModal();
+        actionCallGurskogo();
+      }
+    },
+    {
+      label: '📦 Подбросить коробку под двери ветклиники или зоомагазина',
+      style: 'danger',
+      action: () => {
+        closeEventModal();
+        actionDumpBoxTrap();
+      }
+    }
+  );
+
   showEventModal(
     'ОДИН НА ОДИН: ВЫ НАШЛИ БЕЗДОМНОЕ ЖИВОТНОЕ!',
     `Вы — обычный минчанин, который шел по своим делам и наткнулся на беду. Вы не волонтер с 10-летним стажем, у вас нет подвала с клетками и волшебного номера приюта.\n\nПЕРВЫЕ 3 ДНЯ («Острая фаза») проходят в ПОШАГОВОМ режиме: автоматический таймер отключен, чтобы вы спокойно разобрались в ситуации, узнали правду о зоозащите и наметили план.\n\nЧто будете делать в первый же час?`,
+    choices
+  );
+}
+
+function triggerRedFlagDelayedStrikeModal(trialItem) {
+  stopTimer();
+  state.fatalMistakeReason = trialItem.callData.id;
+  const consequence = trialItem.callData.consequenceText;
+  showEventModal(
+    '💔 ТРАГЕДИЯ НА ИСПЫТАТЕЛЬНОМ СРОКЕ: КРАСНЫЙ ФЛАГ',
+    `Прошло 4 дня тишины. Вы набрали номер абонента («${trialItem.adopterSummary}»)... Ваш номер заблокирован, либо хозяева буднично сообщили о трагедии:\n\n${consequence}\n\nВы отдали животное ненадежным ручкам, понадеявшись на русский авось. Опасные сигналы в разговоре были проигнорированы.`,
     [
       {
-        label: '🔍 Погуглить: «Нашел животное в Минске, что делать?» (-5⚡)',
-        style: 'primary',
-        action: () => {
-          closeEventModal();
-          actionGoogleSearch();
-        }
-      },
-      {
-        label: '🏛 Позвонить в «государственный приют» (Фауна города, Гурского, 42) (-5⚡)',
-        style: 'info',
-        action: () => {
-          closeEventModal();
-          actionCallGurskogo();
-        }
-      },
-      {
-        label: '📦 Подбросить коробку под двери ветклиники или зоомагазина',
+        label: 'Горький финал (Перейти к разбору ошибок)',
         style: 'danger',
         action: () => {
           closeEventModal();
-          actionDumpBoxTrap();
+          triggerEndGame(false, 'ТРАГЕДИЯ: Питомец погиб или пострадал у плохих хозяев', consequence);
+        }
+      }
+    ]
+  );
+}
+
+function triggerTrialSuccessModal(trialItem) {
+  stopTimer();
+  showEventModal(
+    '🎉 ИСПЫТАТЕЛЬНЫЙ СРОК УСПЕШНО ПРОЙДЕН!',
+    `Семья («${trialItem.adopterSummary}») прислала долгожданный фото-привет с дивана:\n\n«${trialItem.petName}» полностью освоился, спит на мягких подушках, мурчит на руках и радует всю семью! Испытательный срок 7 дней завершен (+15% Менталки)!\n\nХвостик официально занесен в ваш личный «Альбом спасенных хвостиков»!`,
+    [
+      {
+        label: 'Какое счастье! (Продолжить партию)',
+        style: 'primary',
+        action: () => {
+          closeEventModal();
+          addLog(`День ${state.day}: 🎉 «${trialItem.petName}» успешно пристроен! В альбоме куратора пополнение.`, 'success');
+          if (state.animal.savedCount >= (state.animal.totalCount || state.animal.count || 1)) {
+            triggerEndGame(
+              true,
+              'ПОБЕДА: Все подопечные обрели любящий дом!',
+              `Поздравляем! Все ваши подопечные (${state.animal.savedCount} хвостиков) благополучно прошли испытательный срок и навсегда обрели семью!\n\nВы проявили стойкость, терпение и ответственность настоящего куратора МБООПЖ «Зоошанс»!`
+            );
+          }
+        }
+      }
+    ]
+  );
+}
+
+function triggerTrialReturnModal(trialItem) {
+  stopTimer();
+  if (trialItem.fosterSpotHeld) {
+    state.mental = Math.max(0, state.mental - 10);
+    state.zooshans.locationStatus = trialItem.fosterLocation || 'home_floor';
+    showEventModal(
+      '↩️ БЫТОВОЙ ВОЗВРАТ С ИСПЫТАТЕЛЬНОГО СРОКА',
+      `Семья не справилась с адаптацией и вернула «${trialItem.petName}». К счастью, вы предусмотрительно придержали место на передержке — питомец вернулся в знакомый бокс (-10% Менталки)!\n\nПродолжаем поиск подходящих хозяев.`,
+      [
+        {
+          label: 'Принять возврат и продолжить пиар',
+          style: 'primary',
+          action: () => {
+            closeEventModal();
+            addLog(`День ${state.day}: ↩️ Питомец вернулся на придержанную передержку. Пиар продолжается!`, 'warn');
+          }
+        }
+      ]
+    );
+  } else {
+    state.mental = Math.max(0, state.mental - 20);
+    showEventModal(
+      '🚨 УЛЬТИМАТИВНЫЙ ВОЗВРАТ: МЕСТО НА ПЕРЕДЕРЖКЕ НЕ ПРИДЕРЖАНО!',
+      `Хозяева позвонили с ультиматумом: «Забирайте «${trialItem.petName}» сегодня же, мы больше не можем!»\n\nПоскольку место на передержке не было придержано, его уже заняли! Что будете делать? (-20% Менталки)`,
+      [
+        {
+          label: '⏳ Попытаться договориться на 3 дня для маневра (-15⚡, 65% шанс)',
+          style: 'primary',
+          action: () => {
+            if (!spendEnergy(15)) return;
+            if (Math.random() < 0.65) {
+              state.maneuver = { active: true, daysRemaining: 3, petData: trialItem };
+              state.zooshans.locationStatus = 'maneuver_adopters';
+              addLog(`День ${state.day}: ⏳ Ручки согласились потерпеть 3 дня! Подопечный временно у них. Срочно найдите новую передержку в соцсетях или оплатите платную.`, 'success');
+              closeEventModal();
+            } else {
+              state.zooshans.locationStatus = state.zooshans.hasCage ? 'home_cage' : 'home_floor';
+              addLog(`День ${state.day}: ❌ Ручки наотрез отказались ждать — питомец прямо сейчас возвращен к вам в квартиру!`, 'danger');
+              closeEventModal();
+            }
+          }
+        },
+        {
+          label: '⏳ Перевести 20 BYN на корм/пеленки + договориться на 3 дня (-15⚡, -20 BYN, 90% шанс)',
+          style: 'info',
+          action: () => {
+            if (state.cash < 20) {
+              addLog(`День ${state.day}: Не хватает 20 BYN на компенсацию ручкам!`, 'warn');
+              return;
+            }
+            if (!spendEnergy(15)) return;
+            state.cash = +(state.cash - 20).toFixed(1);
+            state.personalMoneySpent = +(state.personalMoneySpent + 20).toFixed(1);
+            if (Math.random() < 0.90) {
+              state.maneuver = { active: true, daysRemaining: 3, petData: trialItem };
+              state.zooshans.locationStatus = 'maneuver_adopters';
+              addLog(`День ${state.day}: ⏳ Компенсация 20 BYN помогла! Ручки согласились подержать питомца еще 3 дня. Ищите передержку!`, 'success');
+              closeEventModal();
+            } else {
+              state.zooshans.locationStatus = state.zooshans.hasCage ? 'home_cage' : 'home_floor';
+              addLog(`День ${state.day}: Ручки все равно отказались — питомец возвращен к вам в квартиру.`, 'danger');
+              closeEventModal();
+            }
+          }
+        },
+        {
+          label: 'Забрать немедленно к себе домой (-15⚡)',
+          style: 'danger',
+          action: () => {
+            if (!spendEnergy(15)) return;
+            state.zooshans.locationStatus = state.zooshans.hasCage ? 'home_cage' : 'home_floor';
+            addLog(`День ${state.day}: Вы привезли питомца обратно к себе домой. Бытовой резерв энергии снова отнимает силы.`, 'info');
+            closeEventModal();
+          }
+        }
+      ]
+    );
+  }
+}
+
+function triggerTrialAsthmaReturnModal(trialItem) {
+  stopTimer();
+  state.cash = +(state.cash + 85).toFixed(1);
+  state.supplies.daysLeft += 10;
+  state.animal.trialCount = Math.max(0, state.animal.trialCount - trialItem.count);
+  state.animal.activeCount += trialItem.count;
+  if (trialItem.fosterSpotHeld) {
+    state.zooshans.locationStatus = trialItem.fosterLocation || 'home_floor';
+  } else {
+    state.zooshans.locationStatus = state.zooshans.hasCage ? 'home_cage' : 'home_floor';
+  }
+  showEventModal(
+    'ЧЕСТНЫЙ ВОЗВРАТ С ИСПЫТАТЕЛЬНОГО СРОКА (АСТМА)',
+    `На 6-й день семья позвонила в слезах: у мужа началась острая бронхиальная астма (прислали заключение пульмонолога).\n\nПо договору об испытательном сроке они бережно привезли «${trialItem.petName}» обратно, передали мешок корма (+10 дней) и 85 BYN на передержку/клинику.\n\nЭто обычный рабочий момент зоозащиты — продолжаем поиск любящего дома!`,
+    [
+      {
+        label: 'Поблагодарить за честность и продолжить пиар',
+        style: 'primary',
+        action: () => closeEventModal()
+      }
+    ]
+  );
+}
+
+function triggerPiroplasmosisCrisisModal() {
+  stopTimer();
+  state.mental = Math.max(0, state.mental - 25);
+  state.animal.health -= 35;
+  showEventModal(
+    '🚨 ЭКСТРЕННАЯ СИТУАЦИЯ: Пироплазмоз у собаки от укуса клеща!',
+    `На прогулке в парке собаку укусил иксодовый клещ (обработка не была сделана вовремя!).\n\nСимптомы развились стремительно: темная бурая моча, отказ от еды, тяжелое дыхание и температура 40.5°C. Без экстренной капельницы и препарата «Пиро-стоп» собака погибнет за 48 часов!`,
+    [
+      {
+        label: 'Экстренно в ветклинику: капельницы и Пиро-стоп (-80 BYN)',
+        style: 'primary',
+        action: () => {
+          payVetBill(80, true, 'Экстренная терапия пироплазмоза (Пиро-стоп + инфузия)', false);
+          state.animal.health = Math.min(100, state.animal.health + 30);
+          state.animal.tickProtectionDaysLeft = 30;
+          addLog(`День ${state.day}: 💉 Собаку спасли от пироплазмоза! Введены антидот и капельницы, сделана защита от клещей на 30 дней.`, 'success');
+          closeEventModal();
+        }
+      }
+    ]
+  );
+}
+
+function triggerPetNamingModal() {
+  stopTimer();
+  const a = state.animal;
+  const defName = a.petName || getRandomPetname();
+  showEventModal(
+    'КАРТОТЕКА КЛИЧЕК «ЗООШАНСА» (forum.zooshans.by/app.php/petnames)',
+    `По традиции «Зоошанса», кличка подопечного должна быть уникальной, чтобы в ветклиниках не путали талоны и анализы. К обычному имени добавляется минский район или топоним находки (например, «Абрикос Рокоссовский», «Агата Ждановичская»).\n\nТекущая кличка: ${a.petName}\n\nВы можете изменить кличку или сгенерировать новую из реальной картотеки форума:`,
+    [
+      {
+        label: '✏️ Ввести свое имя (кличка + район Минска)',
+        style: 'primary',
+        action: () => {
+          closeEventModal();
+          const custom = prompt('Введите имя подопечного (например, «Барсик»):', a.petName || '');
+          if (custom && custom.trim()) {
+            actionSetPetName(custom);
+          }
+        }
+      },
+      {
+        label: '🎲 Сгенерировать случайную из картотеки Зоошанса',
+        style: 'info',
+        action: () => {
+          a.petName = getRandomPetname();
+          addLog(`День ${state.day}: 🏷️ Подопечному присвоена уникальная кличка из картотеки: «${a.petName}».`, 'info');
+          closeEventModal();
+          renderAll();
+        }
+      },
+      {
+        label: `Оставить кличку «${defName}»`,
+        style: 'info',
+        action: () => {
+          closeEventModal();
         }
       }
     ]

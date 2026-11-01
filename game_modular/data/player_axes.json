@@ -97,5 +97,25 @@
       "energyMod": 1.2,
       "extraTaxiCost": 20
     }
+  ],
+  "socialCapital": [
+    {
+      "id": "introvert",
+      "label": "🤫 Узкий круг (~40 друзей, закрытый профиль)",
+      "friendsCount": 40,
+      "multiplier": 0.6
+    },
+    {
+      "id": "average_social",
+      "label": "👥 Обычный круг (~250 друзей и коллег)",
+      "friendsCount": 250,
+      "multiplier": 1.0
+    },
+    {
+      "id": "wide_circle",
+      "label": "🌟 Популярный аккаунт (~1200 подписчиков)",
+      "friendsCount": 1200,
+      "multiplier": 1.6
+    }
   ]
 }

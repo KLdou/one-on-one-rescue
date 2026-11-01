@@ -492,7 +492,7 @@
     "initialCount": 1,
     "litterTrained": true,
     "litterTrainDaysDone": 7,
-    "visibleState": "Требуется операция по шинированию челюсти, а затем 18 дней кормления паштетами через шприц/стому (-25⚡/день дома)!",
+    "visibleState": "Требуется операция по шинированию челюсти, а затем 18 дней кормления паштетами через шприц/стому (-20⚡/день дома)!",
     "hiddenState": {
       "isNewborn": false,
       "ringworm": false,
@@ -558,7 +558,7 @@
     "initialCount": 1,
     "litterTrained": false,
     "litterTrainDaysDone": 0,
-    "visibleState": "Ежедневная уборка отнимает уйму сил (-25⚡/день)! Требуется ПЦР на простейших (трихомоноз) и курс ронидазола + диета Gastrointestinal (120 BYN).",
+    "visibleState": "Ежедневная уборка отнимает уйму сил (-24⚡/день дома)! Требуется ПЦР на простейших (трихомоноз) и курс ронидазола + диета Gastrointestinal (120 BYN).",
     "hiddenState": {
       "isNewborn": false,
       "ringworm": false,

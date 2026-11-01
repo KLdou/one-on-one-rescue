@@ -43,7 +43,12 @@
     "storytellingFanDonation": 85,
     "noviceFosterExtra": 50,
     "scamPrepay": 45,
-    "scamLoss": 80
+    "scamLoss": 80,
+    "tickProtectionDog": 35,
+    "holdFosterSpotFreeSweets": 15,
+    "holdFosterSpotPaidCatWeekly": 55,
+    "holdFosterSpotPaidDogWeekly": 110,
+    "maneuverAdopterBribe": 20
   },
   "contacts": {
     "eripCode": "4346991",
@@ -51,6 +56,7 @@
     "donationSite": "https://zooshans.by/help-us",
     "chat": "https://t.me/zooshans_chat",
     "infoBot": "https://t.me/zooshans_info_bot",
-    "channel": "https://t.me/zooshans"
+    "channel": "https://t.me/zooshans",
+    "petnamesForum": "https://forum.zooshans.by/app.php/petnames"
   }
 }

@@ -22,13 +22,16 @@
           <span class="font-mono text-xs sm:text-sm px-2.5 py-0.5 rounded bg-slate-800 text-emerald-400 border border-slate-700 font-bold">
             ДЕНЬ <span id="dayCounter">1</span>
           </span>
+          <span id="calendarDateBadge" class="font-mono text-xs sm:text-sm px-2 py-0.5 rounded bg-slate-800 text-sky-400 border border-slate-700 font-semibold">
+            📅 12 мая
+          </span>
           <span id="acutePhaseBadge" class="font-mono text-[11px] px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold">
             🌙 Острая фаза (День 1/3)
           </span>
           <span id="animalAgeBadge" class="font-mono text-[11px] px-2 py-0.5 rounded bg-slate-900 text-sky-300 border border-slate-700">
             Возраст: 2 года
           </span>
-          <span id="seasonBadge" class="hidden font-mono text-[11px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
+          <span id="seasonBadge" class="font-mono text-[11px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
             ☀️ Сезон котят (-75% звонков)
           </span>
         </div>
@@ -58,6 +61,9 @@
 
           <button onclick="fastForwardCalmDays()" title="Промотать спокойные дни (авто-стоп за 1 день до любого дедлайна)" class="px-2.5 py-1 rounded text-xs font-mono font-bold bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400 transition">
             ⏩ Промотать штиль
+          </button>
+          <button onclick="showAlbumModal()" class="px-2.5 py-1 rounded text-xs font-mono font-bold bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 transition" title="Личный альбом спасенных хвостиков">
+            📖 Альбом: <span id="headerAlbumCount">0</span>
           </button>
           <button onclick="startNewRun()" class="ml-1 px-2.5 py-1 rounded text-xs font-mono font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600 transition">
             ↻ Новая жизнь
@@ -317,6 +323,10 @@
               <p class="text-[11px] text-slate-400">Вам еще неизвестны правила зоозащиты Минска. Куда бежать и что делать?</p>
             </div>
           </div>
+          <label id="experiencedCuratorLabel" class="hidden sm:flex items-center gap-1.5 text-xs text-emerald-300 font-mono cursor-pointer">
+            <input type="checkbox" id="chkExperiencedCurator" onchange="toggleExperiencedCurator(this.checked)" class="rounded bg-slate-800 border-slate-700 text-emerald-500">
+            <span>Я уже опытный куратор (открыть Зоошанс)</span>
+          </label>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           <button onclick="actionGoogleSearch()" class="p-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-sky-500/50 text-left transition flex flex-col justify-between">
@@ -375,6 +385,35 @@
     </section>
 
   </main>
+
+  <!-- ================= МОДАЛЬНОЕ ОКНО: АЛЬБОМ СПАСЕННЫХ ХВОСТИКОВ (GDD 9.2) ================= -->
+  <div id="savedAlbumModal" class="fixed inset-0 z-50 hidden bg-slate-950/90 backdrop-blur-md overflow-y-auto p-3 sm:p-6 flex items-center justify-center">
+    <div class="bg-[#131b29] border-2 border-amber-500/70 rounded-2xl max-w-3xl w-full p-4 sm:p-6 shadow-2xl my-auto flex flex-col max-h-[85vh]">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">📖</span>
+          <div>
+            <h2 class="text-base sm:text-lg font-extrabold text-white">Альбом спасенных хвостиков</h2>
+            <p class="text-xs text-slate-400">Ваша личная мета-прогрессия куратора (сохраняется в браузере)</p>
+          </div>
+        </div>
+        <button onclick="closeAlbumModal()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-200 border border-slate-600">
+          ✕ Закрыть
+        </button>
+      </div>
+
+      <div id="savedAlbumList" class="flex-1 overflow-y-auto space-y-2.5 pr-1 font-sans text-xs">
+        <!-- Генерируется JS -->
+      </div>
+
+      <div class="border-t border-slate-800 pt-3 mt-3 flex items-center justify-between text-xs text-slate-400">
+        <span id="albumTotalCountText">Всего спасено жизней: 0</span>
+        <button onclick="closeAlbumModal()" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold">
+          Вернуться к игре
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- ================= ФИНАЛЬНОЕ МОДАЛЬНОЕ ОКНО: МОСТ В РЕАЛЬНОСТЬ (BRIDGE TO REALITY) ================= -->
   <div id="endGameModal" class="fixed inset-0 z-50 hidden bg-slate-950/90 backdrop-blur-md overflow-y-auto p-3 sm:p-6 flex items-center justify-center">
@@ -437,6 +476,7 @@
               <div>💰 Личных средств: <span id="storyCardStatPersonal" class="text-emerald-400 font-bold">320 BYN</span></div>
               <div>🎫 По талонам/сборам: <span id="storyCardStatVoucher" class="text-sky-400 font-bold">180 BYN</span></div>
               <div>🛡️ Отсеяно опасных ручек: <span id="storyCardStatFiltered" class="text-amber-300 font-bold">4</span></div>
+              <div>🏆 В альбоме спасенных: <span id="storyCardStatAlbum" class="text-amber-300 font-bold">0</span></div>
             </div>
           </div>
 

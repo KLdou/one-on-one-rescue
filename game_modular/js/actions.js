@@ -123,6 +123,12 @@ function actionAskZooshansTakeover() {
     milkBonusText = '\n\n🍼 ПОМОЩЬ СЛЕПЫШАМ: Волонтеры объяснили, что коровье молоко смертельно для котят! Вам бесплатно выдали 1 стартовый пакетик смеси Royal Canin Babycat Milk (100 г) и соску на первые 3 дня!';
   }
 
+  // 35% шанс бонуса корма от волонтеров (GDD 6.2)
+  if (Math.random() < 0.35) {
+    state.supplies.daysLeft += 6;
+    milkBonusText += '\n\n🎁 ПОДГОН ОТ ВОЛОНТЕРОВ: Сердобольные волонтеры из своих запасов передали пакет корма и наполнителя на 6 дней («Держите на первое время, сами через это проходили!»)';
+  }
+
   const roll = Math.random();
   const tempChance = state.zooshans.tempVolunteerChance || 0.20;
 
@@ -191,9 +197,10 @@ function actionSearchSocialFosterPost() {
   const g = getAnimalGrammar(state.animal);
   const roll = Math.random();
 
-  // Около 30% шанс отклика за публикацию
-  if (roll > 0.30) {
-    addLog(`День ${state.day}: 📱 SOS-пост о передержке для ${g.gen} собрал 40 репостов и сочувствие, но взять к себе никто не решился. Опубликуйте повторно через пару дней!`, 'warn');
+  // Летом сезон отпусков — шанс падает с 30% до 20% (GDD 2.2, 7.2)
+  const fosterChance = state.currentSeason === 'summer' ? 0.20 : 0.30;
+  if (roll > fosterChance) {
+    addLog(`День ${state.day}: 📱 SOS-пост о передержке для ${g.gen} собрал 40 репостов и сочувствие, но взять к себе никто не решился${state.currentSeason === 'summer' ? ' (летом сезон отпусков — люди в разъездах)' : ''}. Опубликуйте повторно через пару дней!`, 'warn');
     renderAll();
     return;
   }
@@ -202,6 +209,7 @@ function actionSearchSocialFosterPost() {
     // 30% — опытный волонтер
     state.zooshans.locationStatus = 'social_foster_volunteer';
     state.zooshans.hasCage = true;
+    if (state.maneuver) state.maneuver.active = false;
     showEventModal(
       'ОТКЛИК В СОЦСЕТЯХ: Опытный волонтер берет на передержку!',
       `Ваш пост заметила опытная волонтер Катя:\n\n«Я возьму ${g.acc} в свою карантинную клетку! Быт, уборка и капли — на мне. Но вы остаетесь куратором: снабжаете кормом/наполнителем, оплачиваете клинику и ведете пиар!»`,
@@ -220,6 +228,7 @@ function actionSearchSocialFosterPost() {
     // 70% — обычный человек из соцсетей (риск конфликта на 12-й день)
     state.zooshans.locationStatus = 'social_foster_novice';
     state.zooshans.socialFosterDaysElapsed = 0;
+    if (state.maneuver) state.maneuver.active = false;
     showEventModal(
       'ОТКЛИК В СОЦСЕТЯХ: Подписчица согласна бесплатно приютить найденыша!',
       `На пост откликнулась девушка Алина — не волонтер, просто эмоциональный человек из соцсетей:\n\n«Мне так жалко ${g.acc}! Я возьму к себе бесплатно на время поиска дома. Только привозите корм, наполнитель и лоток!»`,
@@ -262,6 +271,12 @@ function actionBarakholkaVolunteerChat() {
     }
   } else {
     addLog(`День ${state.day}: 💬 БАРАХОЛКА: В чате волонтеров сейчас нет свободных остатков нужных препаратов — закупаем в обычной аптеке или зоомагазине.`, 'info');
+  }
+
+  // 35% шанс дополнительного подгона корма от кураторов (GDD 6.2)
+  if (Math.random() < 0.35) {
+    state.supplies.daysLeft += 6;
+    addLog(`День ${state.day}: 🎁 ПОДГОН ОТ КУРАТОРОВ: Сердобольные волонтеры дополнительно передали пакет корма на 6 дней («Держите, сами через это проходили!»).`, 'success');
   }
   renderAll();
 }
@@ -481,4 +496,83 @@ function actionKeepPetForSelf() {
 
   state.keptForSelfUsed = true;
   completeOneOrPairAdoption(false, 'Вы приняли осознанное решение оставить подопечного в своей семье или передать родителям/близким друзьям! Питомец обрел самый надежный и любящий дом на свете.');
+}
+
+// 10. ВЫРУЧКА ОТ СВОЕГО КОТА В БЕЗДЕНЕЖЬЕ (GDD 3.4, 9.5)
+function actionShareFoodWithOwnCat() {
+  const p = state.player;
+  if (p.ownPets.id !== 'vaccinated_cat' && p.ownPets.id !== 'unvaccinated_cat') {
+    addLog(`День ${state.day}: У вас нет своего домашнего кота, не у кого просить корм!`, 'warn');
+    return;
+  }
+  if (state.supplies.daysLeft > 2 || state.cash >= 65) {
+    addLog(`День ${state.day}: Выручка от своего кота активируется только в безденежье (при корме <= 2 дней и нехватке денег)!`, 'info');
+    return;
+  }
+  if (state.day - state.lastOwnPetFoodShareDay < 14) {
+    const daysWait = 14 - (state.day - state.lastOwnPetFoodShareDay);
+    addLog(`День ${state.day}: Домашний кот уже делился кормом недавно! Подождите еще ${daysWait} дн.`, 'warn');
+    return;
+  }
+
+  state.supplies.daysLeft += 4;
+  state.lastOwnPetFoodShareDay = state.day;
+  state.mental = Math.max(0, state.mental - 2);
+  addLog(`День ${state.day}: 🥣 ВЫРУЧКА ОТ СВОЕГО КОТА: Домашний кот с глубочайшим презрением наблюдал, как вы отсыпали 4-дневную порцию из его пачки (-2% Менталки, +4 дня снабжения!).`, 'success');
+  renderAll();
+}
+
+// 11. ЗАЩИТА ОТ КЛЕЩЕЙ ДЛЯ СОБАК (GDD 2.2, 6.3)
+function actionBuyTickProtection() {
+  if (state.animal.species !== 'dog') {
+    addLog(`День ${state.day}: Капли от клещей требуются только собакам перед прогулками!`, 'info');
+    return;
+  }
+  if (state.cash < 35) {
+    addLog(`День ${state.day}: Не хватает средств на капли от клещей (35 BYN)!`, 'danger');
+    return;
+  }
+  state.cash = +(state.cash - 35).toFixed(1);
+  state.personalMoneySpent = +(state.personalMoneySpent + 35).toFixed(1);
+  state.animal.tickProtectionDaysLeft = 30;
+  addLog(`День ${state.day}: 🐕 Куплены капли от иксодовых клещей (-35 BYN). Собака защищена от пироплазмоза на 30 дней!`, 'success');
+  renderAll();
+}
+
+// 12. ПРОВЕРКА ПОДОПЕЧНОГО НА ИСПЫТАТЕЛЬНОМ СРОКЕ («Написать хозяевам: как дела?», GDD 8.4)
+function actionCheckTrialPetStatus() {
+  if (!state.trialAnimals || state.trialAnimals.length === 0) {
+    addLog(`День ${state.day}: Сейчас ни один из подопечных не проходит испытательный срок.`, 'info');
+    return;
+  }
+  const item = state.trialAnimals[0];
+  if (item.isRedFlag) {
+    state.trialAnimals.splice(0, 1);
+    state.fatalMistakeReason = item.callData.id;
+    triggerRedFlagDelayedStrikeModal(item);
+  } else {
+    state.mental = Math.min(100, state.mental + 5);
+    addLog(`День ${state.day}: 📱 Вы написали хозяевам «${item.petName}». Прислали фото-привет: хвостик сладко спит на диване, аппетит отличный! Испытательный срок: день ${item.daysPassed}/7 (+5% Менталки).`, 'success');
+  }
+  renderAll();
+}
+
+// 13. ИМЕНОВАНИЕ ПИТОМЦА ИЗ КАРТОТЕКИ (GDD 4.1)
+function actionRollRandomPetName() {
+  state.animal.petName = getRandomPetname();
+  addLog(`День ${state.day}: 🏷️ Подопечному присвоена кличка из картотеки «Зоошанса»: «${state.animal.petName}».`, 'info');
+  renderAll();
+}
+
+function actionSetPetName(customName) {
+  if (!customName || !customName.trim()) return;
+  let clean = customName.trim();
+  const parts = clean.split(/\s+/);
+  if (parts.length === 1) {
+    clean = getSuggestedUniquePetname(clean);
+    addLog(`День ${state.day}: 💡 По правилам картотеки Зоошанса к имени добавлен район: «${clean}».`, 'info');
+  }
+  state.animal.petName = clean;
+  addLog(`День ${state.day}: 🏷️ Кличка подопечного обновлена: «${clean}».`, 'success');
+  renderAll();
 }

@@ -1,4 +1,6 @@
-// ui.js - Отрисовка интерфейса, карточек, табов, логов, модалок и карточки 9:16 (v2.0)
+// ui.js - Отрисовка интерфейса, карточек, табов, логов, модалок, альбома и карточки 9:16 (v2.2)
+
+let activeTab = 'vet';
 
 function switchTab(tabName) {
   // Если «туман войны» еще не развеян гуглением, блокируем переход во 2 и 3 табы
@@ -33,7 +35,14 @@ function renderTopBar() {
   const a = state.animal;
   const isAcute = state.onboarding && state.onboarding.acutePhase;
 
+  // Счетчик игрового дня
   document.getElementById('dayCounter').textContent = state.day;
+
+  // Календарная дата (GDD 2.2)
+  const calBadge = document.getElementById('calendarDateBadge');
+  if (calBadge && state.calendarDate) {
+    calBadge.textContent = `📅 ${formatCalendarDate(state.calendarDate)}`;
+  }
 
   // Бейдж острой фазы (Дни 1-3)
   const acuteBadge = document.getElementById('acutePhaseBadge');
@@ -49,7 +58,29 @@ function renderTopBar() {
   // Обновление кнопок скорости
   updateSpeedButtonsUI();
 
+  // Возраст питомца
   document.getElementById('animalAgeBadge').textContent = `Возраст: ${formatAgeText(a.ageDays)}`;
+
+  // Сезонный бейдж (GDD 2.2)
+  const seasonBadge = document.getElementById('seasonBadge');
+  if (seasonBadge && state.currentSeason) {
+    const seasonInfoMap = {
+      summer: { label: '☀️ Лето: Сезон котят (-75% звонков)', class: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
+      autumn: { label: '🍂 Осень: +25% звонков / Хэллоуин', class: 'bg-orange-500/20 text-orange-300 border-orange-500/40' },
+      winter: { label: '❄️ Зима: Импульсный спрос к НГ / Мороз', class: 'bg-sky-500/20 text-sky-300 border-sky-500/40' },
+      spring: { label: '🌱 Весна: Сезон клещей и беременных кошек', class: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' }
+    };
+    const sInfo = seasonInfoMap[state.currentSeason] || { label: getSeasonLabelRu(state.currentSeason), class: 'bg-slate-800 text-slate-300 border-slate-700' };
+    seasonBadge.textContent = sInfo.label;
+    seasonBadge.className = `font-mono text-[11px] px-2 py-0.5 rounded border ${sInfo.class}`;
+    seasonBadge.classList.remove('hidden');
+  }
+
+  // Счетчик сохраненных хвостов в хедере
+  const headerAlbumEl = document.getElementById('headerAlbumCount');
+  if (headerAlbumEl) {
+    headerAlbumEl.textContent = getSavedAlbum().length;
+  }
 
   // Бюджет в BYN
   const cashEl = document.getElementById('cashValue');
@@ -99,16 +130,23 @@ function renderTopBar() {
     barRes.style.width = `${reservedPct}%`;
   }
 
-  // Жизнь питомца и счетчик хвостов
-  document.getElementById('animalCountHeader').textContent = a.initialCount > 1
-    ? `❤️ Хвостов: ${a.count} из ${a.initialCount}`
-    : '❤️ Жизнь питомца';
+  // Жизнь питомца и счетчик хвостов (GDD 7.1, 8.4)
+  const countHeader = document.getElementById('animalCountHeader');
+  const act = a.activeCount !== undefined ? a.activeCount : (a.count || 1);
+  const tri = (state.trialAnimals || []).reduce((sum, item) => sum + (item.count || 1), 0);
+  const sav = state.savedTails ? state.savedTails.length : 0;
+  const tot = a.totalCount || a.initialCount || 1;
+
+  if (tot > 1) {
+    countHeader.textContent = `🐾 На руках: ${act} | Испытание: ${tri} | Дома: ${sav}/${tot}`;
+  } else if (tri > 0) {
+    countHeader.textContent = `🐾 На испытательном сроке (7 дн.)`;
+  } else {
+    countHeader.textContent = '❤️ Жизнь питомца';
+  }
+
   document.getElementById('animalHealthValue').textContent = `${a.health}%`;
   document.getElementById('healthBar').style.width = `${a.health}%`;
-
-  const seasonBadge = document.getElementById('seasonBadge');
-  if (a.hiddenState.isKittenSeason) seasonBadge.classList.remove('hidden');
-  else seasonBadge.classList.add('hidden');
 
   // Баннер беглеца
   const escBanner = document.getElementById('escapeUrgentBanner');
@@ -207,22 +245,28 @@ function renderPlayerAndAnimalCards() {
     'temp_volunteer_10d': `⏳ У волонтера на стабилизации (${state.zooshans.tempVolunteerDaysLeft} дн., быт снят)`,
     'full_volunteer_fincuration': '🤝 У волонтера (Вы — финкуратор и снабженец)',
     'social_foster_volunteer': '🤝 На передержке у опытного волонтера (быт снят)',
-    'social_foster_novice': `🏠 Бесплатно у человека из соцсетей (${state.zooshans.socialFosterDaysElapsed} дн.)`
+    'social_foster_novice': `🏠 Бесплатно у человека из соцсетей (${state.zooshans.socialFosterDaysElapsed} дн.)`,
+    'maneuver_adopters': '⏳ Временно у несостоявшихся ручек (маневр 3 дня)'
   };
   document.getElementById('fosterStatusBadge').textContent = locMap[state.zooshans.locationStatus] || 'Дома';
 
-  document.getElementById('playerTagsContainer').innerHTML = [
+  // Теги профиля игрока (включая 6-ю ось Социального капитала, GDD 3.0)
+  const playerTags = [
     p.income.label, p.housing.label, p.family.label, p.ownPets.label, p.mobility.label
-  ].map(t => `<span class="px-2 py-0.5 rounded bg-slate-950 border border-slate-700 text-slate-200">${t}</span>`).join('');
+  ];
+  if (p.socialCapital) playerTags.push(p.socialCapital.label);
+  document.getElementById('playerTagsContainer').innerHTML = playerTags
+    .map(t => `<span class="px-2 py-0.5 rounded bg-slate-950 border border-slate-700 text-slate-200">${t}</span>`).join('');
 
-  // Карточка животного
-  document.getElementById('animalSpeciesBadge').textContent = a.count > 1 ? `${a.speciesLabel} [Осталось: ${a.count}]` : a.speciesLabel;
-  document.getElementById('animalTitle').textContent = a.title;
+  // Карточка животного: кличка по канону Зоошанса + архетип (GDD 4.1)
+  const actCount = a.activeCount !== undefined ? a.activeCount : (a.count || 1);
+  document.getElementById('animalSpeciesBadge').textContent = actCount > 1 ? `${a.speciesLabel} [Осталось: ${actCount}]` : a.speciesLabel;
+  document.getElementById('animalTitle').innerHTML = `«${a.petName || 'Найденыш'}» <button onclick="actionRollRandomPetName()" title="Сгенерировать другую кличку из картотеки Зоошанса" class="ml-1 text-xs hover:scale-125 transition">🎲</button> <button onclick="triggerPetNamingModal()" title="Уникальная кличка по правилам Зоошанса" class="text-xs hover:scale-125 transition">✏️</button> — ${a.title}`;
   document.getElementById('coatPopularityBadge').textContent = `Окрас: ${a.coatLabel}`;
   document.getElementById('animalDescription').textContent = a.visualDescription;
   document.getElementById('visibleStateText').textContent = `Статус: ${a.visibleState}`;
 
-  // Живой чек-лист
+  // Живой чек-лист подготовки
   const qDone = a.quarantineDaysDone >= 14;
   const qTag = {
     t: qDone ? '✓ Карантин: 14/14 дн.' : `⏳ Карантин: ${a.quarantineDaysDone}/14 дн.`,
@@ -273,6 +317,21 @@ function renderPlayerAndAnimalCards() {
     });
   }
 
+  // Защита собаки от иксодовых клещей (GDD 6.3)
+  if (a.species === 'dog') {
+    if (a.tickProtectionDaysLeft > 0) {
+      checklistArr.push({
+        t: `🛡️ Защита от клещей: ${a.tickProtectionDaysLeft}/30 дн.`,
+        c: 'bg-emerald-950/70 text-emerald-300 border-emerald-500/50'
+      });
+    } else {
+      checklistArr.push({
+        t: `⚠️ Без защиты от клещей (капли 35 BYN)`,
+        c: 'bg-rose-950 text-rose-300 border-rose-500 font-bold animate-pulse'
+      });
+    }
+  }
+
   document.getElementById('animalChecklistTags').innerHTML = checklistArr
     .map(item => `<span class="text-[11px] font-mono px-2 py-0.5 rounded border ${item.c}">${item.t}</span>`).join('');
 
@@ -284,6 +343,7 @@ function renderPlayerAndAnimalCards() {
   else if (a.dewormStage === 0) nextHint = 'Дайте 1-ю таблетку от глистов (26 BYN)';
   else if (a.dewormStage === 1 && a.daysSinceDeworm1 < 10) nextHint = `Подождите ${10 - a.daysSinceDeworm1} дн. до 2-й глистогонки`;
   else if (a.dewormStage === 1 && a.daysSinceDeworm1 >= 10) nextHint = 'Пора дать 2-ю таблетку от глистов (20 BYN)!';
+  else if (a.species === 'dog' && (!a.tickProtectionDaysLeft || a.tickProtectionDaysLeft <= 0)) nextHint = 'Обработайте собаку каплями от клещей (35 BYN, вкладка 1), чтобы избежать пироплазмоза!';
   else if (a.ageDays < 60 && a.ageDays >= 45 && !state.pr.prActive) nextHint = 'С 45 дней можно открыть ПИАР на раннее бронирование (вкладка 3)!';
   else if (a.ageDays >= 60 && !a.parasitesAndVaccinated) nextHint = 'Сделайте комплексную вакцинацию (60 BYN)';
   else if (a.ageCategory === 'adult' && !a.isSterilized) nextHint = 'Проведите обязательную стерилизацию/кастрацию';
@@ -367,6 +427,16 @@ function renderActionTabs() {
   const onbBox = document.getElementById('onboardingDashboard');
   const btnTabZoo = document.getElementById('tabBtn_zooshans');
   const btnTabCare = document.getElementById('tabBtn_care');
+  const expLabel = document.getElementById('experiencedCuratorLabel');
+
+  // Чекбокс опытного куратора доступен, если в альбоме есть хотя бы 1 спасенный питомец (GDD 9.2)
+  if (expLabel) {
+    if (getSavedAlbum().length > 0) {
+      expLabel.classList.remove('hidden');
+    } else {
+      expLabel.classList.add('hidden');
+    }
+  }
 
   // Онбординг: если игрок еще не погуглил, скрываем вкладки волонтерства
   if (!state.onboarding.googleDone) {
@@ -539,14 +609,14 @@ function renderActionTabs() {
     {
       title: h.isPregnant ? 'Экстренная стерилизация беременной' : `Стерилизация / Кастрация (${g.shortNom})`,
       sub: `${priceLabel(g.isDog ? 300 : (h.isPregnant ? 225 : 160), true)} | -20⚡ | Оплачивает куратор или сбор на карту`,
-      disabled: a.isSterilized || a.ageCategory !== 'adult' || (h.isLostOrPurebred && state.pr.lostSearchDaysDone < 10) || (a.hasMotherCat && a.motherLactating) || (!h.isPregnant && a.quarantineDaysDone < 14),
+      disabled: a.isSterilized || (!a.hasMotherCat && a.ageCategory !== 'adult') || (h.isLostOrPurebred && state.pr.lostSearchDaysDone < 10) || (a.hasMotherCat && a.motherLactating) || (!h.isPregnant && a.quarantineDaysDone < 14),
       doneText: a.isSterilized
         ? '✓ Стерилизован(а)'
         : (a.hasMotherCat && a.motherLactating
             ? `🔒 Кормящую маму нельзя стерилизовать до 45 дней котят (${a.ageDays}/45 дн.)`
             : (!h.isPregnant && a.quarantineDaysDone < 14
                 ? `🔒 Стерилизация проводится после 14 дней карантина (${a.quarantineDaysDone}/14 дн.)`
-                : (a.ageCategory !== 'adult' ? 'Котята/щенки отдаются под договор стерилизации по возрасту' : 'Сначала 10 дней поиска старых хозяев!'))),
+                : (!a.hasMotherCat && a.ageCategory !== 'adult' ? 'Котята/щенки отдаются под договор стерилизации по возрасту' : 'Сначала 10 дней поиска старых хозяев!'))),
       onClick: () => {
         if (!spendEnergy(20)) return;
         const cost = g.isDog ? 300 : (h.isPregnant ? 225 : 160);
@@ -594,6 +664,17 @@ function renderActionTabs() {
     }
   ];
 
+  // Кнопка обработки от клещей для собак (GDD 6.3)
+  if (a.species === 'dog') {
+    vetButtons.push({
+      title: '🐕 Обработка от иксодовых клещей (капли 35 BYN)',
+      sub: '35 BYN | -5⚡ | Защита от смертельного пироплазмоза на 30 дней в парках Минска',
+      disabled: a.tickProtectionDaysLeft > 5,
+      doneText: `✓ Защищен от клещей (еще ${a.tickProtectionDaysLeft} дн.)`,
+      onClick: actionBuyTickProtection
+    });
+  }
+
   // 2. Вкладка КОЛЛ-ЦЕНТР «ЗООШАНСА», СБОРЫ И СОЦСЕТИ
   // Сбор на р/с «Зоошанса» открывается ТОЛЬКО при долге от 330 BYN+ или согласованной тяжелой хирургии (GDD 5.2)
   const canOpenOfficialRsFundraiser = state.zooshans.voucherDebt >= 330 || state.zooshans.expensiveApproved;
@@ -636,11 +717,11 @@ function renderActionTabs() {
     },
     {
       title: 'Открыть сбор на личную банковскую карту (Лимит до 6500 BYN в год)',
-      sub: `На корм, смесь, лекарства и обычные талоны | Собрано: ${state.zooshans.personalCardCollectedBYN}/6500 BYN`,
+      sub: `На корм, смесь, лекарства и обычные талоны (-15⚡) | Собрано: ${state.zooshans.personalCardCollectedBYN}/6500 BYN`,
       disabled: state.zooshans.personalFundraiserActive || state.zooshans.personalDonationsBanned || state.zooshans.personalCardCollectedBYN >= 6500,
       doneText: state.zooshans.personalDonationsBanned ? '🚫 Заблокировано модераторами за отсутствие отчетов' : '✓ Сбор на личную карту активен (отчет каждые 7 дн.)',
       onClick: () => {
-        if (!spendEnergy(12)) return;
+        if (!spendEnergy(15)) return;
         state.zooshans.personalFundraiserActive = true;
         addLog(`День ${state.day}: 💳 Открыт сбор на личную карту (в пределах лимита 6500 BYN/год). Обязательно выкладывайте чеки каждые 7 дней!`, 'success');
         renderAll();
@@ -655,11 +736,11 @@ function renderActionTabs() {
     },
     {
       title: 'Свести чеки: Опубликовать 7-дневный финотчет по сбору на карту',
-      sub: 'Выложить фото чеков и скриншоты трат (-15⚡, защищает сбор от блокировки)',
+      sub: 'Выложить фото чеков и скриншоты трат (-20⚡, защищает сбор от блокировки)',
       disabled: !state.zooshans.personalFundraiserActive,
       doneText: 'Нет активного сбора на личную карту',
       onClick: () => {
-        if (!spendEnergy(15)) return;
+        if (!spendEnergy(20)) return;
         state.zooshans.daysSinceLastFinReport = 0;
         state.mental = Math.min(100, state.mental + 5);
         addLog(`День ${state.day}: 📊 Опубликован честный финотчет с чеками во всех группах (+5% Менталки)! Сбор в безопасности.`, 'success');
@@ -709,25 +790,58 @@ function renderActionTabs() {
     abroadDoneText = `🌍 Карантин ЕС: ${state.abroad.daysInEuQuarantine}/90 дн.`;
   }
 
-  const careButtons = [
-    {
-      title: `🛒 Закупить в зоомагазине ${supplyItemName} на 14 дней (-${supplyPackCost} BYN)`,
-      sub: `-10⚡ | Куратор обязан обеспечивать расходники и дома, и на передержке!`,
+  const careButtons = [];
+
+  // Кнопка проверки подопечного на испытательном сроке (GDD 8.4)
+  if (state.trialAnimals && state.trialAnimals.length > 0) {
+    const activeTrial = state.trialAnimals[0];
+    careButtons.push({
+      title: `📱 Написать хозяевам «${activeTrial.petName}» (испытательный срок: ${activeTrial.daysPassed}/7 дн.)`,
+      sub: '-5⚡ | Запросить фото-привет и узнать, как дела (+5% Менталки)',
       disabled: false,
       doneText: '',
-      onClick: () => {
-        if (state.cash < supplyPackCost) {
-          addLog(`День ${state.day}: Не хватает денег на пакет расходников (${supplyPackCost} BYN)!`, 'danger');
-          return;
-        }
-        if (!spendEnergy(10)) return;
-        state.cash = +(state.cash - supplyPackCost).toFixed(1);
-        state.personalMoneySpent = +(state.personalMoneySpent + supplyPackCost).toFixed(1);
-        state.supplies.daysLeft += 14;
-        addLog(`День ${state.day}: 🛒 Вы закупили в зоомагазине ${supplyItemName} на 14 дней (-${supplyPackCost} BYN).`, 'success');
-        renderAll();
+      onClick: actionCheckTrialPetStatus
+    });
+  }
+
+  // Закупка расходников на 14 дней
+  careButtons.push({
+    title: `🛒 Закупить в зоомагазине ${supplyItemName} на 14 дней (-${supplyPackCost} BYN)`,
+    sub: `-10⚡ | Куратор обязан обеспечивать расходники и дома, и на передержке!`,
+    disabled: false,
+    doneText: '',
+    onClick: () => {
+      if (state.cash < supplyPackCost) {
+        addLog(`День ${state.day}: Не хватает денег на пакет расходников (${supplyPackCost} BYN)!`, 'danger');
+        return;
       }
-    },
+      if (!spendEnergy(10)) return;
+      state.cash = +(state.cash - supplyPackCost).toFixed(1);
+      state.personalMoneySpent = +(state.personalMoneySpent + supplyPackCost).toFixed(1);
+      state.supplies.daysLeft += 14;
+      addLog(`День ${state.day}: 🛒 Вы закупили в зоомагазине ${supplyItemName} на 14 дней (-${supplyPackCost} BYN).`, 'success');
+      renderAll();
+    }
+  });
+
+  // Выручка кормом от своего домашнего кота в безденежье (GDD 3.0, 7.1)
+  const hasOwnCat = state.player.ownPets && (state.player.ownPets.id === 'vaccinated_cat' || state.player.ownPets.id === 'unvaccinated_cat');
+  if (hasOwnCat) {
+    const daysSinceShare = state.day - (state.lastOwnPetFoodShareDay || -999);
+    const canShare = (state.supplies.daysLeft <= 2 || state.cash < 65) && (daysSinceShare >= 14);
+    careButtons.push({
+      title: '🥣 Взять 4 дня корма у своего домашнего кота (0 BYN)',
+      sub: '-2% Менталки | Спасение в безденежье раз в 14 дней (домашний кот будет недоволен!)',
+      disabled: !canShare,
+      doneText: daysSinceShare < 14
+        ? `⏳ Кот еще не простил (ждем ${14 - daysSinceShare} дн.)`
+        : 'Активируется при корме <= 2 дн. или нехватке денег',
+      onClick: actionShareFoodWithOwnCat
+    });
+  }
+
+  // Фотосессии
+  careButtons.push(
     {
       title: '📸 Сфотографировать самому на телефон при хорошем свете',
       sub: '-5⚡ | Базовые фото для первого пиара (увеличивает звонки в 1.2 раза)',
@@ -851,31 +965,37 @@ function renderActionTabs() {
       }
     },
     {
-      title: state.abroad.rabiesVaccineAndChipDone && !state.abroad.titerBloodTaken
-        ? 'Целевой сбор на оплату титров ЕС (630 BYN)'
-        : `Перевезти на коммерческую передержку (${g.isDog ? 33 : 16} BYN/сутки + ваш корм)`,
-      sub: state.abroad.rabiesVaccineAndChipDone && !state.abroad.titerBloodTaken
-        ? '-15⚡ | Помогает собрать 630 BYN на лабораторию'
-        : 'Полностью снимает домашний быт, но корм и оплата за ваш счет!',
-      disabled: state.zooshans.locationStatus === 'paid_foster' && (!state.abroad.rabiesVaccineAndChipDone || state.abroad.titerBloodTaken),
+      title: `Перевезти на коммерческую передержку (${g.isDog ? 33 : 16} BYN/сутки + ваш корм)`,
+      sub: 'Полностью снимает домашний быт, но корм и оплата за ваш счет!',
+      disabled: state.zooshans.locationStatus === 'paid_foster',
       doneText: '✓ Уже на платной передержке',
       onClick: () => {
-        if (state.abroad.rabiesVaccineAndChipDone && !state.abroad.titerBloodTaken && !state.abroad.titerFundraiserActive) {
-          if (!spendEnergy(15)) return;
-          state.abroad.titerFundraiserActive = true;
-          addLog(`День ${state.day}: 🌍 Открыт целевой сбор на титры бешенства (630 BYN)!`, 'info');
-        } else {
-          if (!a.examinedWood || a.dewormStage < 1) {
-            addLog(`День ${state.day}: ⚠️ На платную передержку не берут с улицы вслепую! Сначала сделайте первичный осмотр Вуда и 1-ю обработку от паразитов.`, 'warn');
-            return;
-          }
-          state.zooshans.locationStatus = 'paid_foster';
-          addLog(`День ${state.day}: Подопечный переехал на платную передержку (${g.isDog ? 33 : 16} BYN/сут). Домашний быт снят, но следите за запасом корма!`, 'info');
+        if (!a.examinedWood || a.dewormStage < 1) {
+          addLog(`День ${state.day}: ⚠️ На платную передержку не берут с улицы вслепую! Сначала сделайте первичный осмотр Вуда и 1-ю обработку от паразитов.`, 'warn');
+          return;
         }
+        state.zooshans.locationStatus = 'paid_foster';
+        if (state.maneuver) state.maneuver.active = false;
+        addLog(`День ${state.day}: Подопечный переехал на платную передержку (${g.isDog ? 33 : 16} BYN/сут). Домашний быт снят, но следите за запасом корма!`, 'info');
         renderAll();
       }
     }
-  ];
+  );
+
+  if (state.abroad.rabiesVaccineAndChipDone && !state.abroad.titerBloodTaken) {
+    careButtons.push({
+      title: 'Целевой сбор на оплату титров ЕС (630 BYN)',
+      sub: '-15⚡ | Помогает собрать 630 BYN на лабораторию',
+      disabled: state.abroad.titerFundraiserActive,
+      doneText: '✓ Сбор на титры ЕС открыт',
+      onClick: () => {
+        if (!spendEnergy(15)) return;
+        state.abroad.titerFundraiserActive = true;
+        addLog(`День ${state.day}: 🌍 Открыт целевой сбор на титры бешенства (630 BYN)!`, 'info');
+        renderAll();
+      }
+    });
+  }
 
   renderButtonGrid('tabContent_vet', vetButtons);
   renderButtonGrid('tabContent_zooshans', zooButtons);
@@ -961,7 +1081,7 @@ function closeEventModal() {
   renderAll();
 }
 
-// 4. ФИНАЛЬНЫЙ ЭКРАН, РАЗБОР ОШИБОК И КАРТОЧКА 9:16 (GDD 9.1, 9.2, 9.3)
+// 4. ФИНАЛЬНЫЙ ЭКРАН, РАЗБОР ОШИБОК, АЛЬБОМ И КАРТОЧКА 9:16 (GDD 9.1, 9.2, 9.3)
 
 function triggerEndGame(isVictory, title, description) {
   stopTimer();
@@ -999,49 +1119,86 @@ function triggerEndGame(isVictory, title, description) {
   document.getElementById('statVoucherUsed').textContent = `${ +(state.voucherFundsUsed + state.zooshans.voucherDebt).toFixed(1) } BYN`;
   document.getElementById('statFilteredCalls').textContent = state.filteredBadCalls;
 
-  // Заполнение карточки 9:16 для репоста в соцсети (GDD 9.2)
+  // Заполнение карточки 9:16 для репоста в соцсети (GDD 9.2, 9.3)
   const a = state.animal;
   const isDog = a.species === 'dog';
+  const savedAlbumLen = getSavedAlbum().length;
   document.getElementById('storyCardEmoji').textContent = isDog ? '🐕' : '🐈';
   document.getElementById('storyCardTitle').textContent = isVictory
-    ? `Я и ${a.title}: ${state.day} дней от улицы до дома`
-    : `История спасения: ${state.day} дней борьбы за жизнь`;
+    ? `Я и «${a.petName || a.title}»: ${state.day} дней от улицы до дома`
+    : `История «${a.petName || a.title}»: ${state.day} дней борьбы за жизнь`;
   document.getElementById('storyCardSubtitle').textContent = `Окрас: ${a.coatLabel || 'Спасенный'}`;
   document.getElementById('storyCardStatDays').textContent = state.day;
   document.getElementById('storyCardStatPersonal').textContent = `${state.personalMoneySpent} BYN`;
   document.getElementById('storyCardStatVoucher').textContent = `${ +(state.voucherFundsUsed + state.zooshans.voucherDebt).toFixed(1) } BYN`;
   document.getElementById('storyCardStatFiltered').textContent = state.filteredBadCalls;
+  const storyAlbumEl = document.getElementById('storyCardStatAlbum');
+  if (storyAlbumEl) storyAlbumEl.textContent = savedAlbumLen;
 }
 
 function getMistakeEducationalText(reason) {
   const mistakesMap = {
-    'cow_milk_blind_kittens': 'Коровье молоко категорически не подходит для выкорма новорожденных котят из-за высокой концентрации казеина и лактозы. ЖКТ малышей не способен его расщепить, что приводит к острому тимпаниту (вздутию), некупируемой диарее и гибели от обезвоживания за считанные часы.\n\nЗапомните: слепышей поят исключительно специализированным заменителем кошачьего молока (Royal Canin Babycat Milk) из мини-соски каждые 2–3 часа, а «Зоошанс» бесплатно выдает первый стартовый пакетик смеси всем обратившимся!',
-    'cow_milk_or_starvation': 'Слепые новорожденные котята не имеют запаса гликогена в печени. Без регулярного теплого питания каждые 2–3 часа температура тела падает, наступает критическая гипогликемия и кома. Куратор должен дежурить по будильнику даже ночью или вовремя передать малышей опытному волонтеру на стабилизацию!',
-    'gurskogo_trap': 'В Республике Беларусь нет государственных приютов. Пункт на ул. Гурского, 42 («Фауна города») является коммунальным предприятием отлова и временного содержания. Из-за колоссальной скученности там циркулируют тяжелые вирусные инфекции, а срок нахождения ограничен законом. Спасение чужими руками не работает — спасти жизнь животного можно только взяв кураторство на себя!',
-    'dumped_box_trap': 'Подбросить коробку к клинике или зоомагазину — распространенная ошибка обывателей. Ветеринарные клиники — это медицинские учреждения без помещений для передержки и финансирования на уход за бездомными животными. Подброшенная коробка мгновенно инфицируется вирусами на крыльце либо выставляется персоналом на улицу.',
-    'landlord_eviction_no_vet': 'При строгом запрете на животных в съемном жилье куратор обязан с первого дня обследовать подопечного в клинике (просвет лампой Вуда и обработка от паразитов). Без первичных анализов ни одна проверенная платная передержка не пустит животное на порог из соображений биобезопасности!',
-    'call_window_fall_fatal': 'Кошки не умеют группироваться при падении из окон так, как думают обыватели. Даже с 2–3 этажа падение чревато отрывом почек, переломом позвоночника и разрывом неба. Обычные москитные сетки на пластиковых уголках не выдерживают вес кота, а клиновидное вертикальное проветривание — смертельная ловушка, где кошки застревают и погибают от удушья и паралича. Спасают только сварные сетки «Антикошка» (Pet Screen) и гребенки-ограничители!',
-    'abandoned_on_foster': 'Человек из соцсетей, согласившийся передержать животное бесплатно — не профессиональный волонтер. Столкнувшись с бытом, он может не рассчитать свои силы. Бросить его один на один с проблемой и заблокировать номер — моральный крах куратора. Куратор обязан либо прийти на помощь и забрать животное, либо компенсировать расходы.',
-    'virus_no_icu': 'Панлейкопения кошек и парвовирусный энтерит щенков вызывают тотальный некроз ворсинок кишечника и обнуление лейкоцитов. Выпоить животное из шприца ромашкой или водкой невозможно — необходим круглосуточный инфекционный стационар, инфузоматы с постоянной инфузией и противорвотные препараты центрального действия.',
-    'burnout': 'Эмоциональное выгорание — частая трагедия в зоозащите. Когда куратор берет на себя непосильный груз, не спит ночами и замыкается в себе, наступает истощение. Волонтеры «Зоошанса» объединяются в чат @zooshans_chat именно для того, чтобы подставлять плечо в трудную минуту, делить тяготы и спасать жизни сообща!'
+    // 1. Питание слепышей
+    'cow_milk_blind_kittens': 'Коровье молоко категорически не подходит для выкорма новорожденных котят из-за высокой концентрации казеина и лактозы. ЖКТ малышей не способен его расщепить, что приводит к острому вздутию (тимпаниту), профузной диарее и быстрой гибели от обезвоживания.\n\nЗапомните: слепышей поят исключительно специализированным заменителем кошачьего молока (Royal Canin Babycat Milk) каждые 2–3 часа, а «Зоошанс» бесплатно выдает первый стартовый пакетик смеси всем обратившимся!',
+    'cow_milk_or_starvation': 'Слепые новорожденные котята не имеют запаса гликогена в печени. Без регулярного теплого питания каждые 2–3 часа температура их тела падает, наступает критическая гипогликемия и кома. Куратор должен кормить по будильнику даже ночью или вовремя передать малышей опытному волонтеру на стабилизацию!',
+
+    // 2. Ловушки обывателя
+    'gurskogo_trap': 'В Беларуси нет государственных приютов. Предприятие на ул. Гурского, 42 («Фауна города») является коммунальной службой отлова и временного содержания. Из-за колоссальной скученности там бушуют инфекции, а срок нахождения ограничен законом, после чего невостребованных животных усыпляют. Спасти жизнь можно только личным кураторством!',
+    'dumped_box_trap': 'Подбросить коробку к клинике или зоомагазину — ловушка малодушия. Ветеринарные клиники — это медицинские учреждения без бюджета и мест для содержания бездомных. Подброшенные животные погибают от инфекций от входящих пациентов либо выставляются персоналом на улицу.',
+    'landlord_eviction_no_vet': 'При строгом запрете на животных в съемном жилье куратор обязан с первого дня обследовать подопечного в клинике (просвет лампой Вуда и обработка от паразитов). Без первичных анализов ни одна проверенная передержка не пустит животное на порог из соображений биобезопасности!',
+
+    // 3. Бытовые опасности
+    'call_window_fall_fatal': 'Кошки не умеют безопасно приземляться с высоты. Даже со 2–3 этажа падение чревато разрывом внутренних органов, переломом неба и параличом. Обычные москитные сетки легко выдавливаются кошачьим весом, а вертикальное клиновидное проветривание — смертельный капкан, где кошки гибнут от удушья и сдавливания почек. Безопасность гарантируют только сварные сетки «Антикошка» (Pet Screen) и гребенки-ограничители!',
+    'call_toddler_toy': 'Маленькие дети (до 4–5 лет) не контролируют силу и могут причинить животному боль (тянуть за уши, сдавливать). В целях самообороны питомец пускает в ход когти, после чего родители в панике выставляют «агрессора» на улицу. Отдавать животных в семьи с малышами можно только при постоянном контроле взрослых!',
+    'call_anti_spay_aesthetic': 'Миф о «радости материнства» и «родах для здоровья» ежегодно убивает тысячи животных. Роды изнашивают организм, а некастрированные питомцы страдают от онкологии и пиометры. Раздача котят «по знакомым» — самообман: большинство из них и их потомства окажется на улице. Стерилизация — единственный законный и гуманный способ остановить конвейер смертей!',
+    'call_village_mice_outdoor': 'Самовыгул в деревне или частном секторе — это короткая жизнь: коты на улице живут в среднем 2–3 года вместо 15 лет дома (гибнут под колесами, от зубов собак, яда для крыс и капканов). Кошка должна жить в тепле и безопасности внутри дома!',
+    'call_dorm_secret': 'В студенческих общежитиях содержание животных строго запрещено уставом. Рано или поздно комендант находит питомца во время проверки, и студент под угрозой выселения выставляет животное на улицу посреди зимы.',
+    'call_gift_girlfriend_surprise': 'Животное в подарок-сюрприз без ведома человека — опасный жест. Питомец — это 15 лет ежедневных расходов и ухода. Если человек не готов брать такую ответственность, спасенный хвостик быстро оказывается на улице.',
+    'call_bones_and_pork': 'Трубчатые птичьи кости раскалываются на острые осколки, протыкающие желудок и кишечник собаки, вызывая перитонит и мучительную гибель. Жареная свинина гарантирует острый панкреатит. Собаке требуется сбалансированный видовой рацион!',
+    'call_dog_chain_village': 'Короткая цепь — пытка для собаки. Без движения деформируются суставы, а без обработки каплями от клещей цепные собаки в Беларуси массово погибают от весеннего пироплазмоза за 48 часов.',
+    'call_fiv_felv_ignorer': 'Вирусный лейкоз кошек (FeLV / ВЛК) смертелен и передается через общую слюну, миски и вылизывание. Подселять FeLV-положительную кошку к здоровым непривитым животным недопустимо!',
+    'call_fake_breed_colorpoint': '«Черные разведенцы» охотятся за породистыми фенотипами колор-пойнтов для коммерческих вязок без вакцин. Животное запирают в тесной клетке как станок для пложения, а затем выбрасывают. Отдавать животных можно только после стерилизации!',
+    'call_halloween_black_cat': 'Перед Хэллоуином (конец октября) волонтеры вводят жесткий мораторий на отдачу черных котов из-за риска садистских ритуалов и жестоких подростковых розыгрышей. Черных кошек отдают только по паспорту и договору!',
+
+    // 4. Мошенники
+    'scam_courier_prepay': 'Мошенники мониторят объявления о животных. Ссылка на «страховку доставки курьером» — типичный фишинг для списания денег с карты. Никогда не переходите по сторонним платежным ссылкам!',
+    'scam_breeder_metro': 'Коробочницы у метро принимают животных «на пристройство», держат их в тесных грязных коробках до первого вируса, а непроданных к вечеру выбрасывают в мусорные баки или лесополосы.',
+
+    // 5. Болезни и побеги
+    'piroplasmosis': 'Пироплазмоз (бабезиоз) собак передается иксодовыми клещами и разрушает эритроциты за считанные дни. Темная моча и отказ от еды — повод немедленно бежать в клинику за уколом антидота! Единственная профилактика — капли на холку каждые 30 дней.',
+    'escape_lost_forever': 'Если испуганное животное сорвалось с поводка, счет идет на часы. В первые 4 дня спасает только тотальная расклейка бумажных объявлений и ночные поиски с фонарем в 4–5 утра в подвалах.',
+    'fip_no_treatment': 'Инфекционный перитонит кошек (ФИП) сегодня излечим препаратом GS-441524 (84 дня терапии). Усыплять кота с ФИП без попытки терапии — трагическая потеря шанса на спасение!',
+    'abandoned_on_foster': 'Человек из соцсетей, взявший подопечного бесплатно — не профессионал. Если бросить его без связи и снабжения кормом, он выставит животное во двор. Куратор обязан контролировать условия и быть на связи!',
+    'virus_no_icu': 'Панлейкопения кошек и парвовирусный энтерит щенков требуют интенсивной терапии в круглосуточном стационаре с инфузоматами. Домашними каплями такие вирусы не лечатся!',
+    'burnout': 'Эмоциональное выгорание — тяжелейшая проблема в зоозащите. Не оставайтесь со своими переживаниями один на один: волонтерский чат @zooshans_chat создан именно для того, чтобы делиться трудностями и находить поддержку!'
   };
 
-  return mistakesMap[reason] || 'Главное правило спасения: животное не может защитить себя само. Каждый шаг куратора (от карантина и сеток на окнах до договора с паспортными данными) должен быть направлен на исключение любых факторов риска!';
+  return mistakesMap[reason] || 'Главное правило спасения: животное не может защитить себя само. Каждый шаг куратора (от карантина и сеток на окнах до договора с паспортными данными) должен исключать любые риски!';
 }
 
 function copyStoryCardToClipboard() {
   const a = state.animal;
   const isVic = state.victory;
+  const albumCount = getSavedAlbum().length;
+  const seasonsStr = (state.seasonsPassed && state.seasonsPassed.length > 0)
+    ? state.seasonsPassed.map(s => {
+        const seasonLabels = { summer: '☀️ Лето', autumn: '🍂 Осень', winter: '❄️ Зима', spring: '🌱 Весна' };
+        return seasonLabels[s] || s;
+      }).join(' → ')
+    : (state.currentSeason ? getSeasonLabelRu(state.currentSeason) : 'Минск');
+
   const text = `🐾 ИСТОРИЯ СПАСЕНИЯ: ${isVic ? 'ОТ УЛИЦЫ ДО ДОМА!' : 'БОРЬБА ЗА ЖИЗНЬ'}\n` +
-    `Я и подопечный («${a.title}»)\n` +
-    `⏳ Прожито дней в симуляторе: ${state.day}\n` +
+    `Я и подопечный: «${a.petName || a.title}» (${a.speciesLabel}, ${a.coatLabel || 'спасенный'})\n` +
+    `⏳ Прожито дней в симуляторе: ${state.day} (${seasonsStr})\n` +
     `💰 Потрачено личных средств: ${state.personalMoneySpent} BYN\n` +
     `🎫 Привлечено по талонам и сборам: ${ +(state.voucherFundsUsed + state.zooshans.voucherDebt).toFixed(1) } BYN\n` +
-    `🛡️ Отсеяно опасных «ручек»: ${state.filteredBadCalls}\n\n` +
-    `Государственных приютов в Беларуси нет. Вся реальная помощь держится на волонтерах МБООПЖ «Зоошанс»:\n` +
+    `🛡️ Отсеяно опасных «ручек»: ${state.filteredBadCalls}\n` +
+    `🏆 В моем личном альбоме спасенных жизней: ${albumCount}\n\n` +
+    `В Беларуси нет государственных приютов. Вся реальная помощь держится только на волонтерах МБООПЖ «Зоошанс»:\n` +
     `💳 Помочь «Зоошансу» (Код ЕРИП: 4346991): https://zooshans.by/help-us\n` +
     `💬 Чат волонтеров и проверка ручек: https://t.me/zooshans_chat\n` +
-    `🤖 Справочный бот-памятка: https://t.me/zooshans_info_bot`;
+    `🤖 Справочный бот-памятка: https://t.me/zooshans_info_bot\n` +
+    `🏷️ Картотека кличек Зоошанса: https://forum.zooshans.by/app.php/petnames`;
 
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.getElementById('btnCopyStoryCard');
@@ -1055,4 +1212,85 @@ function copyStoryCardToClipboard() {
   }).catch(() => {
     alert('Не удалось скопировать в буфер обмена. Скопируйте текст вручную.');
   });
+}
+
+// 5. АЛЬБОМ СПАСЕННЫХ ХВОСТИКОВ И ОПЫТ КУРАТОРА (GDD 9.2)
+
+function showAlbumModal() {
+  stopTimer();
+  const modal = document.getElementById('savedAlbumModal');
+  const list = document.getElementById('savedAlbumList');
+  const totalCountEl = document.getElementById('albumTotalCountText');
+  const album = getSavedAlbum();
+
+  if (totalCountEl) {
+    totalCountEl.textContent = `Всего спасено жизней в альбоме: ${album.length}`;
+  }
+
+  if (!album || album.length === 0) {
+    list.innerHTML = `
+      <div class="p-6 text-center text-slate-400 bg-slate-900/60 border border-slate-800 rounded-xl">
+        <div class="text-3xl mb-2">🐾</div>
+        <div class="text-sm font-semibold text-slate-300">Пока в альбоме нет спасенных хвостиков</div>
+        <p class="text-xs text-slate-500 mt-1">
+          Пройдите путь куратора до конца, чтобы успешно пристроить подопечного (или оставить себе) — и его памятная карточка навсегда сохранится здесь!
+        </p>
+      </div>
+    `;
+  } else {
+    list.innerHTML = album.map(tail => {
+      const isDog = tail.species === 'dog';
+      const icon = isDog ? '🐕' : '🐈';
+      const seasonsStr = (tail.seasonsPassed && tail.seasonsPassed.length > 0)
+        ? tail.seasonsPassed.map(s => {
+            const seasonLabels = { summer: '☀️ Лето', autumn: '🍂 Осень', winter: '❄️ Зима', spring: '🌱 Весна' };
+            return seasonLabels[s] || s;
+          }).join(' → ')
+        : 'Сезон спасения';
+
+      return `
+        <div class="bg-slate-900/80 border border-slate-800 hover:border-amber-500/50 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition">
+          <div class="flex items-center gap-3">
+            <span class="text-2xl sm:text-3xl p-2 rounded-xl bg-slate-800/80 border border-slate-700">${icon}</span>
+            <div>
+              <div class="flex items-center gap-2">
+                <h4 class="font-bold text-white text-sm sm:text-base">«${tail.petName || 'Найденыш'}»</h4>
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-500/40">
+                  ${tail.archetypeTitle || 'Подопечный'}
+                </span>
+              </div>
+              <div class="text-xs text-slate-400 mt-0.5">
+                Окрас: <span class="text-amber-300 font-mono">${tail.coatName || 'Уличный'}</span> • 
+                Семья: <span class="text-sky-300">${tail.adopterSummary || 'Любящий дом'}</span>
+              </div>
+              <div class="text-[11px] font-mono text-slate-500 mt-1">
+                ⏳ Спасен за ${tail.daysSpent} дн. (${seasonsStr}) • Дата: ${tail.dateSaved || 'Минск'}
+              </div>
+            </div>
+          </div>
+          <div class="self-end sm:self-center shrink-0 text-right">
+            <span class="text-xs font-mono font-bold text-emerald-400">✓ Дома</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  modal.classList.remove('hidden');
+}
+
+function closeAlbumModal() {
+  const modal = document.getElementById('savedAlbumModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function toggleExperiencedCurator(checked) {
+  if (checked) {
+    state.onboarding.googleDone = true;
+    addLog(`День ${state.day}: 🎓 Режим опытного куратора активирован! Туман войны развеян, контакты «Зоошанса» открыты.`, 'success');
+  } else {
+    state.onboarding.googleDone = false;
+    addLog(`День ${state.day}: 🌫️ Режим новичка включен. Сделайте поиск в Google.`, 'info');
+  }
+  renderAll();
 }

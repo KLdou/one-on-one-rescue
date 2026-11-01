@@ -1,4 +1,4 @@
-// engine.js - Игровой цикл, пошаговая острая фаза, перемотка времени и дедлайны (v2.0)
+// engine.js - Игровой цикл, пошаговая острая фаза, перемотка времени и дедлайны (v2.2)
 
 function setSpeed(speed) {
   if (state.gameOver) return;
@@ -121,11 +121,13 @@ function fastForwardCalmDays() {
   renderAll();
 }
 
+// Умная перемотка: 13 правил автоматической остановки за 1 день (GDD 2.1)
 function getTomorrowDeadlineWarning() {
   const a = state.animal;
 
   // 1. За 1 день до окончания запаса корма/наполнителя (daysLeft <= 2)
-  if (state.supplies.daysLeft <= 2 && state.zooshans.giftedFoodDaysLeft === 0) {
+  const totalFood = state.supplies.daysLeft + (state.zooshans.giftedFoodDaysLeft || 0);
+  if (totalFood <= 2) {
     return 'завтра заканчивается запас корма и расходников (нужно закупить пакет в зоомагазине)!';
   }
 
@@ -187,6 +189,22 @@ function getTomorrowDeadlineWarning() {
     return 'завтра завершается 90-дневный карантин ЕС!';
   }
 
+  // 13. NEW in v2.2: За 1 день до окончания 7-дневного испытательного срока или развязки красных флагов
+  if (state.trialAnimals && state.trialAnimals.length > 0) {
+    for (const t of state.trialAnimals) {
+      if (t.isRedFlag && t.daysPassed === 3) {
+        return `завтра 4-й день у новых хозяев подопечного («${t.petName}»)!`;
+      }
+      if (!t.isRedFlag && t.daysPassed === 6) {
+        return `завтра (7-й день) завершается испытательный срок у новых хозяев («${t.petName}»)!`;
+      }
+    }
+  }
+
+  if (state.maneuver && state.maneuver.active && state.maneuver.daysRemaining === 1) {
+    return 'завтра истекает срок маневра для поиска новой передержки!';
+  }
+
   if (a.pcrPending && a.pcrDaysRemaining === 1) {
     return 'завтра приходит результат лабораторного ПЦР-исследования!';
   }
@@ -208,7 +226,19 @@ function processDayTick() {
   const a = state.animal;
   const g = getAnimalGrammar(a);
 
-  // 1. Выкорм слепышей (GDD 7.1)
+  // 1. Продвижение календаря дат и сезонов (GDD 2.2)
+  state.calendarDate.setDate(state.calendarDate.getDate() + 1);
+  const newSeason = getSeasonFromMonth(state.calendarDate.getMonth());
+  if (newSeason !== state.currentSeason) {
+    state.currentSeason = newSeason;
+    if (!state.seasonsPassed.includes(newSeason)) {
+      state.seasonsPassed.push(newSeason);
+    }
+    const sLabel = getSeasonLabelRu(newSeason);
+    addLog(`День ${state.day}: 🍂 Наступил новый сезон — ${sLabel}! Условия пристройства и сезонные риски обновились.`, 'info');
+  }
+
+  // 2. Выкорм слепышей (GDD 7.1)
   if (state.newborn.active) {
     if (isAnimalAtPlayerHome()) {
       if (!state.newborn.fedToday) {
@@ -244,10 +274,32 @@ function processDayTick() {
     }
   }
 
-  // Расход корма кормящей мамой увеличен в 2.5 раза (GDD 4.2)
+  // 3. Динамический расход пакета корма/наполнителя с учетом остатка выводка (GDD 7.1)
+  const nActive = a.activeCount !== undefined ? a.activeCount : a.count;
+  const nTotal = a.totalCount || a.count || 1;
+  let foodConsumptionRate = nActive > 0 ? (nActive / nTotal) : 0;
+  // Слепыши на ручном выкорме дома питаются специализированной смесью из соски, а не сухим кормом
+  if (state.newborn.active && isAnimalAtPlayerHome()) {
+    foodConsumptionRate = 0;
+  }
   if (a.hasMotherCat && a.motherLactating) {
-    if (state.supplies.daysLeft > 0) {
-      state.supplies.daysLeft = Math.max(0, state.supplies.daysLeft - 1.5);
+    foodConsumptionRate *= 2.5; // Кормящая мама ест в 2.5 раза больше
+  }
+
+  if (foodConsumptionRate > 0) {
+    if (state.zooshans.giftedFoodDaysLeft > 0) {
+      state.zooshans.giftedFoodDaysLeft = Math.max(0, +(state.zooshans.giftedFoodDaysLeft - foodConsumptionRate).toFixed(2));
+    } else if (state.supplies.daysLeft > 0) {
+      state.supplies.daysLeft = Math.max(0, +(state.supplies.daysLeft - foodConsumptionRate).toFixed(2));
+    } else {
+      a.health = Math.max(0, a.health - 8);
+      state.mental = Math.max(0, state.mental - 10);
+      checkMentalHealth();
+      if (!isAnimalAtPlayerHome()) {
+        addLog(`День ${state.day}: 🚨 СКАНДАЛ С ПЕРЕДЕРЖКОЙ: Закончился корм и наполнитель! Срочно закупите пакет в зоомагазине (вкладка 3)!`, 'danger');
+      } else {
+        addLog(`День ${state.day}: 🚨 ДОМА ЗАКОНЧИЛСЯ КОРМ И НАПОЛНИТЕЛЬ! Срочно закупите пакет в зоомагазине (вкладка 3)!`, 'danger');
+      }
     }
   }
 
@@ -273,6 +325,20 @@ function processDayTick() {
     a.ageCategory = 'adult';
     a.visibleState = 'Половое созревание! Дальнейшее пристройство заблокировано до проведения обязательной стерилизации.';
     addLog(`День ${state.day}: ⚠️ Питомцу исполнилось 6 месяцев (180 дней)! Половое созревание — пристройство заблокировано до обязательной стерилизации/кастрации.`, 'warn');
+  }
+
+  // Защита от клещей у собак весной/летом (GDD 2.2, 6.3)
+  if (a.species === 'dog') {
+    if (a.tickProtectionDaysLeft > 0) {
+      a.tickProtectionDaysLeft -= 1;
+    } else if ((state.currentSeason === 'spring' || state.currentSeason === 'summer') && isAnimalAtPlayerHome()) {
+      if (Math.random() < 0.08 && !state.triggeredEvents.piroplasmosisOutbreak) {
+        state.triggeredEvents.piroplasmosisOutbreak = true;
+        triggerPiroplasmosisCrisisModal();
+        renderAll();
+        return;
+      }
+    }
   }
 
   // Ожидание результатов лабораторного ПЦР (7 дней)
@@ -311,6 +377,20 @@ function processDayTick() {
   // Экстренный 4-дневный поиск беглеца (GDD 7.3)
   if (state.escapeQuest && state.escapeQuest.active) {
     state.escapeQuest.daysRemaining -= 1;
+    // Уличный урон беглецу (зимой мороз наносит двойной урон: -16 HP вместо -8 HP)
+    const escapeDmg = state.currentSeason === 'winter' ? 16 : 8;
+    a.health = Math.max(0, a.health - escapeDmg);
+    if (a.health <= 0) {
+      state.fatalMistakeReason = 'escape_lost_forever';
+      triggerEndGame(
+        false,
+        'ТРАГЕДИЯ: Питомец погиб во время побега на улице...',
+        state.currentSeason === 'winter'
+          ? 'Потерявшееся животное замерзло насмерть на минском морозе...\n\nЗимой шансы выжить на улице у неприспособленного домашнего питомца тают с каждым часом. Надевайте трехремневые шлейки-антипобег!'
+          : 'Потерявшееся испуганное животное погибло на улице под колесами машин или от зубов бродячих стай.\n\nШлейки-антипобег и сетки Pet Screen спасают жизни!'
+      );
+      return;
+    }
     if (state.escapeQuest.daysRemaining <= 0 && state.escapeQuest.searchProgress < 100) {
       state.fatalMistakeReason = 'escape_lost_forever';
       triggerEndGame(
@@ -320,7 +400,7 @@ function processDayTick() {
       );
       return;
     } else {
-      addLog(`День ${state.day}: ⏳ ПОИСК БЕГЛЕЦА: Осталось ${state.escapeQuest.daysRemaining} дн.! Прогресс поиска: ${state.escapeQuest.searchProgress}%. Клейте макеты и прочесывайте подвалы!`, 'warn');
+      addLog(`День ${state.day}: ⏳ ПОИСК БЕГЛЕЦА: Осталось ${state.escapeQuest.daysRemaining} дн.! Прогресс: ${state.escapeQuest.searchProgress}%. Клейте макеты и прочесывайте подвалы!`, 'warn');
     }
   }
 
@@ -337,7 +417,7 @@ function processDayTick() {
     }
   }
 
-  // 2. Таймеры карантина (14 дней), двукратной глистогонки (1+10) и полугодового повтора (180 дней)
+  // 4. Таймеры карантина (14 дней), двукратной глистогонки (1+10) и полугодового повтора (180 дней)
   if (a.quarantineDaysDone < 14) {
     a.quarantineDaysDone += 1;
     if (a.quarantineDaysDone === 14 && !a.quarantineCompletedNotified) {
@@ -361,7 +441,7 @@ function processDayTick() {
     }
   }
 
-  // 3. Лечение микроспории (лишая) в клетке — 35 дней (контрольные просветы на 24/25 и 34/35 день)
+  // 5. Лечение микроспории (лишая) в клетке — 35 дней (контрольные просветы на 24/25 и 34/35 день)
   if (a.knownRingworm === true) {
     a.ringwormDaysDone += 1;
     if (a.ringwormDaysDone === 25) {
@@ -373,8 +453,8 @@ function processDayTick() {
     }
   }
 
-  // 4. Приучение к лотку/выгулу, шприцевое кормление челюсти (18 дн.) и социализация (14 дн.)
-  if (!a.litterTrained) {
+  // 6. Приучение к лотку/выгулу, шприцевое кормление челюсти (18 дн.) и социализация (14 дн.)
+  if (!a.litterTrained && nActive > 0) {
     a.litterTrainDaysDone += 1;
     if (isAnimalAtPlayerHome()) state.mental = Math.max(0, state.mental - 3);
     if (a.litterTrainDaysDone >= 8) {
@@ -407,7 +487,7 @@ function processDayTick() {
     }
   }
 
-  // 5. Подготовка в ЕС (30 дней до титров + 90 дней карантина)
+  // 7. Подготовка в ЕС (30 дней до титров + 90 дней карантина)
   if (state.abroad.rabiesVaccineAndChipDone && !state.abroad.titerBloodTaken) {
     state.abroad.daysSinceRabiesVaccine += 1;
     if (state.abroad.daysSinceRabiesVaccine === 30) {
@@ -432,38 +512,23 @@ function processDayTick() {
     }
   }
 
-  // 6. Зарплата каждые 30 дней (GDD 3.1)
+  // 8. Зарплата каждые 30 дней (GDD 3.1)
   if (state.day % 30 === 0) {
     const sal = state.player.income.monthlyFreeCash;
     state.cash = +(state.cash + sal).toFixed(1);
     addLog(`День ${state.day}: 💰 Начислена зарплата! Свободный остаток +${sal} BYN добавлен в бюджет.`, 'success');
   }
 
-  // 7. Энергия и Менталка
+  // 9. Энергия и Менталка
   const householdDrain = calculateDailyHouseholdEnergyDrain();
   const netEnergyChange = state.player.family.energyBonus - householdDrain;
   state.energy = Math.min(100, Math.max(5, state.energy + netEnergyChange));
 
-  const housingMentalDrain = isAnimalAtPlayerHome() ? state.player.housing.dailyMentalDrain : 0;
+  const housingMentalDrain = isAnimalAtPlayerHome() && nActive > 0 ? state.player.housing.dailyMentalDrain : 0;
   state.mental = Math.min(100, Math.max(0, state.mental + state.player.family.mentalBonus - housingMentalDrain));
 
-  // 8. Расход запаса корма/наполнителя/пеленок
-  if (state.zooshans.giftedFoodDaysLeft > 0) {
-    state.zooshans.giftedFoodDaysLeft -= 1;
-  } else if (state.supplies.daysLeft > 0) {
-    state.supplies.daysLeft -= 1;
-  } else {
-    a.health -= 8;
-    state.mental -= 10;
-    if (!isAnimalAtPlayerHome()) {
-      addLog(`День ${state.day}: 🚨 СКАНДАЛ С ПЕРЕДЕРЖКОЙ: Закончился корм и наполнитель! Срочно закупите пакет в зоомагазине (вкладка 3)!`, 'danger');
-    } else {
-      addLog(`День ${state.day}: 🚨 ДОМА ЗАКОНЧИЛСЯ КОРМ И НАПОЛНИТЕЛЬ! Срочно закупите пакет в зоомагазине (вкладка 3)!`, 'danger');
-    }
-  }
-
-  // 8б. Оплата коммерческой платной передержки (16 BYN/сут кот | 33 BYN/сут собака, GDD 7.2)
-  if (state.zooshans.locationStatus === 'paid_foster') {
+  // 10. Оплата коммерческой платной передержки (16 BYN/сут кот | 33 BYN/сут собака, GDD 7.2)
+  if (state.zooshans.locationStatus === 'paid_foster' && nActive > 0) {
     const fCost = a.species === 'dog' ? 33 : 16;
     if (state.cash >= fCost) {
       state.cash = +(state.cash - fCost).toFixed(1);
@@ -475,16 +540,16 @@ function processDayTick() {
     }
   }
 
-  // 8в. Внезапный визит арендодателя на 9-й день для съемной квартиры (rent_strict, GDD 3.2)
-  if (state.player.housing.id === 'rent_strict' && state.day === 9 && isAnimalAtPlayerHome() && !state.triggeredEvents.landlordVisit) {
+  // 11. Внезапный визит арендодателя на 9-й день для съемной квартиры (rent_strict, GDD 3.2)
+  if (state.player.housing.id === 'rent_strict' && state.day === 9 && isAnimalAtPlayerHome() && nActive > 0 && !state.triggeredEvents.landlordVisit) {
     state.triggeredEvents.landlordVisit = true;
     triggerLandlordVisitModal();
     renderAll();
     return;
   }
 
-  // 8г. Щенки грызут обувь и обои на 8-й день (orphan_puppies_litter, GDD 4.2)
-  if (a.id === 'orphan_puppies_litter' && state.day === 8 && isAnimalAtPlayerHome() && !state.triggeredEvents.puppyChew) {
+  // 12. Щенки грызут обувь и обои на 8-й день (orphan_puppies_litter, GDD 4.2)
+  if (a.id === 'orphan_puppies_litter' && state.day === 8 && isAnimalAtPlayerHome() && nActive > 0 && !state.triggeredEvents.puppyChew) {
     state.triggeredEvents.puppyChew = true;
     state.cash = Math.max(0, +(state.cash - 85).toFixed(1));
     state.personalMoneySpent = +(state.personalMoneySpent + 85).toFixed(1);
@@ -492,8 +557,8 @@ function processDayTick() {
     addLog(`День ${state.day}: 👞 Щенки в ваше отсутствие разгрызли хозяйскую обувь и обои в коридоре (-85 BYN на ремонт, -10% Менталки)!`, 'warn');
   }
 
-  // 9. Конфликт с передержкой у новичка из соцсетей на 12-й день (GDD 7.2)
-  if (state.zooshans.locationStatus === 'social_foster_novice') {
+  // 13. Конфликт с передержкой у новичка из соцсетей на 12-й день (GDD 7.2)
+  if (state.zooshans.locationStatus === 'social_foster_novice' && nActive > 0) {
     state.zooshans.socialFosterDaysElapsed += 1;
     if (state.zooshans.socialFosterDaysElapsed === 12 && !state.zooshans.socialFosterConflictTriggered) {
       state.zooshans.socialFosterConflictTriggered = true;
@@ -503,8 +568,8 @@ function processDayTick() {
     }
   }
 
-  // 10. Окончание 10-дневного перехвата волонтером (GDD 7.2)
-  if (state.zooshans.locationStatus === 'temp_volunteer_10d') {
+  // 14. Окончание 10-дневного перехвата волонтером (GDD 7.2)
+  if (state.zooshans.locationStatus === 'temp_volunteer_10d' && nActive > 0) {
     state.zooshans.tempVolunteerDaysLeft -= 1;
     if (state.zooshans.tempVolunteerDaysLeft <= 0) {
       triggerReturnFromTempVolunteerModal();
@@ -513,23 +578,48 @@ function processDayTick() {
     }
   }
 
-  // 11. Сборы на р/с «Зоошанса» (только при долге от 330 BYN+) и на личную карту (до 6500 BYN в год)
+  // 15. Сборы на р/с «Зоошанса» и сборы на личную карту (Формула DramаBase * Multiplier, GDD 5.2)
   if (state.zooshans.officialFundraiserActive && state.zooshans.voucherDebt > 0) {
     const donation = Math.min(state.zooshans.voucherDebt, randomInt(30, 60));
     state.zooshans.voucherDebt = +(state.zooshans.voucherDebt - donation).toFixed(1);
     state.voucherFundsUsed = +(state.voucherFundsUsed + donation).toFixed(1);
     if (state.zooshans.voucherDebt <= 0) {
       state.zooshans.officialFundraiserActive = false;
-      addLog(`День ${state.day}: 🎉 Официальный сбор на р/с «Зоошанса» полностью закрыл долг за операцию/стационар!`, 'success');
+      state.zooshans.voucherBlocked = false;
+      state.zooshans.voucherDaysLeft = 30;
+      addLog(`День ${state.day}: 🎉 Официальный сбор на р/с «Зоошанса» полностью закрыл долг за операцию/стационар! Талоны разблокированы.`, 'success');
     }
   }
 
   if (state.zooshans.personalFundraiserActive && !state.zooshans.personalDonationsBanned) {
     state.zooshans.daysSinceLastFinReport += 1;
-    if (state.zooshans.personalCardCollectedBYN < 6500 && Math.random() < 0.55) {
-      const cardDon = Math.min(6500 - state.zooshans.personalCardCollectedBYN, randomInt(15, 40));
-      state.cash = +(state.cash + cardDon).toFixed(1);
-      state.zooshans.personalCardCollectedBYN += cardDon;
+
+    // Расчет драматичности случая (DramaBase, GDD 5.2)
+    let dramaMin = 35;
+    let dramaMax = 65;
+    const isHighDramaVirus = a.knownVirus === 'Панлейкопения' || a.knownVirus === 'Парвовирусный энтерит' ||
+                             a.knownVirus === 'panleukopenia' || a.knownVirus === 'parvovirus_enteritis' ||
+                             a.hiddenState.deadlyVirus === 'panleukopenia' || a.hiddenState.deadlyVirus === 'parvovirus_enteritis';
+
+    const isTraumaOrCrisis = a.hiddenState.hasSevereTrauma || a.hiddenState.isJawFracture ||
+                             state.triggeredEvents.felvCrisis || (a.id === 'severe_trauma_sheri_dog' && state.zooshans.voucherDebt > 0);
+
+    if (state.newborn.active || isHighDramaVirus || isTraumaOrCrisis) {
+      dramaMin = 190;
+      dramaMax = 340;
+    } else if (a.totalCount > 1 || a.knownRingworm === true || !a.eyeDropsCompleted || a.hiddenState.hasChronicGI) {
+      dramaMin = 85;
+      dramaMax = 140;
+    }
+
+    const socMult = state.player.socialCapital ? state.player.socialCapital.multiplier : 1.0;
+    if (state.zooshans.personalCardCollectedBYN < 6500 && Math.random() < 0.50) {
+      const baseDon = randomInt(dramaMin, dramaMax);
+      const cardDon = Math.min(6500 - state.zooshans.personalCardCollectedBYN, Math.round(baseDon * socMult));
+      if (cardDon > 0) {
+        state.cash = +(state.cash + cardDon).toFixed(1);
+        state.zooshans.personalCardCollectedBYN += cardDon;
+      }
     }
     if (state.zooshans.daysSinceLastFinReport === 7) {
       triggerFinReportAuditModal();
@@ -538,7 +628,7 @@ function processDayTick() {
     }
   }
 
-  // 12. Таймер талона «Зоошанса» (30 дней, лимит 1000 BYN)
+  // 16. Таймер талона «Зоошанса» (30 дней, лимит 1000 BYN)
   if (state.zooshans.voucherDebt > 0) {
     state.zooshans.voucherDaysLeft -= 1;
     if (state.zooshans.voucherDaysLeft === 3 && !state.triggeredEvents.voucherWarn) {
@@ -554,13 +644,106 @@ function processDayTick() {
     }
   }
 
-  // 13. Проверка медицинских и бытовых кризисов
+  // 17. Проверка медицинских и бытовых кризисов
   if (checkMedicalAndCrisisTriggers()) {
     renderAll();
     return;
   }
 
-  // 14. 10-дневный карантин поиска старых хозяев (породистые / колор-пойнты, GDD 4.1)
+  // 18. Продвижение 7-дневного испытательного срока и отложенный удар красных флагов (GDD 8.4, 8.5)
+  if (state.trialAnimals && state.trialAnimals.length > 0) {
+    for (let i = state.trialAnimals.length - 1; i >= 0; i--) {
+      const item = state.trialAnimals[i];
+      item.daysPassed += 1;
+
+      // Красные флаги: отложенный удар на 4-й день (или при звонке куратора)
+      if (item.isRedFlag) {
+        if (item.daysPassed >= 4) {
+          state.trialAnimals.splice(i, 1);
+          state.fatalMistakeReason = item.callData.id;
+          triggerRedFlagDelayedStrikeModal(item);
+          renderAll();
+          return;
+        }
+      } else {
+        // Обычные ручки: развязка на 7-й день
+        if (item.daysPassed >= 7) {
+          state.trialAnimals.splice(i, 1);
+
+          // Проверка астмы / аллергии (8% у идеальных)
+          if (item.isAsthmaReturn) {
+            triggerTrialAsthmaReturnModal(item);
+            renderAll();
+            return;
+          }
+
+          // Проверка успеха по шансу
+          const roll = Math.random();
+          if (roll < item.successChance) {
+            // УСПЕШНОЕ ПРИСТРОЙСТВО!
+            state.animal.trialCount = Math.max(0, state.animal.trialCount - item.count);
+            state.animal.savedCount += item.count;
+            state.mental = Math.min(100, state.mental + 15);
+
+            const tailRecord = {
+              id: Date.now() + Math.random(),
+              petName: item.petName,
+              species: a.species,
+              archetypeId: a.id,
+              archetypeTitle: a.title,
+              coatName: a.coatName,
+              coatTier: a.coatTier,
+              daysSpent: state.day,
+              seasonsPassed: [...state.seasonsPassed],
+              adopterSummary: item.adopterSummary || 'Любящая семья',
+              dateSaved: formatCalendarDate(state.calendarDate)
+            };
+            state.savedTails.push(tailRecord);
+            savePetToAlbum(tailRecord);
+
+            triggerTrialSuccessModal(item);
+            renderAll();
+            return;
+          } else {
+            // Бытовой возврат
+            state.animal.trialCount = Math.max(0, state.animal.trialCount - item.count);
+            state.animal.activeCount += item.count;
+            triggerTrialReturnModal(item);
+            renderAll();
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  // 18б. Продвижение 3 дней для маневра при возврате
+  if (state.maneuver && state.maneuver.active) {
+    state.maneuver.daysRemaining -= 1;
+    if (state.maneuver.daysRemaining <= 0) {
+      state.maneuver.active = false;
+      if (state.zooshans.locationStatus === 'maneuver_adopters') {
+        state.zooshans.locationStatus = state.zooshans.hasCage ? 'home_cage' : 'home_floor';
+        addLog(`День ${state.day}: ⏳ 3 дня маневра истекли! Подопечный возвращен к вам в квартиру.`, 'warn');
+      }
+    }
+  }
+
+  // 18в. Проверка финальной победы (все подопечные благополучно дома!)
+  if (a.savedCount >= (a.totalCount || a.count || 1)) {
+    if (a.hasMotherCat && !a.motherSterilized) {
+      // ждем стерилизации мамы
+    } else {
+      triggerEndGame(
+        true,
+        'ПОБЕДА: Все подопечные обрели любящий дом!',
+        `Поздравляем! Все ваши подопечные (${a.savedCount} хвостиков) благополучно прошли испытательный срок и официально занесены в ваш «Альбом спасенных хвостиков»!\n\nВы проявили стойкость, терпение и ответственность настоящего волонтера МБООПЖ «Зоошанс»!`
+      );
+      return;
+    }
+  }
+
+  // 19. 10-дневный карантин поиска старых хозяев (породистые / колор-пойнты, GDD 4.1)
   if (state.pr.lostSearchActive && state.pr.lostSearchDaysDone < 10) {
     state.pr.lostSearchDaysDone += 1;
     if ((state.pr.lostSearchDaysDone === 3 || state.pr.lostSearchDaysDone === 6) && !state.triggeredEvents['scam_' + state.pr.lostSearchDaysDone]) {
@@ -573,6 +756,21 @@ function processDayTick() {
     if (state.pr.lostSearchDaysDone === 10) {
       state.pr.lostSearchActive = false;
       if (Math.random() < 0.30) {
+        const tailRecord = {
+          id: Date.now() + Math.random(),
+          petName: a.petName,
+          species: a.species,
+          archetypeId: a.id,
+          archetypeTitle: a.title,
+          coatName: a.coatName,
+          coatTier: a.coatTier,
+          daysSpent: state.day,
+          seasonsPassed: [...state.seasonsPassed],
+          adopterSummary: 'Вернулся к прежним хозяевам (старый ветпаспорт)',
+          dateSaved: formatCalendarDate(state.calendarDate)
+        };
+        state.savedTails.push(tailRecord);
+        savePetToAlbum(tailRecord);
         triggerEndGame(
           true,
           'ЧУДО ПОИСКА: Настоящие хозяева нашлись!',
@@ -585,9 +783,24 @@ function processDayTick() {
     }
   }
 
-  // 15. Полное финкураторство у волонтера (GDD 7.2)
+  // 20. Полное финкураторство у волонтера (GDD 7.2)
   if (state.zooshans.locationStatus === 'full_volunteer_fincuration' && state.day >= 22 && state.supplies.daysLeft > 0) {
     if (Math.random() < 0.10) {
+      const tailRecord = {
+        id: Date.now() + Math.random(),
+        petName: a.petName,
+        species: a.species,
+        archetypeId: a.id,
+        archetypeTitle: a.title,
+        coatName: a.coatName,
+        coatTier: a.coatTier,
+        daysSpent: state.day,
+        seasonsPassed: [...state.seasonsPassed],
+        adopterSummary: 'Пристроен опытной передержкой по договору',
+        dateSaved: formatCalendarDate(state.calendarDate)
+      };
+      state.savedTails.push(tailRecord);
+      savePetToAlbum(tailRecord);
       triggerEndGame(
         true,
         'ПОБЕДА ФИНКУРАТОРА: Подопечный обрел дом!',
@@ -597,7 +810,7 @@ function processDayTick() {
     }
   }
 
-  // 16. Выставки-пристройства «Зоошанса» (5 раз в год — каждые 72 дня: Дни 25, 97, 169..., GDD 8.2)
+  // 21. Выставки-пристройства «Зоошанса» (5 раз в год — каждые 72 дня: Дни 25, 97, 169..., GDD 8.2)
   if ((state.day === 25 || (state.day > 25 && (state.day - 25) % 72 === 0)) && !state.triggeredEvents['fest_' + state.day]) {
     state.triggeredEvents['fest_' + state.day] = true;
     if (a.parasitesAndVaccinated && (a.ageCategory !== 'adult' || a.isSterilized) && a.knownRingworm !== true) {
@@ -609,8 +822,8 @@ function processDayTick() {
     }
   }
 
-  // 17. Системный ПИАР по сайтам (требует поднятия каждые 6 дней! GDD 8.2)
-  if (state.pr.prActive) {
+  // 22. Системный ПИАР по сайтам (требует поднятия каждые 6 дней! GDD 8.2)
+  if (state.pr.prActive && nActive > 0) {
     state.pr.daysInPr += 1;
     state.pr.daysSinceAdRefresh += 1;
 
@@ -625,8 +838,17 @@ function processDayTick() {
     else if (state.photos && state.photos.hasSelfPhotos) photoMult = 1.2;
     callChance *= photoMult;
     callChance += ((state.pr.storytellingCallBonus || 0) * 0.01);
-    if (a.hiddenState.isKittenSeason && !state.zooshans.hasProPhotos) callChance *= 0.25; // -75% в сезон котят (GDD 4.2)
-    if (state.pr.daysSinceAdRefresh >= 6) callChance *= 0.20; // Без обновления звонки падают на 80%
+
+    // Сезонные модификаторы звонков (GDD 2.2)
+    if (state.currentSeason === 'summer' && a.ageCategory === 'adult' && !state.zooshans.hasProPhotos) {
+      callChance *= 0.25; // Летом -75% к звонкам на взрослых кошек
+    }
+    if (state.currentSeason === 'autumn') {
+      callChance *= 1.25; // Осенью +25% к звонкам после дач
+    }
+    if (state.pr.daysSinceAdRefresh >= 6) {
+      callChance *= 0.20; // Без обновления звонки падают на 80%
+    }
 
     if (Math.random() < callChance) {
       triggerRandomAdopterCall();
