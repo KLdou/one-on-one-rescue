@@ -1,8 +1,8 @@
 // app.js - Главный входной файл и запуск игры
 async function initGame() {
   await loadGameDataAsync();
-  switchTab('vet');
   startNewRun();
+  switchTab('vet');
 }
 
 window.onload = function() {

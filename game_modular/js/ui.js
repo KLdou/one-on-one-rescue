@@ -147,7 +147,7 @@ function buildPetSVG(a) {
 
 function switchTab(tabName) {
   // Если «туман войны» еще не развеян гуглением, блокируем переход во 2 и 3 табы
-  if (!state.onboarding.googleDone && (tabName === 'zooshans' || tabName === 'care')) {
+  if (state && state.onboarding && !state.onboarding.googleDone && (tabName === 'zooshans' || tabName === 'care')) {
     addLog(`День ${state.day}: 🔒 Вкладка скрыта туманом войны! Сначала погуглите, что делать обычному человеку при находке животного.`, 'warn');
     return;
   }
