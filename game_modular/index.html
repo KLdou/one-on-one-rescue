@@ -3,401 +3,545 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Один на один: Симулятор спасения (v2.0)</title>
+  <title>Один на один: Симулятор спасения (v2.2)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
 </head>
-<body class="min-h-screen flex flex-col">
+<body data-season="summer">
 
-  <!-- ================= 1. ТОП-БАР: ВРЕМЯ, ОСТРАЯ ФАЗА, СКОРОСТЬ И РЕСУРСЫ ================= -->
-  <header class="sticky top-0 z-30 bg-[#0f1724]/95 backdrop-blur border-b border-slate-800 px-3 py-2.5 shadow-lg">
-    <div class="max-w-7xl mx-auto flex flex-col gap-2.5">
+  <!-- ================= 1. ТОП-БАР: ВРЕМЯ, ОСТРАЯ ФАЗА, СКОРОСТЬ И УПРАВЛЕНИЕ ================= -->
+  <header class="sticky top-0 z-30 bg-[var(--bg-card)]/95 backdrop-blur border-b border-[var(--border-subtle)] px-3 py-2 shadow-sm">
+    <div class="max-w-[1440px] mx-auto flex items-center justify-between gap-2 flex-wrap">
       
-      <!-- Верхняя строка: Название, День, Острая фаза, Скорость, Перемотка штиля и Новая партия -->
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <div class="flex items-center gap-2">
-          <span id="tickIndicator" class="inline-flex items-center justify-center w-2.5 h-2.5 rounded-full bg-amber-400"></span>
-          <span class="font-extrabold text-sm sm:text-base tracking-tight text-white">ОДИН НА ОДИН</span>
-          <span class="font-mono text-xs sm:text-sm px-2.5 py-0.5 rounded bg-slate-800 text-emerald-400 border border-slate-700 font-bold">
-            ДЕНЬ <span id="dayCounter">1</span>
-          </span>
-          <span id="calendarDateBadge" class="font-mono text-xs sm:text-sm px-2 py-0.5 rounded bg-slate-800 text-sky-400 border border-slate-700 font-semibold">
-            📅 12 мая
-          </span>
-          <span id="acutePhaseBadge" class="font-mono text-[11px] px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold">
-            🌙 Острая фаза (День 1/3)
-          </span>
-          <span id="animalAgeBadge" class="font-mono text-[11px] px-2 py-0.5 rounded bg-slate-900 text-sky-300 border border-slate-700">
-            Возраст: 2 года
-          </span>
-          <span id="seasonBadge" class="font-mono text-[11px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
-            ☀️ Сезон котят (-75% звонков)
-          </span>
-        </div>
+      <!-- Левый блок: Название, День, Дата, Сезон, Острая фаза -->
+      <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+        <span id="tickIndicator" class="inline-flex items-center justify-center w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+        <span class="font-extrabold text-xs sm:text-sm tracking-tight text-[var(--text-primary)]">ОДИН НА ОДИН</span>
+        
+        <span class="craft-badge font-bold text-xs bg-[var(--bg-muted)] text-[var(--text-primary)]">
+          ДЕНЬ <span id="dayCounter">1</span>
+        </span>
+        
+        <span id="calendarDateBadge" class="craft-badge text-xs font-semibold text-sky-700 bg-sky-50 border-sky-200">
+          📅 12 мая
+        </span>
+        
+        <span id="seasonBadge" class="craft-badge text-[11px] font-semibold" style="background: var(--season-badge-bg); color: var(--season-badge-text); border-color: var(--season-accent);">
+          ☀️ Сезон котят (-75% звонков)
+        </span>
 
-        <!-- Кнопки управления временем и пошаговым завершением дня -->
-        <div class="flex flex-wrap items-center gap-1.5">
-          <!-- Кнопка пошагового режима в острой фазе (Дни 1-3) -->
-          <button id="btnAdvanceAcuteDay" onclick="advanceAcuteDay()" class="urgent-btn px-3 py-1 rounded text-xs font-mono font-extrabold bg-amber-500 hover:bg-amber-400 text-slate-950 border border-amber-300 transition">
-            🌙 Завершить день
-          </button>
-
-          <!-- Группа скоростей (активна с 4-го дня) -->
-          <div id="speedButtonsGroup" class="flex items-center gap-1">
-            <button id="btnSpeed0" onclick="setSpeed(0)" class="px-2.5 py-1 rounded text-xs font-mono font-bold bg-emerald-500 text-slate-950 border border-emerald-400 transition">
-              ⏸ Пауза
-            </button>
-            <button id="btnSpeed1" onclick="setSpeed(1)" class="px-2.5 py-1 rounded text-xs font-mono font-semibold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 transition">
-              ▶ 1x
-            </button>
-            <button id="btnSpeed2" onclick="setSpeed(2)" class="px-2.5 py-1 rounded text-xs font-mono font-semibold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 transition">
-              ▶▶ 2x
-            </button>
-            <button id="btnSpeed5" onclick="setSpeed(5)" class="px-2.5 py-1 rounded text-xs font-mono font-semibold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 transition">
-              ⚡ 5x
-            </button>
-          </div>
-
-          <button onclick="fastForwardCalmDays()" title="Промотать спокойные дни (авто-стоп за 1 день до любого дедлайна)" class="px-2.5 py-1 rounded text-xs font-mono font-bold bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400 transition">
-            ⏩ Промотать штиль
-          </button>
-          <button onclick="showAlbumModal()" class="px-2.5 py-1 rounded text-xs font-mono font-bold bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 transition" title="Личный альбом спасенных хвостиков">
-            📖 Альбом: <span id="headerAlbumCount">0</span>
-          </button>
-          <button onclick="startNewRun()" class="ml-1 px-2.5 py-1 rounded text-xs font-mono font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600 transition">
-            ↻ Новая жизнь
-          </button>
-        </div>
+        <span id="acutePhaseBadge" class="craft-badge text-[11px] font-bold text-rose-700 bg-rose-50 border-rose-300">
+          🌙 Острая фаза (День 1/3)
+        </span>
+        
+        <span id="animalAgeBadge" class="hidden sm:inline-flex craft-badge text-[11px] text-[var(--text-secondary)]">
+          Возраст: 2 года
+        </span>
       </div>
 
-      <!-- Нижняя строка топ-бара: 4 главные шкалы в единой валюте BYN -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
-        <!-- Бюджет, Лимит талона 1000 BYN и Запас расходников -->
-        <div class="bg-slate-900/90 border border-slate-800 rounded-lg px-3 py-1.5 flex items-center justify-between">
-          <div>
-            <div class="text-[10px] font-mono uppercase text-slate-400">Бюджет / Расходники</div>
-            <div class="flex items-center gap-2">
-              <span id="cashValue" class="font-mono font-bold text-sm sm:text-base text-emerald-400">280 BYN</span>
-              <span id="supplyDaysBadge" class="font-mono text-[11px] px-1.5 py-0.5 rounded bg-slate-800 text-emerald-300 border border-slate-700">Корм: 4 дн.</span>
-            </div>
-          </div>
-          <div class="text-right font-mono text-[10px]">
-            <div id="voucherDebtText" class="text-slate-400">Долг Зоошанс: 0 / 1000 BYN</div>
-            <div id="voucherTimerText" class="text-slate-500">Срок: 30 дн.</div>
-          </div>
+      <!-- Правый блок: Мобильные шторки, Время, Скорость, Штиль, Новая партия -->
+      <div class="flex items-center gap-1.5 flex-wrap">
+        
+        <!-- Кнопки мобильных шторок (видны только на экранах < 1024px) -->
+        <button onclick="toggleDrawer('left')" class="lg:hidden px-2 py-1 rounded-lg text-xs font-mono font-bold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] transition" title="Профиль куратора и запасы">
+          👤 Профиль
+        </button>
+
+        <button onclick="toggleDrawer('right')" class="lg:hidden px-2 py-1 rounded-lg text-xs font-mono font-bold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] transition" title="Радар дедлайнов и дневник">
+          ⏱️ Радар
+        </button>
+
+        <!-- Кнопка пошагового режима в острой фазе (Дни 1-3) -->
+        <button id="btnAdvanceAcuteDay" onclick="advanceAcuteDay()" class="urgent-btn px-3 py-1 rounded-lg text-xs font-mono font-extrabold bg-amber-500 hover:bg-amber-400 text-slate-950 border border-amber-600 transition">
+          🌙 Завершить день
+        </button>
+
+        <!-- Группа скоростей (активна с 4-го дня) -->
+        <div id="speedButtonsGroup" class="hidden items-center gap-1">
+          <button id="btnSpeed0" onclick="setSpeed(0)" class="px-2 py-1 rounded-lg text-xs font-mono font-bold bg-emerald-600 text-white transition">
+            ⏸ Пауза
+          </button>
+          <button id="btnSpeed1" onclick="setSpeed(1)" class="px-2 py-1 rounded-lg text-xs font-mono font-semibold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] transition">
+            1x
+          </button>
+          <button id="btnSpeed2" onclick="setSpeed(2)" class="px-2 py-1 rounded-lg text-xs font-mono font-semibold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] transition">
+            2x
+          </button>
+          <button id="btnSpeed5" onclick="setSpeed(5)" class="px-2 py-1 rounded-lg text-xs font-mono font-semibold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] transition">
+            5x
+          </button>
         </div>
 
-        <!-- Менталка -->
-        <div class="bg-slate-900/90 border border-slate-800 rounded-lg px-3 py-1.5 flex flex-col justify-center">
-          <div class="flex justify-between text-[11px] font-mono mb-1">
-            <span class="text-slate-400">🧠 Менталка / Ресурс</span>
-            <span id="mentalValue" class="font-bold text-sky-400">100%</span>
-          </div>
-          <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-            <div id="mentalBar" class="h-full bg-sky-400 transition-all duration-300" style="width: 100%"></div>
-          </div>
-        </div>
+        <button onclick="fastForwardCalmDays()" title="Промотать спокойные дни (авто-стоп за 1 день до любого дедлайна)" class="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-sm">
+          ⏩ Штиль
+        </button>
 
-        <!-- Энергия / Время (двухсегментная шкала: доступно + резерв быта) -->
-        <div class="bg-slate-900/90 border border-slate-800 rounded-lg px-3 py-1.5 flex flex-col justify-center">
-          <div class="flex justify-between text-[11px] font-mono mb-1">
-            <span class="text-slate-400 truncate" id="energyReserveLabel">⚡ Энергия (Быт дома: -10⚡/д)</span>
-            <span id="energyValue" class="font-bold text-amber-400 shrink-0">100⚡</span>
-          </div>
-          <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden flex">
-            <!-- Зеленый сегмент (доступно) -->
-            <div id="energyBarAvailable" class="h-full bg-amber-400 transition-all duration-300" style="width: 90%"></div>
-            <!-- Оранжевый сегмент с замочком (зарезервировано на быт) -->
-            <div id="energyBarReserved" class="h-full bg-orange-600 transition-all duration-300" style="width: 10%"></div>
-          </div>
-        </div>
+        <button onclick="showAlbumModal()" class="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] transition" title="Личный альбом спасенных хвостиков">
+          📖 Альбом: <span id="headerAlbumCount">0</span>
+        </button>
 
-        <!-- Здоровье подопечного и счетчик хвостов -->
-        <div class="bg-slate-900/90 border border-slate-800 rounded-lg px-3 py-1.5 flex flex-col justify-center">
-          <div class="flex justify-between text-[11px] font-mono mb-1">
-            <span class="text-slate-400" id="animalCountHeader">❤️ Жизнь питомца</span>
-            <span id="animalHealthValue" class="font-bold text-emerald-400">88%</span>
-          </div>
-          <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-            <div id="healthBar" class="h-full bg-emerald-400 transition-all duration-300" style="width: 88%"></div>
-          </div>
-        </div>
+        <button onclick="startNewRun()" class="px-2.5 py-1 rounded-lg text-xs font-mono font-semibold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-subtle)] transition" title="Начать заново">
+          ↻ Новая
+        </button>
       </div>
 
     </div>
   </header>
 
-  <!-- ================= ОСНОВНОЙ КОНТЕЙНЕР ================= -->
-  <main class="max-w-7xl w-full mx-auto flex-1 flex flex-col gap-3 p-3">
+  <!-- ================= 2. ОСНОВНОЙ АДАПТИВНЫЙ КАРКАС: 3 КОЛОНКИ НА ДЕСКТОПЕ ================= -->
+  <div class="app-layout">
 
-    <!-- ================= 2. КАРТОЧКА ИГРОКА И КАРТОЧКА ЖИВОТНОГО ================= -->
-    <section class="grid grid-cols-1 lg:grid-cols-12 gap-3">
+    <!-- ================= ЛЕВАЯ КОЛОНКА (320px): ПРОФИЛЬ, ЛИМИТЫ, СНАБЖЕНИЕ, КЛИНИКА ================= -->
+    <aside class="drawer-left craft-card p-4 flex flex-col gap-3.5" id="drawerLeft">
       
-      <!-- Карточка Игрока (5 cols) -->
-      <div class="lg:col-span-5 bg-[#131b29] border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between gap-2">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-          <span class="text-xs font-mono uppercase tracking-wider text-slate-400 font-bold">👤 Профиль куратора (Человек с улицы)</span>
-          <span id="cardLimitBadge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-700">
-            Сбор на карту: 0 / 6500 BYN
-          </span>
+      <!-- Мобильный заголовок со стрелкой закрытия -->
+      <div class="flex items-center justify-between lg:hidden pb-2 border-b border-[var(--border-subtle)]">
+        <span class="font-bold text-xs uppercase text-[var(--text-secondary)] font-mono">Меню куратора</span>
+        <button onclick="closeDrawers()" class="px-2 py-0.5 rounded bg-[var(--bg-muted)] text-xs font-mono">
+          ✕ Закрыть
+        </button>
+      </div>
+
+      <!-- Карточка: Профиль куратора -->
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-mono uppercase font-bold text-[var(--text-secondary)]">👤 Профиль куратора</span>
         </div>
 
-        <!-- Теги профиля игрока -->
-        <div class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 flex flex-col gap-2">
-          <div class="flex flex-wrap items-center gap-1.5 font-mono text-[11px]" id="playerTagsContainer">
-            <!-- Заполняется JS -->
+        <div class="flex flex-wrap gap-1 font-mono text-[11px]" id="playerTagsContainer">
+          <!-- Заполняется JS -->
+        </div>
+
+        <!-- Шкала: Годовой лимит сбора на карту (6500 BYN) -->
+        <div class="mt-1">
+          <div class="flex justify-between text-[11px] font-mono mb-1">
+            <span class="text-[var(--text-secondary)]">Сбор на карту (лимит)</span>
+            <span id="cardLimitBadge" class="font-bold text-emerald-700">0 / 6500 BYN</span>
           </div>
-          <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800/80 text-xs">
-            <div class="flex flex-wrap items-center gap-2">
-              <span id="giftedFoodBadge" class="hidden text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                🎁 Подаренный корм
-              </span>
-              <span id="fosterStatusBadge" class="text-xs font-mono text-sky-400 font-semibold">
-                ⚠️ Дома на полу
-              </span>
-            </div>
-            <div class="flex items-center gap-2">
-              <span id="dailyExpenseLabel" class="text-[11px] font-mono text-rose-300 font-semibold">
-                Быт: -10⚡/д
-              </span>
-              <span class="font-mono text-[11px] font-semibold text-amber-300" id="salaryCountdown">
-                ЗП через 30 дн.
-              </span>
-            </div>
+          <div class="stat-progress-track">
+            <div id="cardLimitBar" class="h-full bg-emerald-600 transition-all duration-300" style="width: 0%"></div>
           </div>
         </div>
 
-        <!-- Переключатель клиники через Колл-центр Зоошанса (GDD 5.1) -->
-        <div class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 flex flex-col gap-1.5">
-          <div class="flex items-center justify-between">
-            <span class="text-[10px] font-mono uppercase text-sky-400 font-bold">☎️ Колл-центр «Зоошанса»: выбор клиники</span>
-            <span id="applicationStatusBadge" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-500/40">
-              Заявление не подано
-            </span>
+        <!-- Шкала: Лимит талона Зоошанса (1000 BYN) -->
+        <div>
+          <div class="flex justify-between text-[11px] font-mono mb-1">
+            <span class="text-[var(--text-secondary)]">Талон «Зоошанса»</span>
+            <span id="voucherDebtText" class="font-bold text-amber-700">0 / 1000 BYN</span>
           </div>
-          <div class="grid grid-cols-2 gap-1.5 pt-0.5">
-            <button id="btnClinicPartner" onclick="selectClinicMode('partner_cash')" class="p-1.5 rounded border text-left font-mono text-[10px] transition">
-              <div class="font-bold">Клиника А (Оплата сразу -20%)</div>
-              <div class="text-slate-400">Простые процедуры, без долга</div>
-            </button>
-            <button id="btnClinicMajor" onclick="selectClinicMode('major_voucher')" class="p-1.5 rounded border text-left font-mono text-[10px] transition">
-              <div class="font-bold">Ветцентр Б (Талон на 30 дн.)</div>
-              <div class="text-slate-400">В долг (до 1000 BYN)</div>
-            </button>
+          <div class="stat-progress-track">
+            <div id="voucherDebtBar" class="h-full bg-amber-600 transition-all duration-300" style="width: 0%"></div>
           </div>
-        </div>
-
-        <!-- СПЕЦИАЛЬНЫЙ БАННЕР ВЫКОРМА СЛЕПЫШЕЙ ДОМА -->
-        <div id="newbornUrgentBanner" class="hidden bg-rose-950/70 border border-rose-500/70 rounded-xl p-2.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-          <div class="flex items-center gap-2">
-            <span class="text-lg">🍼</span>
-            <div>
-              <div class="text-xs font-bold text-rose-200">ВЫКОРМ СЛЕПЫШЕЙ ДОМА ПО БУДИЛЬНИКУ</div>
-              <div class="text-[11px] font-mono text-rose-300/90" id="milkSupplyTag">Запас спецсмеси: проверяем...</div>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
-            <button id="btnCowMilkTrap" onclick="feedCowMilkTrap()" class="hidden px-2.5 py-1.5 rounded-lg bg-rose-800 hover:bg-rose-700 text-white font-mono text-[11px] font-bold transition">
-              🐄 Коровье молоко (0 BYN)
-            </button>
-            <button id="btnBuyFormula" onclick="buyBabycatFormula()" class="hidden px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-mono text-[11px] font-bold transition">
-              📦 Банка смеси (105 BYN)
-            </button>
-            <button id="btnFeedNewborns" onclick="feedNewbornKittens()" class="urgent-btn flex-1 sm:flex-initial px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition">
-              🍼 Покормить из соски (-15⚡)
-            </button>
+          <div class="flex justify-between text-[10px] font-mono text-[var(--text-muted)] mt-0.5">
+            <span>Срок: 30 дней</span>
+            <span id="voucherTimerText">Лимит: 1000 BYN</span>
           </div>
         </div>
       </div>
 
-      <!-- Карточка Животного (7 cols) -->
-      <div class="lg:col-span-7 bg-[#131b29] border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
-        <div>
-          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2 mb-2">
-            <div>
-              <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" id="animalSpeciesBadge">Кот</span>
-              <h2 class="text-sm sm:text-base font-bold text-white inline ml-1.5" id="animalTitle">Загрузка...</h2>
-            </div>
-            <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-amber-300 border border-slate-700" id="coatPopularityBadge">
-              Окрас: 0.35x
+      <!-- Карточка: Инвентарь и снабжение -->
+      <div class="pt-3 border-t border-[var(--border-subtle)] flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-mono uppercase font-bold text-[var(--text-secondary)]">🛒 Снабжение и быт</span>
+          <span id="supplyDaysBadge" class="craft-badge text-[11px] font-bold text-emerald-800 bg-emerald-50 border-emerald-300">
+            Корм: 4 дн.
+          </span>
+        </div>
+
+        <div class="flex flex-col gap-1 text-xs font-mono">
+          <span id="fosterStatusBadge" class="font-semibold text-sky-800">
+            ⚠️ Дома на полу
+          </span>
+          <span id="giftedFoodBadge" class="hidden text-[11px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 self-start">
+            🎁 Подаренный корм
+          </span>
+        </div>
+
+        <div class="flex items-center justify-between font-mono text-xs pt-1 border-t border-[var(--border-subtle)]/70">
+          <span id="dailyExpenseLabel" class="text-rose-700 font-semibold">Быт: -10⚡/д</span>
+          <span id="salaryCountdown" class="text-amber-700 font-bold">ЗП через 30 дн.</span>
+        </div>
+      </div>
+
+      <!-- Карточка: Выбор клиники в Колл-центре Зоошанса -->
+      <div class="pt-3 border-t border-[var(--border-subtle)] flex flex-col gap-1.5">
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] font-mono uppercase font-bold text-[var(--text-secondary)]">☎️ Колл-центр: Клиника</span>
+          <span id="applicationStatusBadge" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-300">
+            Заявление не подано
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 gap-1.5 pt-0.5">
+          <button id="btnClinicPartner" onclick="selectClinicMode('partner_cash')" class="p-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-muted)] text-left font-mono text-[10px] transition hover:border-[var(--season-accent)]">
+            <div class="font-bold text-[var(--text-primary)]">Клиника А (Оплата сразу -20%)</div>
+            <div class="text-[var(--text-secondary)]">Базовые процедуры, без долга</div>
+          </button>
+          
+          <button id="btnClinicMajor" onclick="selectClinicMode('major_voucher')" class="p-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-muted)] text-left font-mono text-[10px] transition hover:border-[var(--season-accent)]">
+            <div class="font-bold text-[var(--text-primary)]">Ветцентр Б (Талон на 30 дн.)</div>
+            <div class="text-[var(--text-secondary)]">В долг Зоошанса (до 1000 BYN)</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Кнопка: Личный Альбом -->
+      <div class="mt-auto pt-2">
+        <button onclick="showAlbumModal()" class="w-full py-2 px-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-xs font-mono font-bold text-[var(--text-primary)] flex items-center justify-center gap-2 transition">
+          <span>📖 Альбом спасенных хвостов</span>
+          <span id="sidebarAlbumCount" class="craft-badge px-1.5 py-0.2 text-[10px]">0</span>
+        </button>
+      </div>
+
+    </aside>
+
+    <!-- ================= ЦЕНТРАЛЬНАЯ КОЛОНКА (1fr): HUD, СЦЕНА ПИТОМЦА, ДЕЙСТВИЯ ================= -->
+    <main class="main-column flex flex-col gap-3 min-w-0">
+
+      <!-- 1. HUD: 4 ГЛАВНЫЕ ШКАЛЫ В 1 РЯД (на мобильном 2x2) -->
+      <section class="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        
+        <!-- Бюджет (BYN) -->
+        <div class="craft-card p-2.5 flex flex-col justify-between">
+          <div class="text-[10px] font-mono uppercase text-[var(--text-secondary)]">💰 Бюджет (BYN)</div>
+          <div class="flex items-baseline gap-1 mt-1">
+            <span id="cashValue" class="font-mono font-extrabold text-base sm:text-lg text-emerald-700">280 BYN</span>
+          </div>
+          <div class="text-[10px] font-mono text-[var(--text-muted)] mt-0.5">Личные средства</div>
+        </div>
+
+        <!-- Менталка % -->
+        <div class="craft-card p-2.5 flex flex-col justify-between">
+          <div class="flex justify-between items-center text-[10px] font-mono">
+            <span class="uppercase text-[var(--text-secondary)]">🧠 Менталка</span>
+            <span id="mentalValue" class="font-bold text-purple-700">100%</span>
+          </div>
+          <div class="stat-progress-track mt-1.5">
+            <div id="mentalBar" class="bar-mental" style="width: 100%"></div>
+          </div>
+          <div class="text-[10px] font-mono text-[var(--text-muted)] mt-0.5">Ресурс куратора</div>
+        </div>
+
+        <!-- Энергия ⚡ (двухсегментный бар: доступно + полосатый резерв быта) -->
+        <div class="craft-card p-2.5 flex flex-col justify-between" id="energy-widget">
+          <div class="flex justify-between items-center text-[10px] font-mono">
+            <span class="uppercase text-[var(--text-secondary)] truncate" id="energyReserveLabel">⚡ Энергия</span>
+            <span class="font-bold text-amber-700 shrink-0">
+              <span id="energy-free-val">90⚡</span><span class="text-slate-400 font-normal"> / </span><span id="energy-lock-val" class="text-amber-800">10🔒</span>
             </span>
+            <span id="energyValue" class="hidden font-bold text-amber-700">100⚡</span>
+          </div>
+          <div class="dual-progress-track mt-1.5">
+            <div id="energyBarAvailable" class="bar-free" style="width: 90%"></div>
+            <div id="energyBarReserved" class="bar-lock" style="width: 10%"></div>
+          </div>
+          <div class="text-[10px] font-mono text-[var(--text-muted)] mt-0.5">Свободно / Быт дома</div>
+        </div>
+
+        <!-- Жизнь подопечного % -->
+        <div class="craft-card p-2.5 flex flex-col justify-between">
+          <div class="flex justify-between items-center text-[10px] font-mono">
+            <span class="uppercase text-[var(--text-secondary)] truncate" id="animalCountHeader">❤️ Жизнь</span>
+            <span id="animalHealthValue" class="font-bold text-rose-700 shrink-0">88%</span>
+          </div>
+          <div class="stat-progress-track mt-1.5">
+            <div id="healthBar" class="bar-health" style="width: 88%"></div>
+          </div>
+          <div class="text-[10px] font-mono text-[var(--text-muted)] mt-0.5">Здоровье питомца</div>
+        </div>
+
+      </section>
+
+      <!-- СПЕЦИАЛЬНЫЕ ЭКСТРЕННЫЕ БАННЕРЫ -->
+      
+      <!-- Баннер: Выкорм слепышей дома -->
+      <div id="newbornUrgentBanner" class="hidden craft-card border-2 border-rose-500 bg-rose-50/90 p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🍼</span>
+          <div>
+            <div class="text-xs font-bold text-rose-900">ВЫКОРМ СЛЕПЫШЕЙ ДОМА ПО БУДИЛЬНИКУ</div>
+            <div class="text-[11px] font-mono text-rose-800" id="milkSupplyTag">Запас спецсмеси: проверяем...</div>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
+          <button id="btnCowMilkTrap" onclick="feedCowMilkTrap()" class="hidden px-2.5 py-1.5 rounded-lg bg-rose-800 hover:bg-rose-700 text-white font-mono text-[11px] font-bold transition">
+            🐄 Коровье молоко (0 BYN)
+          </button>
+          <button id="btnBuyFormula" onclick="buyBabycatFormula()" class="hidden px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-mono text-[11px] font-bold transition">
+            📦 Банка смеси (105 BYN)
+          </button>
+          <button id="btnFeedNewborns" onclick="feedNewbornKittens()" class="urgent-btn flex-1 sm:flex-initial px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition">
+            🍼 Покормить из соски (-15⚡)
+          </button>
+        </div>
+      </div>
+
+      <!-- Баннер: Экстренный поиск беглеца (4 дня) -->
+      <div id="escapeUrgentBanner" class="hidden craft-card border-2 border-rose-500 bg-rose-50/90 p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 animate-pulse">
+        <div>
+          <div class="text-xs font-bold text-rose-900 flex items-center gap-1.5">
+            <span>🚨 ЭКСТРЕННЫЙ ПОИСК БЕГЛЕЦА!</span>
+            <span id="escapeDaysLeftTag" class="bg-rose-600 text-white px-2 py-0.5 rounded font-mono font-bold text-[10px]">Осталось 4 дня</span>
+          </div>
+          <div class="text-[11px] font-mono text-rose-800 mt-1" id="escapeProgressTag">Шкала поиска: 0% / 100%</div>
+        </div>
+        <div class="flex flex-wrap gap-1.5" id="escapeActionsContainer">
+          <button onclick="escapeSearchAction('posters')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-mono text-[11px] font-bold transition">
+            📋 Макеты (-15⚡)
+          </button>
+          <button onclick="escapeSearchAction('night')" class="px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-slate-950 font-mono text-[11px] font-bold transition">
+            🔦 Подвалы 4 утра (-20⚡)
+          </button>
+          <button onclick="escapeSearchAction('social')" class="px-2.5 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-600 text-white font-mono text-[11px] font-bold transition">
+            📢 Районные чаты (-10⚡)
+          </button>
+        </div>
+      </div>
+
+      <!-- Баннер: Посылка добра получена -->
+      <div id="giftThankYouBanner" class="hidden craft-card border-2 border-emerald-500 bg-emerald-50/90 p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+        <div class="text-xs text-emerald-950">
+          <span class="font-bold text-emerald-800">🎁 Посылка добра получена!</span>
+          <span id="giftBannerText">Подписчики прислали корм и пеленки. Сделайте фото-благодарность!</span>
+        </div>
+        <button onclick="thankForMaterialGift()" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-mono font-bold text-xs shrink-0 transition">
+          📸 Выложить фото с подарком (-5⚡, +доверие)
+        </button>
+      </div>
+
+      <!-- 2. СЦЕНА ПИТОМЦА (SVG-АВАТАР, КЛИЧКА, ЧЕК-ЛИСТ, СТАТУСЫ) -->
+      <section class="craft-card p-3.5 flex flex-col justify-between">
+        
+        <!-- Верхняя строка сцены: SVG-конструктор + Кличка + Популярность окраса -->
+        <div class="flex gap-3 items-start">
+          <!-- Модульный SVG-аватар -->
+          <div id="petSvgContainer" class="pet-svg-box">
+            <!-- SVG рендерится JS функцией buildPetSVG -->
           </div>
 
-          <p class="text-xs text-slate-300 leading-relaxed mb-2.5" id="animalDescription">
-            Описание животного...
-          </p>
+          <div class="flex-1 min-w-0">
+            <div class="flex flex-wrap items-center justify-between gap-1.5 pb-1 border-b border-[var(--border-subtle)]">
+              <div>
+                <span id="animalSpeciesBadge" class="craft-badge text-[10px] font-bold bg-emerald-50 text-emerald-800 border-emerald-300">Кот</span>
+                <h2 id="animalTitle" class="text-sm sm:text-base font-bold text-[var(--text-primary)] inline ml-1.5">Загрузка...</h2>
+              </div>
+              <span id="coatPopularityBadge" class="craft-badge text-xs font-semibold text-amber-800 bg-amber-50 border-amber-300">
+                Окрас: ...
+              </span>
+            </div>
 
-          <!-- Живой чек-лист подготовки и таймеров -->
-          <div class="mb-2 bg-slate-900/80 border border-slate-800 rounded-lg p-2">
-            <div class="text-[10px] font-mono uppercase text-slate-400 font-bold mb-1.5 flex flex-wrap items-center justify-between gap-1">
-              <span>📌 Чек-лист куратора, обработки и быт:</span>
-              <span id="checklistHintText" class="text-amber-400 font-normal">Сделайте просвет Вуда и 1-ю глистогонку</span>
-            </div>
-            <div class="flex flex-wrap gap-1.5" id="animalChecklistTags">
-              <!-- Генерируется JS -->
-            </div>
+            <p id="animalDescription" class="text-xs text-[var(--text-secondary)] mt-1.5 leading-relaxed">
+              Описание животного...
+            </p>
           </div>
+        </div>
 
-          <!-- Диагностические теги статуса (Просвет, ПЦР, Клетка, Фото) -->
-          <div class="flex flex-wrap gap-1.5" id="animalStatusTags">
+        <!-- Чек-лист подготовки куратора -->
+        <div class="mt-2.5 bg-[var(--bg-muted)] border border-[var(--border-subtle)] rounded-lg p-2.5">
+          <div class="text-[10px] font-mono uppercase text-[var(--text-secondary)] font-bold mb-1.5 flex flex-wrap items-center justify-between gap-1">
+            <span>📌 Чек-лист куратора, обработки и быт:</span>
+            <span id="checklistHintText" class="text-amber-700 font-semibold">Сделайте просвет Вуда и 1-ю глистогонку</span>
+          </div>
+          <div class="flex flex-wrap gap-1.5" id="animalChecklistTags">
             <!-- Генерируется JS -->
           </div>
         </div>
 
-        <div class="mt-3 pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono">
-          <span class="text-slate-400" id="visibleStateText">Состояние: стабильное</span>
-          <span class="text-sky-400" id="prProgressText">Статус поиска дома: Не начат</span>
+        <!-- Диагностические теги (Лампа Вуда, ПЦР, Клетка, Фото) -->
+        <div class="flex flex-wrap gap-1.5 mt-2" id="animalStatusTags">
+          <!-- Генерируется JS -->
         </div>
-      </div>
 
-    </section>
-
-    <!-- Баннер экстренного поиска беглеца (4 дня) -->
-    <div id="escapeUrgentBanner" class="hidden bg-rose-950/90 border-2 border-rose-500 rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 animate-pulse">
-      <div>
-        <div class="text-xs font-bold text-rose-300 flex items-center gap-1.5">
-          <span>🚨 ЭКСТРЕННЫЙ ПОИСК БЕГЛЕЦА!</span>
-          <span id="escapeDaysLeftTag" class="bg-rose-500 text-slate-950 px-2 py-0.5 rounded font-mono font-bold text-[10px]">Осталось 4 дня</span>
+        <!-- Нижняя строка: Состояние и Статус поиска дома -->
+        <div class="mt-2.5 pt-2 border-t border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono">
+          <span id="visibleStateText" class="text-[var(--text-secondary)]">Состояние: стабильное</span>
+          <span id="prProgressText" class="text-sky-700 font-semibold">Статус поиска дома: Не начат</span>
         </div>
-        <div class="text-[11px] font-mono text-slate-200 mt-1" id="escapeProgressTag">Шкала поиска: 0% / 100%</div>
-      </div>
-      <div class="flex flex-wrap gap-1.5" id="escapeActionsContainer">
-        <button onclick="escapeSearchAction('posters')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-mono text-[11px] font-bold border border-slate-600 transition">
-          📋 Макеты (-15⚡)
-        </button>
-        <button onclick="escapeSearchAction('night')" class="px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-slate-950 font-mono text-[11px] font-bold transition">
-          🔦 Подвалы 4 утра (-20⚡)
-        </button>
-        <button onclick="escapeSearchAction('social')" class="px-2.5 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-600 text-white font-mono text-[11px] font-bold transition">
-          📢 Районные чаты (-10⚡)
-        </button>
-      </div>
-    </div>
 
-    <!-- БАННЕР ВЕЩЕСТВЕННОЙ ПОМОЩИ («Посылки добра») -->
-    <div id="giftThankYouBanner" class="hidden bg-emerald-950/70 border border-emerald-500/60 rounded-xl p-2.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-      <div class="text-xs text-emerald-100">
-        <span class="font-bold text-emerald-300">🎁 Посылка добра получена!</span>
-        <span id="giftBannerText">Подписчики прислали корм и пеленки. Сделайте фото-благодарность!</span>
-      </div>
-      <button onclick="thankForMaterialGift()" class="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-mono font-bold text-xs shrink-0 transition">
-        📸 Выложить фото с подарком (-5⚡, +доверие)
-      </button>
-    </div>
+      </section>
 
-    <!-- ================= 3. ЦЕНТРАЛЬНОЕ ОКНО: СОБЫТИЯ / ЗВОНКИ ИЛИ ПАНЕЛЬ ДЕЙСТВИЙ ================= -->
-    <section class="bg-[#131b29] border border-slate-800 rounded-xl p-3.5 shadow-xl relative">
+      <!-- 3. ЦЕНТРАЛЬНАЯ ОБЛАСТЬ: СОБЫТИЯ / ЗВОНКИ РУЧЕК ИЛИ ПАНЕЛЬ ДЕЙСТВИЙ -->
       
-      <!-- А) МОДАЛЬНЫЙ БЛОК АКТИВНОГО СОБЫТИЯ / ЗВОНКА «РУЧЕК» -->
-      <div id="eventOverlayBox" class="hidden flex-col gap-3 bg-slate-900/95 border-2 border-amber-500/70 rounded-xl p-4">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+      <!-- А) МОДАЛЬНЫЙ БЛОК ВХОДЯЩЕГО ЗВОНКА «РУЧЕК» ИЛИ ЧП (СТИЛИЗОВАН ПОД МЕССЕНДЖЕР) -->
+      <div id="eventOverlayBox" class="hidden flex-col gap-3 craft-card border-2 border-amber-500 bg-[var(--bg-card)] p-4 shadow-xl">
+        <div class="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
           <div class="flex items-center gap-2">
-            <span id="eventBadge" class="text-xs font-mono uppercase px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-bold">
+            <span id="eventBadge" class="craft-badge text-xs font-mono uppercase font-bold bg-amber-500 text-slate-950">
               ⚡ СОБЫТИЕ (ИГРА НА ПАУЗЕ)
             </span>
-            <h3 id="eventTitle" class="text-sm sm:text-base font-bold text-white">Заголовок события</h3>
+            <h3 id="eventTitle" class="text-sm sm:text-base font-bold text-[var(--text-primary)]">Заголовок события</h3>
           </div>
         </div>
 
-        <div id="eventBody" class="text-xs sm:text-sm text-slate-200 leading-relaxed space-y-2 whitespace-pre-line font-sans">
+        <!-- Диалог абонента: баббл мессенджера слева -->
+        <div id="eventBody" class="chat-bubble-caller text-xs sm:text-sm leading-relaxed whitespace-pre-line font-sans">
           Текст события...
         </div>
 
-        <!-- Дополнительный ответ при проверке ручек -->
-        <div id="extraQuestionBox" class="hidden bg-slate-800/90 border border-slate-700 rounded-lg p-3 text-xs text-amber-200 font-mono">
+        <!-- Ответ на уточняющий вопрос: баббл с дополнительной информацией -->
+        <div id="extraQuestionBox" class="hidden chat-bubble-caller bg-amber-50 border-amber-300 text-xs text-amber-950 font-sans">
         </div>
 
+        <!-- Кнопки решений -->
         <div id="eventChoicesContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
           <!-- Кнопки выбора -->
         </div>
       </div>
 
-      <!-- Б) ОНБОРДИНГ НОВИЧКА НА 1-Й ДЕНЬ («ТУМАН ВОЙНЫ», GDD 2.2) -->
-      <div id="onboardingDashboard" class="hidden bg-slate-900/90 border border-amber-500/40 rounded-xl p-4 flex flex-col gap-3 mb-3">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+      <!-- Б) ОНБОРДИНГ НОВИЧКА: ТУМАН ВОЙНЫ НА 1-Й ДЕНЬ -->
+      <div id="onboardingDashboard" class="hidden craft-card border border-amber-500/50 bg-[var(--bg-card)] p-4 flex flex-col gap-3">
+        <div class="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
           <div class="flex items-center gap-2">
             <span class="text-base">🌫️</span>
             <div>
-              <h3 class="text-xs sm:text-sm font-bold text-amber-300">ТУМАН ВОЙНЫ: ВЫ ОДИН НА ОДИН С НАЙДЕНЫШЕМ</h3>
-              <p class="text-[11px] text-slate-400">Вам еще неизвестны правила зоозащиты Минска. Куда бежать и что делать?</p>
+              <h3 class="text-xs sm:text-sm font-bold text-amber-800">ТУМАН ВОЙНЫ: ВЫ ОДИН НА ОДИН С НАЙДЕНЫШЕМ</h3>
+              <p class="text-[11px] text-[var(--text-secondary)]">Вам еще неизвестны правила зоозащиты Минска. Куда бежать и что делать?</p>
             </div>
           </div>
-          <label id="experiencedCuratorLabel" class="hidden sm:flex items-center gap-1.5 text-xs text-emerald-300 font-mono cursor-pointer">
-            <input type="checkbox" id="chkExperiencedCurator" onchange="toggleExperiencedCurator(this.checked)" class="rounded bg-slate-800 border-slate-700 text-emerald-500">
+          <label id="experiencedCuratorLabel" class="hidden sm:flex items-center gap-1.5 text-xs text-emerald-700 font-mono cursor-pointer">
+            <input type="checkbox" id="chkExperiencedCurator" onchange="toggleExperiencedCurator(this.checked)" class="rounded text-emerald-600">
             <span>Я уже опытный куратор (открыть Зоошанс)</span>
           </label>
         </div>
+
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-          <button onclick="actionGoogleSearch()" class="p-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-sky-500/50 text-left transition flex flex-col justify-between">
-            <div class="text-xs font-bold text-sky-300">🔍 Погуглить: «Нашел животное в Минске, что делать?»</div>
-            <div class="text-[10px] font-mono text-slate-400 mt-1.5">-5⚡ | Откроет памятку «Зоошанса», чат и разблокирует все вкладки!</div>
+          <button onclick="actionGoogleSearch()" class="p-3 rounded-xl bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] border border-sky-400 text-left transition flex flex-col justify-between">
+            <div class="text-xs font-bold text-sky-800">🔍 Погуглить: «Нашел животное в Минске, что делать?»</div>
+            <div class="text-[10px] font-mono text-[var(--text-secondary)] mt-1.5">-5⚡ | Откроет памятку «Зоошанса», чат и разблокирует все вкладки!</div>
           </button>
-          <button onclick="actionCallGurskogo()" class="p-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-left transition flex flex-col justify-between">
-            <div class="text-xs font-bold text-white">🏛 Позвонить в «государственный приют» (ул. Гурского, 42)</div>
-            <div class="text-[10px] font-mono text-slate-400 mt-1.5">-5⚡ | Узнать условия приема в «Фауне города»</div>
+          
+          <button onclick="actionCallGurskogo()" class="p-3 rounded-xl bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-left transition flex flex-col justify-between">
+            <div class="text-xs font-bold text-[var(--text-primary)]">🏛 Позвонить в «государственный приют» (ул. Гурского, 42)</div>
+            <div class="text-[10px] font-mono text-[var(--text-secondary)] mt-1.5">-5⚡ | Узнать условия приема в «Фауне города»</div>
           </button>
-          <button onclick="actionDumpBoxTrap()" class="p-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-rose-500/40 text-left transition flex flex-col justify-between">
-            <div class="text-xs font-bold text-rose-300">📦 Подбросить коробку к ветклинике или зоомагазину</div>
-            <div class="text-[10px] font-mono text-slate-400 mt-1.5">Ловушка малодушия | «Пусть врачи сами разбираются»</div>
+          
+          <button onclick="actionDumpBoxTrap()" class="p-3 rounded-xl bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] border border-rose-400 text-left transition flex flex-col justify-between">
+            <div class="text-xs font-bold text-rose-800">📦 Подбросить коробку к ветклинике или зоомагазину</div>
+            <div class="text-[10px] font-mono text-[var(--text-secondary)] mt-1.5">Ловушка малодушия | «Пусть врачи сами разбираются»</div>
           </button>
         </div>
       </div>
 
       <!-- В) ПАНЕЛЬ УПРАВЛЕНИЯ И ДЕЙСТВИЙ КУРАТОРА (3 ВКЛАДКИ) -->
-      <div id="actionsDashboard">
-        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2.5 mb-3">
+      <div id="actionsDashboard" class="craft-card p-3.5 flex flex-col gap-3">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-2.5">
           <div class="flex items-center gap-1.5 overflow-x-auto">
-            <button onclick="switchTab('vet')" id="tabBtn_vet" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition">
-              🏥 1. Ветеринария и Клиника
+            <button onclick="switchTab('vet')" id="tabBtn_vet" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-emerald-600 text-white transition">
+              🏥 1. Клиника
             </button>
-            <button onclick="switchTab('zooshans')" id="tabBtn_zooshans" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition">
-              🤝 2. Помощь «Зоошанса» и Сборы
+            <button onclick="switchTab('zooshans')" id="tabBtn_zooshans" class="px-3 py-1.5 rounded-lg text-xs font-mono font-semibold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] transition">
+              🤝 2. Зоошанс
             </button>
-            <button onclick="switchTab('care')" id="tabBtn_care" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition">
-              📸 3. Быт, Передержка и Пиар
+            <button onclick="switchTab('care')" id="tabBtn_care" class="px-3 py-1.5 rounded-lg text-xs font-mono font-semibold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] transition">
+              📸 3. Быт и Пиар
             </button>
           </div>
-          <span class="text-[11px] font-mono text-slate-400 hidden sm:inline" id="tabStatusHint">
+          
+          <span class="text-[11px] font-mono text-[var(--text-secondary)] hidden sm:inline" id="tabStatusHint">
             В первые 3 дня завершайте день кнопкой «🌙 Завершить день»
           </span>
         </div>
 
-        <!-- Контейнеры кнопок вкладок -->
+        <!-- Контейнеры карточек действий -->
         <div id="tabContent_vet" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5"></div>
         <div id="tabContent_zooshans" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5"></div>
         <div id="tabContent_care" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5"></div>
       </div>
 
-    </section>
+    </main>
 
-    <!-- ================= 4. ЛЕНТА ХРОНИКИ (ЛОГ ДНЕЙ) ================= -->
-    <section class="bg-[#131b29] border border-slate-800 rounded-xl p-3 flex-1 flex flex-col min-h-[170px] max-h-[240px]">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-2">
-        <h3 class="text-xs font-mono uppercase tracking-wider text-slate-400 font-bold">
-          📜 Хроника спасательной операции
-        </h3>
-        <span class="text-[11px] font-mono text-slate-500" id="logCountInfo">Записей: 1</span>
+    <!-- ================= ПРАВАЯ КОЛОНКА (350px): РАДАР ДЕДЛАЙНОВ + ДНЕВНИК КУРАТОРА ================= -->
+    <aside class="drawer-right craft-card p-4 flex flex-col gap-3.5" id="drawerRight">
+      
+      <!-- Мобильный заголовок со стрелкой закрытия -->
+      <div class="flex items-center justify-between lg:hidden pb-2 border-b border-[var(--border-subtle)]">
+        <span class="font-bold text-xs uppercase text-[var(--text-secondary)] font-mono">Радар & Дневник</span>
+        <button onclick="closeDrawers()" class="px-2 py-0.5 rounded bg-[var(--bg-muted)] text-xs font-mono">
+          ✕ Закрыть
+        </button>
       </div>
-      <div id="chronicleLog" class="flex-1 overflow-y-auto space-y-1.5 pr-1 font-mono text-xs">
-        <!-- Записи лога -->
+
+      <!-- Блок 1: Радар дедлайнов (Автостоп ⏩) -->
+      <div id="deadlinesRadarBox" class="flex flex-col gap-2">
+        <div class="flex items-center justify-between pb-1.5 border-b border-[var(--border-subtle)]">
+          <h3 class="text-xs font-mono uppercase tracking-wider text-[var(--text-primary)] font-bold flex items-center gap-1.5">
+            <span>⏱️</span>
+            <span>РАДАР ДЕДЛАЙНОВ</span>
+          </h3>
+          <span class="text-[10px] font-mono text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+            Автостоп ⏩
+          </span>
+        </div>
+
+        <!-- Список активных дедлайнов (рендерится JS) -->
+        <div id="deadlinesRadarList" class="space-y-1.5 font-mono">
+          <!-- Генерируется JS функцией renderDeadlines -->
+        </div>
       </div>
-    </section>
 
-  </main>
+      <!-- Блок 2: Дневник куратора (Хроника дней) -->
+      <div class="pt-3 border-t border-[var(--border-subtle)] flex-1 flex flex-col min-h-[220px]">
+        <div class="flex items-center justify-between pb-1.5 mb-2 border-b border-[var(--border-subtle)]">
+          <h3 class="text-xs font-mono uppercase tracking-wider text-[var(--text-primary)] font-bold flex items-center gap-1.5">
+            <span>📜</span>
+            <span>ДНЕВНИК КУРАТОРА</span>
+          </h3>
+          <span class="text-[10px] font-mono text-[var(--text-muted)]" id="logCountInfo">Записей: 1</span>
+        </div>
 
-  <!-- ================= МОДАЛЬНОЕ ОКНО: АЛЬБОМ СПАСЕННЫХ ХВОСТИКОВ (GDD 9.2) ================= -->
-  <div id="savedAlbumModal" class="fixed inset-0 z-50 hidden bg-slate-950/90 backdrop-blur-md overflow-y-auto p-3 sm:p-6 flex items-center justify-center">
-    <div class="bg-[#131b29] border-2 border-amber-500/70 rounded-2xl max-w-3xl w-full p-4 sm:p-6 shadow-2xl my-auto flex flex-col max-h-[85vh]">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+        <div id="chronicleLog" class="flex-1 overflow-y-auto space-y-1.5 pr-1 font-mono text-xs max-h-[380px]">
+          <!-- Записи лога -->
+        </div>
+      </div>
+
+    </aside>
+
+  </div>
+
+  <!-- ================= МОБИЛЬНЫЙ ОВЕРЛЕЙНЫЙ BACKDROP ================= -->
+  <div id="drawerBackdrop" class="drawer-backdrop" onclick="closeDrawers()"></div>
+
+  <!-- ================= 3. МОБИЛЬНЫЙ ТАБ-БАР (ВИДЕН НА ЭКРАНАХ < 1024px) ================= -->
+  <nav class="mobile-bottom-nav">
+    <button onclick="switchTab('vet'); closeDrawers();" class="flex flex-col items-center justify-center text-[10px] font-mono text-[var(--text-secondary)] hover:text-emerald-700 py-1 flex-1">
+      <span class="text-base">🏥</span>
+      <span>Клиника</span>
+    </button>
+    
+    <button onclick="switchTab('zooshans'); closeDrawers();" class="flex flex-col items-center justify-center text-[10px] font-mono text-[var(--text-secondary)] hover:text-emerald-700 py-1 flex-1">
+      <span class="text-base">🤝</span>
+      <span>Зоошанс</span>
+    </button>
+    
+    <button onclick="switchTab('care'); closeDrawers();" class="flex flex-col items-center justify-center text-[10px] font-mono text-[var(--text-secondary)] hover:text-emerald-700 py-1 flex-1">
+      <span class="text-base">📸</span>
+      <span>Быт/Пиар</span>
+    </button>
+    
+    <button onclick="toggleDrawer('left')" class="flex flex-col items-center justify-center text-[10px] font-mono text-[var(--text-secondary)] hover:text-emerald-700 py-1 flex-1">
+      <span class="text-base">👤</span>
+      <span>Профиль</span>
+    </button>
+    
+    <button onclick="toggleDrawer('right')" class="flex flex-col items-center justify-center text-[10px] font-mono text-[var(--text-secondary)] hover:text-emerald-700 py-1 flex-1">
+      <span class="text-base">⏱️</span>
+      <span>Радар</span>
+    </button>
+  </nav>
+
+  <!-- ================= МОДАЛЬНОЕ ОКНО: АЛЬБОМ СПАСЕННЫХ ХВОСТИКОВ ================= -->
+  <div id="savedAlbumModal" class="fixed inset-0 z-50 hidden modal-backdrop-custom">
+    <div class="modal-card-custom max-w-2xl w-full p-4 sm:p-6 my-auto flex flex-col max-h-[85vh]">
+      <div class="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-4">
         <div class="flex items-center gap-2">
           <span class="text-2xl">📖</span>
           <div>
-            <h2 class="text-base sm:text-lg font-extrabold text-white">Альбом спасенных хвостиков</h2>
-            <p class="text-xs text-slate-400">Ваша личная мета-прогрессия куратора (сохраняется в браузере)</p>
+            <h2 class="text-base sm:text-lg font-extrabold text-[var(--text-primary)]">Альбом спасенных хвостиков</h2>
+            <p class="text-xs text-[var(--text-secondary)]">Ваша личная мета-прогрессия куратора (сохраняется в браузере)</p>
           </div>
         </div>
-        <button onclick="closeAlbumModal()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-200 border border-slate-600">
+        <button onclick="closeAlbumModal()" class="px-3 py-1.5 rounded-lg bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-xs font-mono text-[var(--text-primary)] border border-[var(--border-subtle)]">
           ✕ Закрыть
         </button>
       </div>
@@ -406,9 +550,9 @@
         <!-- Генерируется JS -->
       </div>
 
-      <div class="border-t border-slate-800 pt-3 mt-3 flex items-center justify-between text-xs text-slate-400">
+      <div class="border-t border-[var(--border-subtle)] pt-3 mt-3 flex items-center justify-between text-xs text-[var(--text-secondary)]">
         <span id="albumTotalCountText">Всего спасено жизней: 0</span>
-        <button onclick="closeAlbumModal()" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold">
+        <button onclick="closeAlbumModal()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition">
           Вернуться к игре
         </button>
       </div>
@@ -416,132 +560,132 @@
   </div>
 
   <!-- ================= ФИНАЛЬНОЕ МОДАЛЬНОЕ ОКНО: МОСТ В РЕАЛЬНОСТЬ (BRIDGE TO REALITY) ================= -->
-  <div id="endGameModal" class="fixed inset-0 z-50 hidden bg-slate-950/90 backdrop-blur-md overflow-y-auto p-3 sm:p-6 flex items-center justify-center">
-    <div class="bg-[#131b29] border-2 border-slate-700 rounded-2xl max-w-2xl w-full p-4 sm:p-6 shadow-2xl my-auto">
+  <div id="endGameModal" class="fixed inset-0 z-50 hidden modal-backdrop-custom">
+    <div class="modal-card-custom max-w-2xl w-full p-4 sm:p-6 my-auto overflow-y-auto max-h-[90vh]">
       
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+      <div class="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 mb-4">
         <div>
-          <span id="endModalBadge" class="text-xs font-mono uppercase px-2.5 py-1 rounded font-bold bg-emerald-500 text-slate-950">
+          <span id="endModalBadge" class="craft-badge text-xs font-mono uppercase font-bold bg-emerald-600 text-white">
             ИТОГ ПАРТИИ
           </span>
-          <h2 id="endModalTitle" class="text-lg sm:text-xl font-extrabold text-white mt-2">
+          <h2 id="endModalTitle" class="text-lg sm:text-xl font-extrabold text-[var(--text-primary)] mt-2">
             Заголовок финала
           </h2>
         </div>
-        <button onclick="startNewRun()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-200 border border-slate-600">
-          ↻ Сыграть еще раз
+        <button onclick="startNewRun()" class="px-3 py-1.5 rounded-lg bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-xs font-mono text-[var(--text-primary)] border border-[var(--border-subtle)]">
+          ↻ Еще раз
         </button>
       </div>
 
-      <p id="endModalDescription" class="text-xs sm:text-sm text-slate-200 leading-relaxed mb-4 whitespace-pre-line">
+      <p id="endModalDescription" class="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed mb-4 whitespace-pre-line">
         Подробный разбор того, что произошло...
       </p>
 
-      <!-- ОБУЧАЮЩИЙ БЛОК: РАБОТА НАД ОШИБКАМИ ПРИ ПОРАЖЕНИИ (GDD 9.1) -->
-      <div id="endModalMistakesCard" class="hidden bg-rose-950/50 border border-rose-500/50 rounded-xl p-3.5 mb-4">
-        <h4 class="text-xs font-mono uppercase text-rose-300 font-bold mb-1.5 flex items-center gap-1.5">
+      <!-- ОБУЧАЮЩИЙ БЛОК: РАБОТА НАД ОШИБКАМИ ПРИ ПОРАЖЕНИИ -->
+      <div id="endModalMistakesCard" class="hidden craft-card border border-rose-300 bg-rose-50 p-3.5 mb-4">
+        <h4 class="text-xs font-mono uppercase text-rose-900 font-bold mb-1.5 flex items-center gap-1.5">
           <span>⚠️ РАБОТА НАД ОШИБКАМИ (РЕАЛЬНАЯ ПРАКТИКА ЗООЗАЩИТЫ):</span>
         </h4>
-        <p id="endModalMistakesText" class="text-xs text-rose-100 leading-relaxed">
+        <p id="endModalMistakesText" class="text-xs text-rose-800 leading-relaxed">
           Разбор ошибки...
         </p>
       </div>
 
-      <!-- КАРТОЧКА ДЛЯ РЕПОСТА В СОЦСЕТИ / TELEGRAM STORIES (9:16) (GDD 9.2) -->
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 mb-4 flex flex-col items-center">
+      <!-- STORIES КАРТОЧКА 9:16 ДЛЯ СОЦСЕТЕЙ -->
+      <div class="craft-card bg-[var(--bg-muted)] p-3.5 mb-4 flex flex-col items-center">
         <div class="w-full flex items-center justify-between mb-2">
-          <span class="text-xs font-mono uppercase text-slate-400 font-bold">📲 Карточка истории (Формат 9:16 для Stories):</span>
-          <button onclick="copyStoryCardToClipboard()" id="btnCopyStoryCard" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-sky-300 border border-slate-600 text-[11px] font-mono font-semibold transition">
-            📋 Скопировать текст карточки
+          <span class="text-xs font-mono uppercase text-[var(--text-secondary)] font-bold">📲 Карточка истории (9:16 для Stories):</span>
+          <button onclick="copyStoryCardToClipboard()" id="btnCopyStoryCard" class="px-2.5 py-1 rounded bg-[var(--bg-card)] hover:bg-[var(--bg-elevated)] text-sky-800 border border-[var(--border-subtle)] text-[11px] font-mono font-semibold transition">
+            📋 Скопировать текст
           </button>
         </div>
 
         <!-- 9:16 Превью карточки -->
-        <div id="storyCardVisualBox" class="story-card-9-16 w-full rounded-2xl p-4 flex flex-col justify-between text-center relative overflow-hidden">
+        <div id="storyCardVisualBox" class="story-card-9-16 w-full p-4 flex flex-col justify-between text-center relative overflow-hidden">
           <div class="pt-2">
-            <div class="text-[10px] font-mono uppercase text-emerald-400 font-bold tracking-widest">ОДИН НА ОДИН: СИМУЛЯТОР СПАСЕНИЯ</div>
-            <div class="text-xs text-slate-400 mt-0.5">Минск • МБООПЖ «Зоошанс»</div>
+            <div class="text-[10px] font-mono uppercase text-emerald-800 font-bold tracking-widest">ОДИН НА ОДИН: СИМУЛЯТОР СПАСЕНИЯ</div>
+            <div class="text-xs text-[var(--text-secondary)] mt-0.5">Минск • МБООПЖ «Зоошанс»</div>
           </div>
 
           <div class="my-auto py-2">
             <div class="text-3xl mb-1" id="storyCardEmoji">🐾</div>
-            <h3 class="text-sm sm:text-base font-extrabold text-white leading-tight" id="storyCardTitle">
+            <h3 class="text-sm sm:text-base font-extrabold text-[var(--text-primary)] leading-tight" id="storyCardTitle">
               Я и Барсик: 45 дней от улицы до дома
             </h3>
-            <p class="text-[11px] text-emerald-300 font-mono mt-1" id="storyCardSubtitle">
+            <p class="text-[11px] text-emerald-700 font-mono mt-1" id="storyCardSubtitle">
               Окрас: Черно-белый («Коровка»)
             </p>
-            <div class="mt-3 bg-slate-950/70 border border-slate-800 rounded-lg p-2 font-mono text-[10px] text-slate-300 text-left space-y-1">
-              <div>⏳ Дней пройдено: <span id="storyCardStatDays" class="text-white font-bold">45</span></div>
-              <div>💰 Личных средств: <span id="storyCardStatPersonal" class="text-emerald-400 font-bold">320 BYN</span></div>
-              <div>🎫 По талонам/сборам: <span id="storyCardStatVoucher" class="text-sky-400 font-bold">180 BYN</span></div>
-              <div>🛡️ Отсеяно опасных ручек: <span id="storyCardStatFiltered" class="text-amber-300 font-bold">4</span></div>
-              <div>🏆 В альбоме спасенных: <span id="storyCardStatAlbum" class="text-amber-300 font-bold">0</span></div>
+            <div class="mt-3 bg-[var(--bg-card)]/90 border border-[var(--border-subtle)] rounded-lg p-2 font-mono text-[10px] text-[var(--text-primary)] text-left space-y-1 shadow-sm">
+              <div>⏳ Дней пройдено: <span id="storyCardStatDays" class="font-bold">45</span></div>
+              <div>💰 Личных средств: <span id="storyCardStatPersonal" class="text-emerald-700 font-bold">320 BYN</span></div>
+              <div>🎫 По талонам/сборам: <span id="storyCardStatVoucher" class="text-sky-700 font-bold">180 BYN</span></div>
+              <div>🛡️ Отсеяно опасных ручек: <span id="storyCardStatFiltered" class="text-amber-800 font-bold">4</span></div>
+              <div>🏆 В альбоме спасенных: <span id="storyCardStatAlbum" class="text-amber-800 font-bold">0</span></div>
             </div>
           </div>
 
-          <div class="border-t border-slate-800/90 pt-2 text-[10px] font-mono text-slate-400">
-            <div class="text-emerald-400 font-bold">ЕРИП «Зоошанс»: 4346991</div>
-            <div class="text-slate-500 text-[9px] mt-0.5">https://zooshans.by • @zooshans_chat</div>
+          <div class="border-t border-[var(--border-subtle)] pt-2 text-[10px] font-mono text-[var(--text-secondary)]">
+            <div class="text-emerald-800 font-bold">ЕРИП «Зоошанс»: 4346991</div>
+            <div class="text-[9px] mt-0.5">https://zooshans.by • @zooshans_chat</div>
           </div>
         </div>
       </div>
 
       <!-- Статистика партии в BYN -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-900/90 border border-slate-800 rounded-xl p-3 mb-4 font-mono text-xs">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 craft-card bg-[var(--bg-muted)] p-3 mb-4 font-mono text-xs">
         <div>
-          <div class="text-slate-400 text-[11px]">Прожито дней:</div>
-          <div class="text-white font-bold text-sm" id="statDays">0</div>
+          <div class="text-[var(--text-secondary)] text-[11px]">Прожито дней:</div>
+          <div class="text-[var(--text-primary)] font-bold text-sm" id="statDays">0</div>
         </div>
         <div>
-          <div class="text-slate-400 text-[11px]">Личных средств:</div>
-          <div class="text-emerald-400 font-bold text-sm" id="statPersonalSpent">0 BYN</div>
+          <div class="text-[var(--text-secondary)] text-[11px]">Личных средств:</div>
+          <div class="text-emerald-700 font-bold text-sm" id="statPersonalSpent">0 BYN</div>
         </div>
         <div>
-          <div class="text-slate-400 text-[11px]">По талонам Зоошанса:</div>
-          <div class="text-sky-400 font-bold text-sm" id="statVoucherUsed">0 BYN</div>
+          <div class="text-[var(--text-secondary)] text-[11px]">По талонам:</div>
+          <div class="text-sky-700 font-bold text-sm" id="statVoucherUsed">0 BYN</div>
         </div>
         <div>
-          <div class="text-slate-400 text-[11px]">Отсеяно опасных ручек:</div>
-          <div class="text-amber-400 font-bold text-sm" id="statFilteredCalls">0</div>
+          <div class="text-[var(--text-secondary)] text-[11px]">Отсеяно ручек:</div>
+          <div class="text-amber-700 font-bold text-sm" id="statFilteredCalls">0</div>
         </div>
       </div>
 
-      <!-- Блок конверсии в реальную помощь МБООПЖ «Зоошанс» (GDD 9.3) -->
-      <div class="bg-emerald-950/30 border border-emerald-500/40 rounded-xl p-3.5 mb-4">
-        <p class="text-xs text-emerald-200 italic leading-relaxed mb-3">
+      <!-- Блок конверсии в реальную помощь МБООПЖ «Зоошанс» -->
+      <div class="craft-card border border-emerald-300 bg-emerald-50/70 p-3.5 mb-4">
+        <p class="text-xs text-emerald-950 italic leading-relaxed mb-3">
           «В игре вы можете включить скорость 5x или перезапустить партию. В реальности волонтеры МБООПЖ «Зоошанс» не спят ночами, выкармливают слепышей по будильнику, дежурят в реанимациях и ведут сотни животных одновременно. Государственных приютов в Беларуси нет — вся эта помощь держится только на неравнодушных людях».
         </p>
 
-        <h4 class="text-xs font-mono uppercase text-emerald-400 font-bold mb-2">
+        <h4 class="text-xs font-mono uppercase text-emerald-900 font-bold mb-2">
           КАК ПОМОЧЬ ИЛИ ПОЛУЧИТЬ СОВЕТ ПРЯМО СЕЙЧАС:
         </h4>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-          <a href="https://zooshans.by/help-us" target="_blank" rel="noopener noreferrer" class="flex flex-col justify-between p-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold transition">
+          <a href="https://zooshans.by/help-us" target="_blank" rel="noopener noreferrer" class="flex flex-col justify-between p-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold transition">
             <span>💳 Помочь «Зоошансу» (Код ЕРИП: 4346991)</span>
             <span class="text-[10px] font-mono opacity-90 mt-1">Благотворительность → Защита животных → Зоошанс</span>
           </a>
 
-          <a href="https://t.me/zooshans_chat" target="_blank" rel="noopener noreferrer" class="flex flex-col justify-between p-2.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold transition">
+          <a href="https://t.me/zooshans_chat" target="_blank" rel="noopener noreferrer" class="flex flex-col justify-between p-2.5 rounded-lg bg-sky-700 hover:bg-sky-600 text-white font-bold transition">
             <span>💬 Живой чат взаимопомощи @zooshans_chat</span>
             <span class="text-[10px] font-mono opacity-90 mt-1">Проверить «ручки», спросить совета, найти смесь</span>
           </a>
 
-          <a href="https://t.me/zooshans_info_bot" target="_blank" rel="noopener noreferrer" class="flex flex-col justify-between p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 font-semibold transition">
+          <a href="https://t.me/zooshans_info_bot" target="_blank" rel="noopener noreferrer" class="flex flex-col justify-between p-2.5 rounded-lg bg-[var(--bg-card)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold transition">
             <span>🤖 Справочный бот @zooshans_info_bot</span>
-            <span class="text-[10px] font-mono text-slate-400 mt-1">Памятки по карантину, проверенные врачи и пиар</span>
+            <span class="text-[10px] font-mono text-[var(--text-secondary)] mt-1">Памятки по карантину, проверенные врачи и пиар</span>
           </a>
 
-          <a href="https://t.me/zooshans" target="_blank" rel="noopener noreferrer" class="flex flex-col justify-between p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 font-semibold transition">
+          <a href="https://t.me/zooshans" target="_blank" rel="noopener noreferrer" class="flex flex-col justify-between p-2.5 rounded-lg bg-[var(--bg-card)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold transition">
             <span>📢 Канал «Жизнь Зоошанса» (@zooshans)</span>
-            <span class="text-[10px] font-mono text-slate-400 mt-1">Реальные истории спасения и пристройства</span>
+            <span class="text-[10px] font-mono text-[var(--text-secondary)] mt-1">Реальные истории спасения и пристройства</span>
           </a>
         </div>
       </div>
 
       <div class="flex justify-end">
-        <button onclick="startNewRun()" class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-sm transition">
+        <button onclick="startNewRun()" class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm transition shadow-md">
           Начать новую случайную партию
         </button>
       </div>

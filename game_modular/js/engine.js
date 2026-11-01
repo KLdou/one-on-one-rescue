@@ -52,9 +52,11 @@ function updateSpeedButtonsUI() {
   const speedControls = document.getElementById('speedButtonsGroup');
   if (speedControls) {
     if (isAcute) {
-      speedControls.classList.add('opacity-50');
+      speedControls.classList.add('hidden');
+      speedControls.classList.remove('flex');
     } else {
-      speedControls.classList.remove('opacity-50');
+      speedControls.classList.remove('hidden');
+      speedControls.classList.add('flex');
     }
   }
 
@@ -68,8 +70,8 @@ function updateSpeedButtonsUI() {
     const el = document.getElementById(item.id);
     if (!el) return;
     el.className = currentSpeed === item.s
-      ? 'px-2.5 py-1 rounded text-xs font-mono font-bold bg-emerald-500 text-slate-950 border border-emerald-400 transition'
-      : 'px-2.5 py-1 rounded text-xs font-mono font-semibold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 transition';
+      ? 'px-2 py-1 rounded-lg text-xs font-mono font-bold bg-emerald-600 text-white transition shadow-sm'
+      : 'px-2 py-1 rounded-lg text-xs font-mono font-semibold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] transition';
   });
 
   const dot = document.getElementById('tickIndicator');

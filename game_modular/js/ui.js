@@ -1,6 +1,147 @@
 // ui.js - Отрисовка интерфейса, карточек, табов, логов, модалок, альбома и карточки 9:16 (v2.2)
 
-let activeTab = 'vet';
+// activeTab инициализируется в state.js
+activeTab = 'vet';
+
+// ================= 0. МОДУЛЬНЫЙ SVG-КОНСТРУКТОР ПИТОМЦА =================
+function buildPetSVG(a) {
+  if (!a) return '';
+  const isDog = a.species === 'dog';
+  const coatId = a.coatId || 'cow';
+  const hasRingworm = a.knownRingworm === true;
+  const inCage = (state.zooshans && state.zooshans.hasCage && isAnimalAtPlayerHome()) || (state.zooshans && state.zooshans.locationStatus === 'home_cage');
+  const hasEyeIssue = (a.hiddenState && (a.hiddenState.deadlyVirus === 'rhinotracheitis' || a.hiddenState.hasEyeDrops)) || a.health < 60;
+
+  // Cat coat palette mapping (10 окрасов)
+  const catPalette = {
+    cow: { primary: '#27272A', secondary: '#F8FAFC', eye: '#F59E0B' },
+    tabby: { primary: '#78716C', secondary: '#44403C', eye: '#10B981' },
+    white_tabby: { primary: '#F5F5F4', secondary: '#78716C', eye: '#10B981' },
+    black: { primary: '#18181B', secondary: '#27272A', eye: '#FBBF24' },
+    grey: { primary: '#64748B', secondary: '#94A3B8', eye: '#10B981' },
+    calico_spices: { primary: '#EA580C', secondary: '#F8FAFC', accent: '#18181B', eye: '#F59E0B' },
+    white_ginger: { primary: '#F8FAFC', secondary: '#EA580C', eye: '#F59E0B' },
+    ginger: { primary: '#EA580C', secondary: '#C2410C', eye: '#F59E0B' },
+    colorpoint: { primary: '#FEF3C7', secondary: '#3F3F46', eye: '#0284C7' },
+    purebred: { primary: '#475569', secondary: '#334155', eye: '#D97706' }
+  };
+
+  // Dog coat palette mapping (4 окраса)
+  const dogPalette = {
+    dark: { primary: '#27272A', secondary: '#B45309', eye: '#78350F' },
+    foxy: { primary: '#D97706', secondary: '#FEF3C7', eye: '#78350F' },
+    cheprak: { primary: '#57534E', secondary: '#A8A29E', eye: '#78350F' },
+    cream: { primary: '#FEF9C3', secondary: '#E2E8F0', eye: '#78350F' }
+  };
+
+  const pal = isDog
+    ? (coatId.includes('Лисичка') || coatId.includes('Рыже') ? dogPalette.foxy : (coatId.includes('Чепрачный') ? dogPalette.cheprak : (coatId.includes('Беляк') || coatId.includes('кремовый') ? dogPalette.cream : dogPalette.dark)))
+    : (catPalette[coatId] || catPalette.cow);
+
+  let svg = `<svg viewBox="0 0 100 100" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">`;
+
+  svg += `<defs>
+    <radialGradient id="ringwormGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#4ADE80" stop-opacity="0.8"/>
+      <stop offset="70%" stop-color="#22C55E" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#15803D" stop-opacity="0"/>
+    </radialGradient>
+  </defs>`;
+
+  // Слой 1: Свечение лампы Вуда при лишае
+  if (hasRingworm) {
+    svg += `<circle cx="50" cy="50" r="46" fill="url(#ringwormGlow)" />`;
+  }
+
+  if (!isDog) {
+    // КОТ
+    svg += `<ellipse cx="50" cy="74" rx="28" ry="20" fill="${pal.primary}" />`;
+    if (pal.secondary && pal.secondary !== pal.primary) {
+      svg += `<ellipse cx="50" cy="76" rx="16" ry="14" fill="${pal.secondary}" />`;
+    }
+    // Уши
+    svg += `<polygon points="26,44 34,16 46,36" fill="${pal.primary}" />`;
+    svg += `<polygon points="30,40 35,22 43,35" fill="#F472B6" opacity="0.65" />`;
+    svg += `<polygon points="74,44 66,16 54,36" fill="${pal.primary}" />`;
+    svg += `<polygon points="70,40 65,22 57,35" fill="#F472B6" opacity="0.65" />`;
+
+    // Голова
+    svg += `<circle cx="50" cy="46" r="24" fill="${pal.primary}" />`;
+    if (coatId === 'colorpoint') {
+      svg += `<ellipse cx="50" cy="50" rx="14" ry="12" fill="${pal.secondary}" />`;
+    } else if (pal.secondary && coatId !== 'black' && coatId !== 'grey' && coatId !== 'purebred') {
+      svg += `<ellipse cx="50" cy="54" rx="10" ry="8" fill="${pal.secondary}" />`;
+    }
+
+    // Глаза
+    svg += `<ellipse cx="40" cy="42" rx="4.5" ry="5.5" fill="${pal.eye}" />`;
+    svg += `<ellipse cx="60" cy="42" rx="4.5" ry="5.5" fill="${pal.eye}" />`;
+    svg += `<ellipse cx="40" cy="42" rx="1.8" ry="4.5" fill="#18181B" />`;
+    svg += `<ellipse cx="60" cy="42" rx="1.8" ry="4.5" fill="#18181B" />`;
+    svg += `<circle cx="41.5" cy="40" r="1.2" fill="#FFFFFF" />`;
+    svg += `<circle cx="61.5" cy="40" r="1.2" fill="#FFFFFF" />`;
+
+    // Носик и ротик
+    svg += `<polygon points="48,51 52,51 50,54" fill="#F472B6" />`;
+    svg += `<path d="M47,56 Q50,58 53,56" stroke="#52525B" stroke-width="1.2" fill="none" stroke-linecap="round" />`;
+
+    // Усы
+    svg += `<line x1="34" y1="52" x2="16" y2="49" stroke="#E4E4E7" stroke-width="1.2" stroke-linecap="round" />`;
+    svg += `<line x1="34" y1="55" x2="18" y2="57" stroke="#E4E4E7" stroke-width="1.2" stroke-linecap="round" />`;
+    svg += `<line x1="66" y1="52" x2="84" y2="49" stroke="#E4E4E7" stroke-width="1.2" stroke-linecap="round" />`;
+    svg += `<line x1="66" y1="55" x2="82" y2="57" stroke="#E4E4E7" stroke-width="1.2" stroke-linecap="round" />`;
+
+  } else {
+    // СОБАКА
+    svg += `<ellipse cx="50" cy="74" rx="30" ry="20" fill="${pal.primary}" />`;
+    if (pal.secondary) {
+      svg += `<ellipse cx="50" cy="76" rx="16" ry="14" fill="${pal.secondary}" />`;
+    }
+    // Висячие уши
+    svg += `<ellipse cx="26" cy="38" rx="9" ry="16" fill="${pal.primary}" transform="rotate(-15 26 38)" />`;
+    svg += `<ellipse cx="74" cy="38" rx="9" ry="16" fill="${pal.primary}" transform="rotate(15 74 38)" />`;
+
+    // Морда
+    svg += `<ellipse cx="50" cy="48" rx="24" ry="22" fill="${pal.primary}" />`;
+    if (pal.secondary) {
+      svg += `<ellipse cx="50" cy="56" rx="13" ry="10" fill="${pal.secondary}" />`;
+    }
+
+    // Глаза
+    svg += `<circle cx="40" cy="44" r="4.5" fill="${pal.eye}" />`;
+    svg += `<circle cx="60" cy="44" r="4.5" fill="${pal.eye}" />`;
+    svg += `<circle cx="40" cy="44" r="2.5" fill="#18181B" />`;
+    svg += `<circle cx="60" cy="44" r="2.5" fill="#18181B" />`;
+    svg += `<circle cx="41" cy="42.5" r="1.2" fill="#FFFFFF" />`;
+    svg += `<circle cx="61" cy="42.5" r="1.2" fill="#FFFFFF" />`;
+
+    // Носик и язычок
+    svg += `<ellipse cx="50" cy="55" rx="5" ry="3.5" fill="#18181B" />`;
+    svg += `<path d="M48,58 Q50,62 52,58" stroke="#18181B" stroke-width="1.2" fill="none" />`;
+    svg += `<ellipse cx="50" cy="62" rx="3" ry="4" fill="#FB7185" />`;
+  }
+
+  // Очаг лишая на ушке
+  if (hasRingworm) {
+    svg += `<circle cx="33" cy="22" r="4.5" fill="#4ADE80" stroke="#16A34A" stroke-width="1.5" />`;
+    svg += `<circle cx="33" cy="22" r="2" fill="#86EFAC" />`;
+  }
+
+  // Капля у глаза при ринотрахеите / проблемах
+  if (hasEyeIssue) {
+    svg += `<path d="M43,47 C43,47 45,51 45,53 C45,54.5 43.8,55.5 42.5,55.5 C41.2,55.5 40,54.5 40,53 C40,51 43,47 43,47 Z" fill="#38BDF8" stroke="#0284C7" stroke-width="0.8" />`;
+  }
+
+  svg += `</svg>`;
+
+  // Слой 3: Оверлей клетки
+  if (inCage) {
+    svg += `<div class="cage-overlay-grid"></div>`;
+    svg += `<div class="cage-badge-label">🛡️ Клетка со склада</div>`;
+  }
+
+  return svg;
+}
 
 function switchTab(tabName) {
   // Если «туман войны» еще не развеян гуглением, блокируем переход во 2 и 3 табы
@@ -16,10 +157,10 @@ function switchTab(tabName) {
     if (!content || !btn) return;
     if (t === tabName) {
       content.classList.remove('hidden');
-      btn.className = 'px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-emerald-500 text-slate-950 transition';
+      btn.className = 'px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-emerald-600 text-white transition shadow-sm';
     } else {
       content.classList.add('hidden');
-      btn.className = 'px-3 py-1.5 rounded-lg text-xs font-mono font-semibold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 transition';
+      btn.className = 'px-3 py-1.5 rounded-lg text-xs font-mono font-semibold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] transition';
     }
   });
 }
@@ -28,12 +169,16 @@ function renderAll() {
   renderTopBar();
   renderPlayerAndAnimalCards();
   renderActionTabs();
+  renderDeadlines();
   renderLog();
 }
 
 function renderTopBar() {
   const a = state.animal;
   const isAcute = state.onboarding && state.onboarding.acutePhase;
+
+  // Динамическая сезонная тема на <body>
+  document.body.setAttribute('data-season', state.currentSeason || 'summer');
 
   // Счетчик игрового дня
   document.getElementById('dayCounter').textContent = state.day;
@@ -65,46 +210,55 @@ function renderTopBar() {
   const seasonBadge = document.getElementById('seasonBadge');
   if (seasonBadge && state.currentSeason) {
     const seasonInfoMap = {
-      summer: { label: '☀️ Лето: Сезон котят (-75% звонков)', class: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
-      autumn: { label: '🍂 Осень: +25% звонков / Хэллоуин', class: 'bg-orange-500/20 text-orange-300 border-orange-500/40' },
-      winter: { label: '❄️ Зима: Импульсный спрос к НГ / Мороз', class: 'bg-sky-500/20 text-sky-300 border-sky-500/40' },
-      spring: { label: '🌱 Весна: Сезон клещей и беременных кошек', class: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' }
+      summer: { label: '☀️ Лето: Сезон котят (-75% звонков)' },
+      autumn: { label: '🍂 Осень: +25% звонков / Хэллоуин' },
+      winter: { label: '❄️ Зима: Спрос к НГ / Мороз' },
+      spring: { label: '🌱 Весна: Сезон клещей и кошек' }
     };
-    const sInfo = seasonInfoMap[state.currentSeason] || { label: getSeasonLabelRu(state.currentSeason), class: 'bg-slate-800 text-slate-300 border-slate-700' };
+    const sInfo = seasonInfoMap[state.currentSeason] || { label: getSeasonLabelRu(state.currentSeason) };
     seasonBadge.textContent = sInfo.label;
-    seasonBadge.className = `font-mono text-[11px] px-2 py-0.5 rounded border ${sInfo.class}`;
     seasonBadge.classList.remove('hidden');
   }
 
-  // Счетчик сохраненных хвостов в хедере
+  // Счетчик сохраненных хвостов в хедере и сайдбаре
   const headerAlbumEl = document.getElementById('headerAlbumCount');
   if (headerAlbumEl) {
     headerAlbumEl.textContent = getSavedAlbum().length;
+  }
+  const sideAlbumEl = document.getElementById('sidebarAlbumCount');
+  if (sideAlbumEl) {
+    sideAlbumEl.textContent = getSavedAlbum().length;
   }
 
   // Бюджет в BYN
   const cashEl = document.getElementById('cashValue');
   cashEl.textContent = `${state.cash} BYN`;
   cashEl.className = state.cash < 60
-    ? 'font-mono font-bold text-sm sm:text-base text-rose-400'
-    : 'font-mono font-bold text-sm sm:text-base text-emerald-400';
+    ? 'font-mono font-extrabold text-base sm:text-lg text-rose-700'
+    : 'font-mono font-extrabold text-base sm:text-lg text-emerald-700';
 
   // Запас расходников
   const totalSup = state.supplies.daysLeft + state.zooshans.giftedFoodDaysLeft;
   const supEl = document.getElementById('supplyDaysBadge');
   supEl.textContent = `Корм: ${totalSup} дн.`;
   supEl.className = totalSup <= 2
-    ? 'font-mono text-[11px] px-1.5 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-500 animate-pulse'
-    : 'font-mono text-[11px] px-1.5 py-0.5 rounded bg-slate-800 text-emerald-300 border border-slate-700';
+    ? 'craft-badge text-[11px] font-bold text-rose-800 bg-rose-50 border-rose-400 animate-pulse'
+    : 'craft-badge text-[11px] font-bold text-emerald-800 bg-emerald-50 border-emerald-300';
 
   // Долг по талону (лимит 1000 BYN)
   const vDebtEl = document.getElementById('voucherDebtText');
   const vTimerEl = document.getElementById('voucherTimerText');
-  vDebtEl.textContent = `Долг: ${state.zooshans.voucherDebt} / 1000 BYN`;
-  vDebtEl.className = state.zooshans.voucherDebt >= 800 ? 'text-rose-400 font-bold' : (state.zooshans.voucherDebt > 0 ? 'text-amber-300 font-semibold' : 'text-slate-400');
+  vDebtEl.textContent = `${state.zooshans.voucherDebt} / 1000 BYN`;
+  vDebtEl.className = state.zooshans.voucherDebt >= 800 ? 'font-bold text-rose-700' : (state.zooshans.voucherDebt > 0 ? 'font-bold text-amber-700' : 'font-bold text-[var(--text-secondary)]');
   vTimerEl.textContent = state.zooshans.voucherDebt > 0
-    ? (state.zooshans.voucherBlocked ? 'ТАЛОНЫ ЗАБЛОКИРОВАНЫ' : `Срок талона: ${state.zooshans.voucherDaysLeft} дн.`)
+    ? (state.zooshans.voucherBlocked ? 'ТАЛОНЫ ЗАБЛОКИРОВАНЫ' : `Срок: ${state.zooshans.voucherDaysLeft} дн.`)
     : 'Лимит: 1000 BYN';
+
+  const voucherBar = document.getElementById('voucherDebtBar');
+  if (voucherBar) {
+    const vPct = Math.min(100, Math.round((state.zooshans.voucherDebt / 1000) * 100));
+    voucherBar.style.width = `${vPct}%`;
+  }
 
   // Менталка
   document.getElementById('mentalValue').textContent = `${state.mental}%`;
@@ -119,6 +273,13 @@ function renderTopBar() {
       : '⚡ Энергия (Быт на передержке: 0⚡)';
   }
   document.getElementById('energyValue').textContent = `${state.energy}⚡`;
+
+  const freeVal = Math.max(0, state.energy - (isAnimalAtPlayerHome() ? drain : 0));
+  const lockVal = isAnimalAtPlayerHome() ? drain : 0;
+  const freeValEl = document.getElementById('energy-free-val');
+  const lockValEl = document.getElementById('energy-lock-val');
+  if (freeValEl) freeValEl.textContent = `${freeVal}⚡`;
+  if (lockValEl) lockValEl.textContent = `${lockVal}🔒`;
 
   const barAvail = document.getElementById('energyBarAvailable');
   const barRes = document.getElementById('energyBarReserved');
@@ -215,15 +376,22 @@ function renderPlayerAndAnimalCards() {
     appBadge.className = 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-500/40';
   }
 
+  // Шкала лимита карты
+  const cardBar = document.getElementById('cardLimitBar');
+  if (cardBar) {
+    const cardPct = Math.min(100, Math.round((state.zooshans.personalCardCollectedBYN / 6500) * 100));
+    cardBar.style.width = `${cardPct}%`;
+  }
+
   // Кнопки выбора клиники
   const btnClinicPartner = document.getElementById('btnClinicPartner');
   const btnClinicMajor = document.getElementById('btnClinicMajor');
   if (state.zooshans.clinicMode === 'partner_cash') {
-    btnClinicPartner.className = 'p-1.5 rounded border border-emerald-400 bg-emerald-950/80 text-left font-mono text-[10px] text-emerald-200 transition';
-    btnClinicMajor.className = 'p-1.5 rounded border border-slate-700 bg-slate-900/60 text-left font-mono text-[10px] text-slate-400 transition hover:bg-slate-800';
+    btnClinicPartner.className = 'p-2 rounded-lg border-2 border-emerald-600 bg-emerald-50 text-left font-mono text-[10px] text-emerald-950 transition';
+    btnClinicMajor.className = 'p-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-muted)] text-left font-mono text-[10px] text-[var(--text-secondary)] transition hover:bg-[var(--bg-elevated)]';
   } else {
-    btnClinicPartner.className = 'p-1.5 rounded border border-slate-700 bg-slate-900/60 text-left font-mono text-[10px] text-slate-400 transition hover:bg-slate-800';
-    btnClinicMajor.className = 'p-1.5 rounded border border-sky-400 bg-sky-950/80 text-left font-mono text-[10px] text-sky-200 transition';
+    btnClinicPartner.className = 'p-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-muted)] text-left font-mono text-[10px] text-[var(--text-secondary)] transition hover:bg-[var(--bg-elevated)]';
+    btnClinicMajor.className = 'p-2 rounded-lg border-2 border-sky-600 bg-sky-50 text-left font-mono text-[10px] text-sky-950 transition';
   }
 
   const giftFoodEl = document.getElementById('giftedFoodBadge');
@@ -256,7 +424,15 @@ function renderPlayerAndAnimalCards() {
   ];
   if (p.socialCapital) playerTags.push(p.socialCapital.label);
   document.getElementById('playerTagsContainer').innerHTML = playerTags
-    .map(t => `<span class="px-2 py-0.5 rounded bg-slate-950 border border-slate-700 text-slate-200">${t}</span>`).join('');
+    .map(t => `<span class="craft-badge text-[10px]">${t}</span>`).join('');
+
+  // Модульный SVG-аватар питомца
+  const svgBox = document.getElementById('petSvgContainer');
+  if (svgBox) {
+    svgBox.innerHTML = buildPetSVG(a);
+    if (a.knownRingworm) svgBox.classList.add('ringworm-glow');
+    else svgBox.classList.remove('ringworm-glow');
+  }
 
   // Карточка животного: кличка по канону Зоошанса + архетип (GDD 4.1)
   const actCount = a.activeCount !== undefined ? a.activeCount : (a.count || 1);
@@ -270,18 +446,18 @@ function renderPlayerAndAnimalCards() {
   const qDone = a.quarantineDaysDone >= 14;
   const qTag = {
     t: qDone ? '✓ Карантин: 14/14 дн.' : `⏳ Карантин: ${a.quarantineDaysDone}/14 дн.`,
-    c: qDone ? 'bg-emerald-950/70 text-emerald-300 border-emerald-500/50' : 'bg-slate-800 text-amber-300 border-amber-500/40'
+    c: qDone ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-amber-50 text-amber-800 border-amber-300'
   };
 
-  let dwTag = { t: '💊 Глистогонка: 0/2', c: 'bg-rose-950/60 text-rose-300 border-rose-500/40' };
+  let dwTag = { t: '💊 Глистогонка: 0/2', c: 'bg-rose-50 text-rose-800 border-rose-300' };
   if (a.dewormStage === 1) {
     const waitLeft = Math.max(0, 10 - a.daysSinceDeworm1);
     dwTag = waitLeft > 0
-      ? { t: `⏳ Глистогонка: 1/2 (2-я через ${waitLeft} дн.)`, c: 'bg-amber-950/70 text-amber-300 border-amber-500/50' }
-      : { t: '🔔 Глистогонка: 1/2 (ДАЙТЕ 2-Ю ТАБЛЕТКУ!)', c: 'bg-amber-500 text-slate-950 font-bold border-amber-300 animate-pulse' };
+      ? { t: `⏳ Глистогонка: 1/2 (2-я через ${waitLeft} дн.)`, c: 'bg-amber-50 text-amber-800 border-amber-300' }
+      : { t: '🔔 Глистогонка: 1/2 (ДАЙТЕ 2-Ю ТАБЛЕТКУ!)', c: 'bg-amber-500 text-slate-950 font-bold border-amber-600 animate-pulse' };
   } else if (a.dewormStage === 2) {
     const validLeft = Math.max(0, 180 - a.daysSinceDeworm2);
-    dwTag = { t: `✓ Глистогонка: 2/2 (еще ${validLeft}/180 дн.)`, c: 'bg-emerald-950/70 text-emerald-300 border-emerald-500/50' };
+    dwTag = { t: `✓ Глистогонка: 2/2 (еще ${validLeft}/180 дн.)`, c: 'bg-emerald-50 text-emerald-800 border-emerald-300' };
   }
 
   const ageWait = Math.max(0, 60 - a.ageDays);
@@ -289,31 +465,31 @@ function renderPlayerAndAnimalCards() {
     t: a.parasitesAndVaccinated
       ? '✓ Вакцинация: Да'
       : (ageWait > 0 ? `💉 Вакцинация с 60 дн. (ждем ${ageWait} дн.)` : '💉 Вакцинация: Ждет 2/2 глистогонки'),
-    c: a.parasitesAndVaccinated ? 'bg-emerald-950/70 text-emerald-300 border-emerald-500/50' : 'bg-slate-800 text-slate-400 border-slate-700'
+    c: a.parasitesAndVaccinated ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-[var(--bg-muted)] text-[var(--text-secondary)] border-[var(--border-subtle)]'
   };
 
   const litterTag = {
     t: a.litterTrained ? (a.species === 'dog' ? '✓ Выгул: Приучен' : '✓ Лоток: 5+') : `🚽 Приучение: ${a.litterTrainDaysDone}/8 дн.`,
-    c: a.litterTrained ? 'bg-emerald-950/70 text-emerald-300 border-emerald-500/50' : 'bg-amber-950/70 text-amber-300 border-amber-500/50'
+    c: a.litterTrained ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-amber-50 text-amber-800 border-amber-300'
   };
 
   const checklistArr = [qTag, dwTag, vacTag, litterTag];
   if (a.knownRingworm === true) {
     checklistArr.push({
       t: `🍄 Лечение лишая в клетке: ${a.ringwormDaysDone}/35 дн.`,
-      c: 'bg-rose-950 text-rose-200 border-rose-500 font-bold'
+      c: 'bg-rose-100 text-rose-900 border-rose-400 font-bold'
     });
   }
   if (a.hiddenState.needsSocialization) {
     checklistArr.push({
       t: `💛 Социализация: ${a.hiddenState.socializationDaysDone}/14 дн.`,
-      c: 'bg-amber-950 text-amber-200 border-amber-500'
+      c: 'bg-amber-100 text-amber-900 border-amber-400 font-semibold'
     });
   }
   if (a.hiddenState.isJawFracture && a.hiddenState.syringeDaysLeft > 0) {
     checklistArr.push({
       t: `🥣 Кормление через шприц/стому: ${a.hiddenState.syringeDaysLeft} дн.`,
-      c: 'bg-sky-950 text-sky-200 border-sky-500'
+      c: 'bg-sky-100 text-sky-900 border-sky-400 font-semibold'
     });
   }
 
@@ -322,18 +498,18 @@ function renderPlayerAndAnimalCards() {
     if (a.tickProtectionDaysLeft > 0) {
       checklistArr.push({
         t: `🛡️ Защита от клещей: ${a.tickProtectionDaysLeft}/30 дн.`,
-        c: 'bg-emerald-950/70 text-emerald-300 border-emerald-500/50'
+        c: 'bg-emerald-50 text-emerald-800 border-emerald-300'
       });
     } else {
       checklistArr.push({
         t: `⚠️ Без защиты от клещей (капли 35 BYN)`,
-        c: 'bg-rose-950 text-rose-300 border-rose-500 font-bold animate-pulse'
+        c: 'bg-rose-100 text-rose-900 border-rose-400 font-bold animate-pulse'
       });
     }
   }
 
   document.getElementById('animalChecklistTags').innerHTML = checklistArr
-    .map(item => `<span class="text-[11px] font-mono px-2 py-0.5 rounded border ${item.c}">${item.t}</span>`).join('');
+    .map(item => `<span class="craft-badge text-[11px] ${item.c}">${item.t}</span>`).join('');
 
   // Подсказка следующего шага
   let nextHint = 'Готов к пиару на сайтах!';
@@ -354,43 +530,43 @@ function renderPlayerAndAnimalCards() {
     ? 'Просвет Вуда: ???'
     : (a.knownRingworm === true ? `Лишай: день ${a.ringwormDaysDone}/35` : 'Просвет Вуда: Чисто ✓');
   const woodClass = !a.examinedWood
-    ? 'bg-slate-800 text-slate-400 border-slate-700'
-    : (a.knownRingworm === true ? 'bg-rose-950 text-rose-300 border-rose-500' : 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40');
+    ? 'bg-[var(--bg-muted)] text-[var(--text-secondary)] border-[var(--border-subtle)]'
+    : (a.knownRingworm === true ? 'bg-rose-100 text-rose-900 border-rose-400' : 'bg-emerald-50 text-emerald-800 border-emerald-300');
 
   let pcrText = 'ПЦР ВИК/ВЛК: ???';
-  let pcrClass = 'bg-slate-800 text-slate-400 border-slate-700';
+  let pcrClass = 'bg-[var(--bg-muted)] text-[var(--text-secondary)] border-[var(--border-subtle)]';
   if (a.pcrTested || a.knownCarrier || a.knownVirus) {
     const parts = [];
     if (a.knownCarrier) parts.push(`${a.knownCarrier}+`);
     if (a.knownVirus) parts.push(`${a.knownVirus}`);
     pcrText = parts.length === 0 ? 'ПЦР: Чисто ✓' : `ПЦР: ${parts.join(', ')}`;
-    pcrClass = parts.length === 0 ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40' : 'bg-amber-950/80 text-amber-300 border-amber-500/60';
+    pcrClass = parts.length === 0 ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-amber-100 text-amber-900 border-amber-400';
   }
 
   const cageText = !state.zooshans.hasCage
     ? 'Клетка: Нет'
-    : (state.zooshans.cageReturnedClean ? 'Клетка: Продезинфицирована и сдана ✓' : 'Клетка «Зоошанса»: На руках (вернуть чистой!)');
-  const cageClass = state.zooshans.cageReturnedClean ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40' : 'bg-slate-800 text-slate-300 border-slate-700';
+    : (state.zooshans.cageReturnedClean ? 'Клетка: Сдана чистой ✓' : 'Клетка «Зоошанса»: На руках');
+  const cageClass = state.zooshans.cageReturnedClean ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-[var(--bg-muted)] text-[var(--text-secondary)] border-[var(--border-subtle)]';
 
   let photoText = 'Фото: Нет фото';
-  let photoClass = 'bg-slate-800 text-slate-500 border-slate-700';
+  let photoClass = 'bg-[var(--bg-muted)] text-[var(--text-muted)] border-[var(--border-subtle)]';
   if (state.zooshans.hasProPhotos) {
     photoText = 'Фото: ПРОФИ «Зоошанс» (x2.6)';
-    photoClass = 'bg-sky-950 text-sky-300 border-sky-500/50';
+    photoClass = 'bg-sky-100 text-sky-900 border-sky-400';
   } else if (state.photos && state.photos.hasFriendsPhotos) {
     photoText = 'Фото: От друзей (x1.5)';
-    photoClass = 'bg-indigo-950 text-indigo-300 border-indigo-500/50';
+    photoClass = 'bg-indigo-100 text-indigo-900 border-indigo-400';
   } else if (state.photos && state.photos.hasSelfPhotos) {
     photoText = 'Фото: С телефона (x1.2)';
-    photoClass = 'bg-slate-800 text-slate-200 border-slate-600';
+    photoClass = 'bg-[var(--bg-muted)] text-[var(--text-primary)] border-[var(--border-subtle)]';
   }
 
   if (a.pcrPending) {
     pcrText = `ПЦР: В лаборатории (${a.pcrDaysRemaining} дн.)`;
-    pcrClass = 'bg-amber-950 text-amber-300 border-amber-500 animate-pulse';
+    pcrClass = 'bg-amber-100 text-amber-900 border-amber-400 animate-pulse';
   } else if (a.pcrResultDoubtful) {
     pcrText = 'ПЦР: Сомнительный титр ⚠️';
-    pcrClass = 'bg-amber-950 text-amber-200 border-amber-500';
+    pcrClass = 'bg-amber-100 text-amber-900 border-amber-400';
   }
 
   const allStatusTags = [
@@ -401,20 +577,20 @@ function renderPlayerAndAnimalCards() {
   ];
 
   if (a.species === 'dog' && a.hasAntiEscapeHarness) {
-    allStatusTags.push({ t: 'Шлейка-антипобег ✓', c: 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40' });
+    allStatusTags.push({ t: 'Шлейка-антипобег ✓', c: 'bg-emerald-50 text-emerald-800 border-emerald-300' });
   }
   if (a.fipTreatment) {
-    allStatusTags.push({ t: `Терапия ФИП: ${a.fipDaysLeft} дн. (GS-441524)`, c: 'bg-rose-950 text-rose-300 border-rose-500 animate-pulse' });
+    allStatusTags.push({ t: `Терапия ФИП: ${a.fipDaysLeft} дн.`, c: 'bg-rose-100 text-rose-900 border-rose-400 animate-pulse' });
   }
   if (a.teethCrisis && !a.teethOperated) {
-    allStatusTags.push({ t: 'Зубной камень / Санация', c: 'bg-rose-950 text-rose-300 border-rose-500' });
+    allStatusTags.push({ t: 'Санация ротовой полости', c: 'bg-rose-100 text-rose-900 border-rose-400' });
   }
   if (a.hasMotherCat && a.motherLactating) {
-    allStatusTags.push({ t: `Кормящая мама (${Math.max(0, 45 - a.ageDays)} дн. лактации)`, c: 'bg-sky-950 text-sky-300 border-sky-500' });
+    allStatusTags.push({ t: `Кормящая мама (${Math.max(0, 45 - a.ageDays)} дн.)`, c: 'bg-sky-100 text-sky-900 border-sky-400' });
   }
 
   document.getElementById('animalStatusTags').innerHTML = allStatusTags
-    .map(item => `<span class="text-[11px] font-mono px-2 py-0.5 rounded border ${item.c}">${item.t}</span>`).join('');
+    .map(item => `<span class="craft-badge text-[11px] ${item.c}">${item.t}</span>`).join('');
 
   let prLabel = 'Пиар на сайтах: Не запущен';
   if (state.pr.lostSearchActive) prLabel = `🔎 Поиск старых хозяев: ${state.pr.lostSearchDaysDone}/10 дн.`;
@@ -1009,16 +1185,16 @@ function renderButtonGrid(containerId, buttons) {
   buttons.forEach(b => {
     const btn = document.createElement('button');
     if (b.disabled) {
-      btn.className = 'p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-left flex flex-col justify-between opacity-60 cursor-not-allowed';
+      btn.className = 'p-3 rounded-xl bg-[var(--bg-muted)] border border-[var(--border-subtle)] text-left flex flex-col justify-between opacity-60 cursor-not-allowed';
       btn.innerHTML = `
-        <div class="text-xs font-bold text-slate-400">${b.title}</div>
-        <div class="text-[11px] font-mono text-emerald-400/90 mt-1.5">${b.doneText}</div>
+        <div class="text-xs font-bold text-[var(--text-secondary)]">${b.title}</div>
+        <div class="text-[11px] font-mono text-emerald-800 mt-1.5">${b.doneText}</div>
       `;
     } else {
-      btn.className = 'p-3 rounded-xl bg-slate-900 hover:bg-slate-800/90 border border-slate-700 hover:border-emerald-500/60 text-left flex flex-col justify-between transition group shadow-sm';
+      btn.className = 'p-3 rounded-xl bg-[var(--bg-card)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--season-accent)] text-left flex flex-col justify-between transition group shadow-sm cursor-pointer';
       btn.innerHTML = `
-        <div class="text-xs sm:text-sm font-bold text-white group-hover:text-emerald-400 transition">${b.title}</div>
-        <div class="text-[11px] font-mono text-slate-400 mt-1.5">${b.sub}</div>
+        <div class="text-xs sm:text-sm font-bold text-[var(--text-primary)] group-hover:text-[var(--season-accent)] transition">${b.title}</div>
+        <div class="text-[11px] font-mono text-[var(--text-secondary)] mt-1.5">${b.sub}</div>
       `;
       btn.onclick = b.onClick;
     }
@@ -1031,14 +1207,257 @@ function renderLog() {
   if (!box) return;
   document.getElementById('logCountInfo').textContent = `Записей: ${state.logs.length}`;
   const colorMap = {
-    info: 'text-slate-300 border-l-2 border-sky-500 pl-2',
-    success: 'text-emerald-300 border-l-2 border-emerald-500 pl-2',
-    warn: 'text-amber-300 border-l-2 border-amber-500 pl-2',
-    danger: 'text-rose-300 border-l-2 border-rose-500 pl-2 font-semibold'
+    info: 'text-[var(--text-secondary)] border-l-2 border-sky-500 pl-2',
+    success: 'text-emerald-800 border-l-2 border-emerald-500 pl-2 font-medium',
+    warn: 'text-amber-800 border-l-2 border-amber-500 pl-2',
+    danger: 'text-rose-800 border-l-2 border-rose-500 pl-2 font-bold'
   };
   box.innerHTML = state.logs.map(item =>
     `<div class="py-1 ${colorMap[item.type] || colorMap.info}">${item.text}</div>`
   ).join('');
+}
+
+function renderDeadlines() {
+  const container = document.getElementById('deadlinesRadarList');
+  if (!container) return;
+
+  const a = state.animal;
+  const items = [];
+
+  // 1. Долг по талону Зоошанса (30 дней)
+  if (state.zooshans.voucherDebt > 0) {
+    const left = state.zooshans.voucherDaysLeft;
+    items.push({
+      icon: '🎫',
+      title: 'Срок талона «Зоошанса»',
+      days: left,
+      sub: `${state.zooshans.voucherDebt} / 1000 BYN`,
+      urgent: left <= 3,
+      danger: left <= 1
+    });
+  }
+
+  // 2. 7-дневный финотчет сборов на карту
+  if (state.zooshans.personalCardCollectedBYN > 0) {
+    const daysSince = state.zooshans.daysSinceLastFinReport || 0;
+    const left = Math.max(0, 7 - daysSince);
+    items.push({
+      icon: '🧾',
+      title: 'Финотчет по сбору',
+      days: left,
+      sub: `Собрано: ${state.zooshans.personalCardCollectedBYN} BYN`,
+      urgent: left <= 2,
+      danger: left === 0
+    });
+  }
+
+  // 3. 2-я таблетка глистогонки (через 10 дней)
+  if (a.dewormStage === 1) {
+    const left = Math.max(0, 10 - a.daysSinceDeworm1);
+    items.push({
+      icon: '💊',
+      title: '2-я таблетка глистогонки',
+      days: left,
+      sub: left === 0 ? 'Пора дать сегодня!' : 'Строго через 10 дней',
+      urgent: left <= 1,
+      danger: left === 0
+    });
+  }
+
+  // 4. Вакцинация с 60 дней возраста
+  if (a.ageDays < 60 && a.dewormStage >= 2 && !a.parasitesAndVaccinated) {
+    const left = Math.max(0, 60 - a.ageDays);
+    items.push({
+      icon: '💉',
+      title: 'Прививка по возрасту',
+      days: left,
+      sub: 'Ждем 60 дней возраста',
+      urgent: left <= 3,
+      danger: false
+    });
+  }
+
+  // 5. Испытательный срок «ручек» (7 дней)
+  if (state.trialAnimals && state.trialAnimals.length > 0) {
+    state.trialAnimals.forEach(t => {
+      items.push({
+        icon: '🏡',
+        title: `Испытание: ${t.petName || 'Питомец'}`,
+        days: t.daysRemaining,
+        sub: 'Контроль 7 дней',
+        urgent: t.daysRemaining <= 2,
+        danger: false
+      });
+    });
+  }
+
+  // 6. Переговоры «Время для маневра» (3 дня)
+  if (state.maneuver && state.maneuver.active) {
+    items.push({
+      icon: '⏳',
+      title: 'Маневр у ручек (3 дня)',
+      days: state.maneuver.daysRemaining,
+      sub: 'Срочно найти передержку!',
+      urgent: true,
+      danger: state.maneuver.daysRemaining <= 1
+    });
+  }
+
+  // 7. ПЦР в лаборатории (7 дней)
+  if (a.pcrPending) {
+    items.push({
+      icon: '🔬',
+      title: 'ПЦР-профиль (лаборатория)',
+      days: a.pcrDaysRemaining,
+      sub: 'ВИК, ВЛК, панлейкопения',
+      urgent: a.pcrDaysRemaining <= 1,
+      danger: false
+    });
+  }
+
+  // 8. Лишай в клетке (35 дней)
+  if (a.knownRingworm === true) {
+    const left = Math.max(0, 35 - a.ringwormDaysDone);
+    items.push({
+      icon: '🍄',
+      title: 'Курс лечения лишая',
+      days: left,
+      sub: '2 чистых просветов Вуда',
+      urgent: left <= 5,
+      danger: false
+    });
+  }
+
+  // 9. Терапия ФИП GS-441524 (84 дня)
+  if (a.fipTreatment) {
+    items.push({
+      icon: '🧬',
+      title: 'Терапия ФИП (GS-441524)',
+      days: a.fipDaysLeft,
+      sub: 'Ежедневные уколы',
+      urgent: a.fipDaysLeft <= 5,
+      danger: false
+    });
+  }
+
+  // 10. Поиск беглеца (4 дня)
+  if (state.escapeQuest && state.escapeQuest.active) {
+    items.push({
+      icon: '🚨',
+      title: 'Поиск беглеца',
+      days: state.escapeQuest.daysRemaining,
+      sub: `Шкала: ${state.escapeQuest.searchProgress}%`,
+      urgent: true,
+      danger: state.escapeQuest.daysRemaining <= 1
+    });
+  }
+
+  // 11. Защита собаки от клещей (30 дней)
+  if (a.species === 'dog') {
+    if (a.tickProtectionDaysLeft > 0) {
+      items.push({
+        icon: '🛡️',
+        title: 'Капли от клещей',
+        days: a.tickProtectionDaysLeft,
+        sub: 'Против пироплазмоза',
+        urgent: a.tickProtectionDaysLeft <= 5,
+        danger: a.tickProtectionDaysLeft <= 2
+      });
+    } else {
+      items.push({
+        icon: '⚠️',
+        title: 'Защита от клещей истекла!',
+        days: 0,
+        sub: 'Срочно нанесите капли!',
+        urgent: true,
+        danger: true
+      });
+    }
+  }
+
+  // 12. Зарплата игрока (каждые 30 дней)
+  const salaryDays = 30 - (state.day % 30);
+  items.push({
+    icon: '💵',
+    title: 'Зарплата куратора',
+    days: salaryDays === 30 ? 0 : salaryDays,
+    sub: `+${state.player.income.amountMonth} BYN`,
+    urgent: salaryDays <= 2,
+    danger: false
+  });
+
+  // Sort by days ascending
+  items.sort((x, y) => x.days - y.days);
+
+  if (items.length === 0) {
+    container.innerHTML = `
+      <div class="text-[11px] font-mono text-[var(--text-muted)] text-center py-2">
+        Дедлайнов нет — штиль ⛵
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = items.map(item => {
+    let badgeClass = 'bg-[var(--bg-card)] text-[var(--text-primary)] border-[var(--border-subtle)]';
+    if (item.danger) {
+      badgeClass = 'bg-rose-600 text-white font-bold border-rose-500 animate-pulse';
+    } else if (item.urgent) {
+      badgeClass = 'bg-amber-100 text-amber-900 border-amber-300 font-bold';
+    }
+
+    const daysText = item.days === 0 ? 'СЕГОДНЯ!' : `${item.days} дн.`;
+
+    return `
+      <div class="flex items-center justify-between p-2 rounded-lg bg-[var(--bg-muted)] border border-[var(--border-subtle)] text-xs font-mono transition hover:border-[var(--season-accent)]">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="text-sm shrink-0">${item.icon}</span>
+          <div class="min-w-0">
+            <div class="font-bold text-[var(--text-primary)] truncate">${item.title}</div>
+            <div class="text-[10px] text-[var(--text-secondary)] truncate">${item.sub}</div>
+          </div>
+        </div>
+        <span class="shrink-0 text-[11px] px-2 py-0.5 rounded border ${badgeClass}">
+          ${daysText}
+        </span>
+      </div>
+    `;
+  }).join('');
+}
+
+function toggleDrawer(side) {
+  const left = document.getElementById('drawerLeft');
+  const right = document.getElementById('drawerRight');
+  const backdrop = document.getElementById('drawerBackdrop');
+
+  if (side === 'left') {
+    if (left.classList.contains('open')) {
+      left.classList.remove('open');
+      backdrop.classList.remove('active');
+    } else {
+      left.classList.add('open');
+      right.classList.remove('open');
+      backdrop.classList.add('active');
+    }
+  } else if (side === 'right') {
+    if (right.classList.contains('open')) {
+      right.classList.remove('open');
+      backdrop.classList.remove('active');
+    } else {
+      right.classList.add('open');
+      left.classList.remove('open');
+      backdrop.classList.add('active');
+    }
+  }
+}
+
+function closeDrawers() {
+  const left = document.getElementById('drawerLeft');
+  const right = document.getElementById('drawerRight');
+  const backdrop = document.getElementById('drawerBackdrop');
+  if (left) left.classList.remove('open');
+  if (right) right.classList.remove('open');
+  if (backdrop) backdrop.classList.remove('active');
 }
 
 function showEventModal(title, bodyText, choices) {
@@ -1053,7 +1472,7 @@ function showEventModal(title, bodyText, choices) {
   extraBox.classList.add('hidden');
 
   document.getElementById('eventBadge').textContent = '⚡ СОБЫТИЕ (ИГРА НА ПАУЗЕ)';
-  document.getElementById('eventBadge').className = 'text-xs font-mono uppercase px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-bold';
+  document.getElementById('eventBadge').className = 'craft-badge text-xs font-mono uppercase font-bold bg-amber-500 text-slate-950';
   document.getElementById('eventTitle').textContent = title;
   document.getElementById('eventBody').textContent = bodyText;
 
@@ -1062,8 +1481,8 @@ function showEventModal(title, bodyText, choices) {
 
   choices.forEach(c => {
     const btn = document.createElement('button');
-    let styleClass = 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-600';
-    if (c.style === 'primary') styleClass = 'bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-extrabold';
+    let styleClass = 'bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)]';
+    if (c.style === 'primary') styleClass = 'bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold';
     if (c.style === 'info') styleClass = 'bg-sky-600 hover:bg-sky-500 text-white font-bold';
     if (c.style === 'danger') styleClass = 'bg-rose-600 hover:bg-rose-500 text-white font-bold';
 
@@ -1229,10 +1648,10 @@ function showAlbumModal() {
 
   if (!album || album.length === 0) {
     list.innerHTML = `
-      <div class="p-6 text-center text-slate-400 bg-slate-900/60 border border-slate-800 rounded-xl">
+      <div class="p-6 text-center bg-[var(--bg-muted)] border border-[var(--border-subtle)] rounded-xl">
         <div class="text-3xl mb-2">🐾</div>
-        <div class="text-sm font-semibold text-slate-300">Пока в альбоме нет спасенных хвостиков</div>
-        <p class="text-xs text-slate-500 mt-1">
+        <div class="text-sm font-semibold text-[var(--text-primary)]">Пока в альбоме нет спасенных хвостиков</div>
+        <p class="text-xs text-[var(--text-secondary)] mt-1">
           Пройдите путь куратора до конца, чтобы успешно пристроить подопечного (или оставить себе) — и его памятная карточка навсегда сохранится здесь!
         </p>
       </div>
@@ -1249,27 +1668,27 @@ function showAlbumModal() {
         : 'Сезон спасения';
 
       return `
-        <div class="bg-slate-900/80 border border-slate-800 hover:border-amber-500/50 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition">
+        <div class="bg-[var(--bg-card)] border border-[var(--border-subtle)] hover:border-[var(--season-accent)] rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition shadow-sm">
           <div class="flex items-center gap-3">
-            <span class="text-2xl sm:text-3xl p-2 rounded-xl bg-slate-800/80 border border-slate-700">${icon}</span>
+            <span class="text-2xl sm:text-3xl p-2 rounded-xl bg-[var(--bg-muted)] border border-[var(--border-subtle)]">${icon}</span>
             <div>
               <div class="flex items-center gap-2">
-                <h4 class="font-bold text-white text-sm sm:text-base">«${tail.petName || 'Найденыш'}»</h4>
-                <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-500/40">
+                <h4 class="font-bold text-[var(--text-primary)] text-sm sm:text-base">«${tail.petName || 'Найденыш'}»</h4>
+                <span class="craft-badge text-[10px] bg-emerald-50 text-emerald-800 border-emerald-300">
                   ${tail.archetypeTitle || 'Подопечный'}
                 </span>
               </div>
-              <div class="text-xs text-slate-400 mt-0.5">
-                Окрас: <span class="text-amber-300 font-mono">${tail.coatName || 'Уличный'}</span> • 
-                Семья: <span class="text-sky-300">${tail.adopterSummary || 'Любящий дом'}</span>
+              <div class="text-xs text-[var(--text-secondary)] mt-0.5">
+                Окрас: <span class="font-mono font-semibold">${tail.coatName || 'Уличный'}</span> • 
+                Семья: <span class="text-sky-800 font-medium">${tail.adopterSummary || 'Любящий дом'}</span>
               </div>
-              <div class="text-[11px] font-mono text-slate-500 mt-1">
+              <div class="text-[11px] font-mono text-[var(--text-muted)] mt-1">
                 ⏳ Спасен за ${tail.daysSpent} дн. (${seasonsStr}) • Дата: ${tail.dateSaved || 'Минск'}
               </div>
             </div>
           </div>
           <div class="self-end sm:self-center shrink-0 text-right">
-            <span class="text-xs font-mono font-bold text-emerald-400">✓ Дома</span>
+            <span class="craft-badge font-bold text-xs text-emerald-800 bg-emerald-50 border-emerald-300">✓ ДОМА!</span>
           </div>
         </div>
       `;

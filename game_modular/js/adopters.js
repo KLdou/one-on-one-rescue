@@ -239,7 +239,7 @@ function triggerIncomingCallModal(callData, isOldOwnerSearch = false) {
   extraBox.classList.add('hidden');
 
   document.getElementById('eventBadge').textContent = isOldOwnerSearch ? '📞 ЗВОНОК ПО ОБЪЯВЛЕНИЮ О НАХОДКЕ' : '📞 ВХОДЯЩИЙ ЗВОНОК «РУЧЕК»';
-  document.getElementById('eventBadge').className = isOldOwnerSearch ? 'text-xs font-mono uppercase px-2 py-0.5 rounded bg-sky-500 text-slate-950 font-bold' : 'text-xs font-mono uppercase px-2 py-0.5 rounded bg-emerald-500 text-slate-950 font-bold';
+  document.getElementById('eventBadge').className = isOldOwnerSearch ? 'craft-badge text-xs font-mono uppercase font-bold bg-sky-600 text-white' : 'craft-badge text-xs font-mono uppercase font-bold bg-emerald-600 text-white';
   document.getElementById('eventTitle').textContent = callData.caller;
   document.getElementById('eventBody').textContent = callData.dialogue;
 
@@ -248,7 +248,7 @@ function triggerIncomingCallModal(callData, isOldOwnerSearch = false) {
 
   // 1. Кнопка «Задать уточняющие вопросы (-5⚡)»
   const btnAsk = document.createElement('button');
-  btnAsk.className = 'px-3.5 py-2.5 rounded-lg text-xs sm:text-sm bg-slate-800 hover:bg-slate-700 text-white border border-slate-600 transition text-left';
+  btnAsk.className = 'px-3.5 py-2.5 rounded-lg text-xs sm:text-sm bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] transition text-left font-semibold';
   btnAsk.textContent = '🔍 Задать уточняющие вопросы (-5⚡)';
   btnAsk.onclick = () => {
     if (!spendEnergy(5)) return;
@@ -261,7 +261,7 @@ function triggerIncomingCallModal(callData, isOldOwnerSearch = false) {
 
   // 2. Кнопка «Отказать (Красный флаг / Подозрительно)»
   const btnRefuse = document.createElement('button');
-  btnRefuse.className = 'px-3.5 py-2.5 rounded-lg text-xs sm:text-sm bg-rose-900/80 hover:bg-rose-800 text-rose-200 border border-rose-500 transition text-left font-bold';
+  btnRefuse.className = 'px-3.5 py-2.5 rounded-lg text-xs sm:text-sm bg-rose-50 hover:bg-rose-100 text-rose-900 border border-rose-300 transition text-left font-bold';
   btnRefuse.textContent = '❌ Отказать (Красный флаг / Подозрительно)';
   btnRefuse.onclick = () => {
     state.filteredBadCalls += 1;
@@ -274,7 +274,7 @@ function triggerIncomingCallModal(callData, isOldOwnerSearch = false) {
   // 3. Варианты согласия
   if (callData.isScam) {
     const btnScam = document.createElement('button');
-    btnScam.className = 'px-3.5 py-2.5 rounded-lg text-xs sm:text-sm bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold transition text-left col-span-1 sm:col-span-2';
+    btnScam.className = 'px-3.5 py-2.5 rounded-lg text-xs sm:text-sm bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold transition text-left col-span-1 sm:col-span-2';
     btnScam.textContent = '✅ Согласиться и выполнить требование абонента';
     btnScam.onclick = () => {
       state.cash = Math.max(0, +(state.cash - (callData.scamLossBYN || 80)).toFixed(1));
@@ -288,7 +288,7 @@ function triggerIncomingCallModal(callData, isOldOwnerSearch = false) {
   } else if (callData.isCompromise) {
     // Механика Компромисса (GDD 8.4)
     const btnCompromise = document.createElement('button');
-    btnCompromise.className = 'px-3.5 py-2.5 rounded-lg text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-extrabold transition text-left col-span-1 sm:col-span-2';
+    btnCompromise.className = 'px-3.5 py-2.5 rounded-lg text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold transition text-left col-span-1 sm:col-span-2 shadow-sm';
     btnCompromise.textContent = '🤝 Пойти на компромисс + Кураторское сопровождение (-15⚡, 95% успеха)';
     btnCompromise.onclick = () => {
       if (!spendEnergy(15)) return;
@@ -297,7 +297,7 @@ function triggerIncomingCallModal(callData, isOldOwnerSearch = false) {
     choicesDiv.appendChild(btnCompromise);
 
     const btnDirectGive = document.createElement('button');
-    btnDirectGive.className = 'px-3.5 py-2.5 rounded-lg text-xs sm:text-sm bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold transition text-left';
+    btnDirectGive.className = 'px-3.5 py-2.5 rounded-lg text-xs sm:text-sm bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold transition text-left';
     btnDirectGive.textContent = 'Отдать без сопровождения (Риск возврата 35%)';
     btnDirectGive.onclick = () => {
       initiateAnimalTransferWithTrial(false, callData, { isCompromise: true, withSupport: false, successChance: 0.65 });
@@ -307,7 +307,7 @@ function triggerIncomingCallModal(callData, isOldOwnerSearch = false) {
   } else if (callData.canTakePair) {
     // Идеальные ручки могут забрать парочку (22% шанс, GDD 8.4)
     const btnPair = document.createElement('button');
-    btnPair.className = 'px-3.5 py-2.5 rounded-lg text-xs sm:text-sm bg-purple-600 hover:bg-purple-500 text-white font-extrabold transition text-left';
+    btnPair.className = 'px-3.5 py-2.5 rounded-lg text-xs sm:text-sm bg-purple-700 hover:bg-purple-600 text-white font-extrabold transition text-left';
     btnPair.textContent = '😻 Отдать сразу парочку котят вместе (2 хвостика в один дом!)';
     btnPair.onclick = () => {
       initiateAnimalTransferWithTrial(true, callData, { successChance: 0.92 });
@@ -315,7 +315,7 @@ function triggerIncomingCallModal(callData, isOldOwnerSearch = false) {
     choicesDiv.appendChild(btnPair);
 
     const btnSingle = document.createElement('button');
-    btnSingle.className = 'px-3.5 py-2.5 rounded-lg text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-extrabold transition text-left';
+    btnSingle.className = 'px-3.5 py-2.5 rounded-lg text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold transition text-left';
     btnSingle.textContent = '✅ Отдать одного котенка по договору куратора';
     btnSingle.onclick = () => {
       initiateAnimalTransferWithTrial(false, callData, { successChance: 0.92 });
@@ -325,7 +325,7 @@ function triggerIncomingCallModal(callData, isOldOwnerSearch = false) {
   } else {
     // Обычное согласие (для надежных или красных флагов)
     const btnGive = document.createElement('button');
-    btnGive.className = 'px-3.5 py-2.5 rounded-lg text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-extrabold transition text-left col-span-1 sm:col-span-2';
+    btnGive.className = 'px-3.5 py-2.5 rounded-lg text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold transition text-left col-span-1 sm:col-span-2 shadow-sm';
     btnGive.textContent = '✅ Согласиться и передать животное';
     btnGive.onclick = () => {
       if (!callData.isSafe) {
