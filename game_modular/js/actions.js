@@ -79,31 +79,43 @@ function payVetBill(baseCostBYN, voucherEligible, serviceTitle, isExpensiveProce
     }
   }
 
-  // Если заявление в Зоошанс подано, применяем скидку 20%
-  if (state.zooshans.applicationSubmitted && voucherEligible) {
-    const discounted = Math.round(baseCostBYN * 0.8);
+  const hasDiscount = state.zooshans.applicationSubmitted && voucherEligible;
+  const discounted = hasDiscount ? Math.round(baseCostBYN * 0.8) : baseCostBYN;
 
+  // Если заявление в Зоошанс подано, применяем скидку 20%
+  if (hasDiscount) {
     // Вариант А: Партнерская клиника — оплата сразу со скидкой 20% без долга (GDD 5.1)
     if (state.zooshans.clinicMode === 'partner_cash' && !isExpensiveProcedure) {
+      if (state.cash < discounted) {
+        addLog(`День ${state.day}: ❌ Не хватает личных средств (${state.cash} BYN из требуемых ${discounted} BYN)! Переключитесь на Ветцентр Б (талон в долг) или откройте сбор на карту.`, 'danger');
+        return false;
+      }
       state.cash = +(state.cash - discounted).toFixed(1);
       state.personalMoneySpent = +(state.personalMoneySpent + discounted).toFixed(1);
       addLog(`День ${state.day}: 🏥 ${serviceTitle} — партнерская клиника А подтвердила скидку 20%. Оплачено на месте сразу -${discounted} BYN (без накопления долга).`, 'success');
-      return;
+      return true;
     }
 
     // Вариант Б: Крупный ветцентр — разовый талон на 30 дней в долг (лимит 1000 BYN, GDD 5.1)
     if (!state.zooshans.voucherBlocked && (state.zooshans.voucherDebt + discounted <= 1000)) {
       state.zooshans.voucherDebt = +(state.zooshans.voucherDebt + discounted).toFixed(1);
       addLog(`День ${state.day}: 🎫 ${serviceTitle} — выписан гарантийный талон ветцентра (-20%, +${discounted} BYN в долг на 30 дней. Общий долг: ${state.zooshans.voucherDebt}/1000 BYN).`, 'info');
-      return;
+      return true;
     } else {
-      addLog(`День ${state.day}: ⚠️ Превышен лимит долга 1000 BYN перед «Зоошансом» или талоны заблокированы! Оплачено из личных средств (-${baseCostBYN} BYN).`, 'warn');
+      addLog(`День ${state.day}: ⚠️ Превышен лимит долга 1000 BYN перед «Зоошансом» или талоны заблокированы! Требуется оплата из личных средств.`, 'warn');
     }
+  }
+
+  // Оплата по полному прайсу (без скидки или при исчерпании талонов)
+  if (state.cash < baseCostBYN) {
+    addLog(`День ${state.day}: ❌ Не хватает средств на оплату процедуры (${state.cash} BYN из требуемых ${baseCostBYN} BYN)! Откройте сбор на карту во вкладке «Зоошанс».`, 'danger');
+    return false;
   }
 
   state.cash = +(state.cash - baseCostBYN).toFixed(1);
   state.personalMoneySpent = +(state.personalMoneySpent + baseCostBYN).toFixed(1);
   addLog(`День ${state.day}: 🏥 ${serviceTitle} — оплачено по полному прайсу (-${baseCostBYN} BYN). Подайте заявление в «Зоошанс» для скидки 20%!`, 'info');
+  return true;
 }
 
 // 3. КОЛЛ-ЦЕНТР «ЗООШАНСА»: Заявление, клетка со склада, стартовая смесь (GDD 5.1, 7.1)

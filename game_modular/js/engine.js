@@ -97,6 +97,11 @@ function fastForwardCalmDays() {
     return;
   }
 
+  if (state.escapeQuest && state.escapeQuest.active) {
+    addLog(`День ${state.day}: ⛔ Нельзя перематывать штиль во время экстренного поиска беглеца! Срочно прочесывайте подвалы.`, 'warn');
+    return;
+  }
+
   let skipped = 0;
   const maxSkip = 15;
   let stopReason = '';
@@ -128,9 +133,12 @@ function getTomorrowDeadlineWarning() {
   const a = state.animal;
 
   // 1. За 1 день до окончания запаса корма/наполнителя (daysLeft <= 2)
-  const totalFood = state.supplies.daysLeft + (state.zooshans.giftedFoodDaysLeft || 0);
-  if (totalFood <= 2) {
-    return 'завтра заканчивается запас корма и расходников (нужно закупить пакет в зоомагазине)!';
+  const nActive = a.activeCount !== undefined ? a.activeCount : (a.count || 0);
+  if (nActive > 0 && !(state.newborn.active && isAnimalAtPlayerHome())) {
+    const totalFood = state.supplies.daysLeft + (state.zooshans.giftedFoodDaysLeft || 0);
+    if (totalFood <= 2) {
+      return 'завтра заканчивается запас корма и расходников (нужно закупить пакет в зоомагазине)!';
+    }
   }
 
   // 2. За 1 день до окончания смеси у слепышей на передержке
@@ -138,9 +146,11 @@ function getTomorrowDeadlineWarning() {
     return 'у передержки заканчивается специализированная смесь для слепышей (105 BYN)!';
   }
 
-  // 3. За 1 день до 3-дневного предупреждения по оплате талона Зоошанса (на 4-й день до срока)
-  if (state.zooshans.voucherDebt > 0 && state.zooshans.voucherDaysLeft === 4) {
-    return 'завтра остается 3 дня до истечения срока оплаты талона «Зоошанса»!';
+  // 3. За 1 день до предупреждения или блокировки талона Зоошанса (при debt > 0)
+  if (state.zooshans.voucherDebt > 0 && (state.zooshans.voucherDaysLeft === 4 || state.zooshans.voucherDaysLeft === 1)) {
+    return state.zooshans.voucherDaysLeft === 1
+      ? 'завтра истекает срок талона «Зоошанса» (грозит блокировка)!'
+      : 'завтра остается 3 дня до истечения срока оплаты талона «Зоошанса»!';
   }
 
   // 4. За 1 день до обязательного 7-дневного финотчета по сбору на личную карту (на 6-й день)
@@ -216,6 +226,17 @@ function getTomorrowDeadlineWarning() {
   if (state.escapeQuest && state.escapeQuest.active && state.escapeQuest.daysRemaining === 1) {
     return 'завтра истекает последний день экстренного поиска беглеца!';
   }
+
+  // За 1 день до истечения защиты собаки от клещей (капли на 30 дней)
+  if (a.species === 'dog' && a.tickProtectionDaysLeft === 1) {
+    return 'завтра истекает 30-дневная защита собаки от иксодовых клещей (риск пироплазмоза)!';
+  }
+
+  // За 1 день до ежемесячной зарплаты
+  if (state.day % 30 === 29) {
+    return 'завтра начисление ежемесячной зарплаты куратора!';
+  }
+
   return null;
 }
 
@@ -842,7 +863,7 @@ function processDayTick() {
     callChance += ((state.pr.storytellingCallBonus || 0) * 0.01);
 
     // Сезонные модификаторы звонков (GDD 2.2)
-    if (state.currentSeason === 'summer' && a.ageCategory === 'adult' && !state.zooshans.hasProPhotos) {
+    if (state.currentSeason === 'summer' && a.species === 'cat' && a.ageCategory === 'adult' && !state.zooshans.hasProPhotos) {
       callChance *= 0.25; // Летом -75% к звонкам на взрослых кошек
     }
     if (state.currentSeason === 'autumn') {

@@ -94,6 +94,7 @@ function checkMedicalAndCrisisTriggers() {
           state.fatalMistakeReason = 'virus_no_icu';
           addLog(`День ${state.day}: Отказ от стационара при смертельном вирусе привел к критическому состоянию!`, 'danger');
           closeEventModal();
+          checkAnimalHealth();
         }
       }
     ]);
@@ -162,6 +163,7 @@ function checkMedicalAndCrisisTriggers() {
             action: () => {
               a.health -= 50;
               closeEventModal();
+              checkAnimalHealth();
             }
           }
         ]
@@ -280,6 +282,7 @@ function checkMedicalAndCrisisTriggers() {
             a.health -= 50;
             state.fatalMistakeReason = 'fip_no_treatment';
             closeEventModal();
+            checkAnimalHealth();
           }
         }
       ]
@@ -657,6 +660,31 @@ function triggerRedFlagDelayedStrikeModal(trialItem) {
   );
 }
 
+function triggerEarlyBookedTransferModal() {
+  stopTimer();
+  state.pr.earlyBookedAdopterWaiting = false;
+  const a = state.animal;
+  showEventModal(
+    '🎉 РАННЯЯ БРОНЬ: Малыш отправляется в новый дом!',
+    `Подопечному «${a.petName || a.title}» исполнилось 2 месяца (60 дней)! Все первичные обработки и вакцинация успешно пройдены.\n\nСемья, забронировавшая малыша еще в 1.5 месяца, приехала с переноской и подписала официальный договор куратора с обязательством стерилизации по возрасту!`,
+    [
+      {
+        label: 'Передать по договору на 7-дневный испытательный срок',
+        style: 'primary',
+        action: () => {
+          closeEventModal();
+          initiateAnimalTransferWithTrial(false, {
+            id: 'call_early_booked_adopter',
+            caller: 'Семья по ранней брони',
+            dialogue: 'Мы так ждали, пока малышу исполнится 2 месяца и будут сделаны все прививки!',
+            isSafe: true
+          }, { successChance: 0.95 });
+        }
+      }
+    ]
+  );
+}
+
 function triggerTrialSuccessModal(trialItem) {
   stopTimer();
   showEventModal(
@@ -670,11 +698,15 @@ function triggerTrialSuccessModal(trialItem) {
           closeEventModal();
           addLog(`День ${state.day}: 🎉 «${trialItem.petName}» успешно пристроен! В альбоме куратора пополнение.`, 'success');
           if (state.animal.savedCount >= (state.animal.totalCount || state.animal.count || 1)) {
-            triggerEndGame(
-              true,
-              'ПОБЕДА: Все подопечные обрели любящий дом!',
-              `Поздравляем! Все ваши подопечные (${state.animal.savedCount} хвостиков) благополучно прошли испытательный срок и навсегда обрели семью!\n\nВы проявили стойкость, терпение и ответственность настоящего куратора МБООПЖ «Зоошанс»!`
-            );
+            if (state.animal.hasMotherCat && !state.animal.motherSterilized) {
+              addLog(`День ${state.day}: 🐾 Все котята благополучно пристроены! Но мама-кошка еще не стерилизована — завершите операцию до победы!`, 'info');
+            } else {
+              triggerEndGame(
+                true,
+                'ПОБЕДА: Все подопечные обрели любящий дом!',
+                `Поздравляем! Все ваши подопечные (${state.animal.savedCount} хвостиков) благополучно прошли испытательный срок и навсегда обрели семью!\n\nВы проявили стойкость, терпение и ответственность настоящего куратора МБООПЖ «Зоошанс»!`
+              );
+            }
           }
         }
       }

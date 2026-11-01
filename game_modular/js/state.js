@@ -339,3 +339,16 @@ function checkMentalHealth() {
   }
 }
 
+function checkAnimalHealth() {
+  if (state.animal && state.animal.health <= 0 && !state.gameOver) {
+    state.fatalMistakeReason = state.fatalMistakeReason || 'health_failure';
+    triggerEndGame(
+      false,
+      'ПОРАЖЕНИЕ: Спасти жизнь не удалось',
+      'Без своевременной интенсивной терапии и ухода организм животного не справился с критической нагрузкой.\n\nВ реальности волонтеры МБООПЖ «Зоошанс» не остаются с бедой один на один — всегда обращайтесь за советом и помощью в чат взаимопомощи @zooshans_chat!'
+    );
+    return true;
+  }
+  return false;
+}
+

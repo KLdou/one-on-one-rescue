@@ -10,7 +10,7 @@ function buildPetSVG(a) {
   const coatId = a.coatId || 'cow';
   const hasRingworm = a.knownRingworm === true;
   const inCage = (state.zooshans && state.zooshans.hasCage && isAnimalAtPlayerHome()) || (state.zooshans && state.zooshans.locationStatus === 'home_cage');
-  const hasEyeIssue = (a.hiddenState && (a.hiddenState.deadlyVirus === 'rhinotracheitis' || a.hiddenState.hasEyeDrops)) || a.health < 60;
+  const hasEyeIssue = (a.hiddenState && ((a.hiddenState.deadlyVirus && a.hiddenState.deadlyVirus.includes('rhinotracheitis')) || a.hiddenState.hasEyeDrops)) || a.health < 60;
 
   // Cat coat palette mapping (10 окрасов)
   const catPalette = {
@@ -35,7 +35,7 @@ function buildPetSVG(a) {
   };
 
   const pal = isDog
-    ? (coatId.includes('Лисичка') || coatId.includes('Рыже') ? dogPalette.foxy : (coatId.includes('Чепрачный') ? dogPalette.cheprak : (coatId.includes('Беляк') || coatId.includes('кремовый') ? dogPalette.cream : dogPalette.dark)))
+    ? (dogPalette[coatId] || (a.coatName && a.coatName.includes('Лисичка') ? dogPalette.foxy : (a.coatName && a.coatName.includes('Чепрачный') ? dogPalette.cheprak : (a.coatName && (a.coatName.includes('Беляк') || a.coatName.includes('кремовый')) ? dogPalette.cream : dogPalette.dark))))
     : (catPalette[coatId] || catPalette.cow);
 
   let svg = `<svg viewBox="0 0 100 100" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">`;
@@ -121,10 +121,12 @@ function buildPetSVG(a) {
     svg += `<ellipse cx="50" cy="62" rx="3" ry="4" fill="#FB7185" />`;
   }
 
-  // Очаг лишая на ушке
+  // Очаг лишая на ушке (с учетом анатомии ушей кота и висячих ушей собаки)
   if (hasRingworm) {
-    svg += `<circle cx="33" cy="22" r="4.5" fill="#4ADE80" stroke="#16A34A" stroke-width="1.5" />`;
-    svg += `<circle cx="33" cy="22" r="2" fill="#86EFAC" />`;
+    const earX = isDog ? 25 : 33;
+    const earY = isDog ? 34 : 22;
+    svg += `<circle cx="${earX}" cy="${earY}" r="4.5" fill="#4ADE80" stroke="#16A34A" stroke-width="1.5" />`;
+    svg += `<circle cx="${earX}" cy="${earY}" r="2" fill="#86EFAC" />`;
   }
 
   // Капля у глаза при ринотрахеите / проблемах
@@ -285,10 +287,34 @@ function renderTopBar() {
   const barRes = document.getElementById('energyBarReserved');
   if (barAvail && barRes) {
     const energyPct = Math.min(100, Math.max(0, state.energy));
-    const reservedPct = isAnimalAtPlayerHome() ? Math.min(45, drain) : 0;
+    const reservedPct = isAnimalAtPlayerHome() ? Math.min(65, drain) : 0;
     const availPct = Math.max(0, energyPct - reservedPct);
     barAvail.style.width = `${availPct}%`;
     barRes.style.width = `${reservedPct}%`;
+  }
+
+  // Расшифровка быта для тултипа энергии (GDD 4.1)
+  const energyTooltipTitle = document.getElementById('energyTooltipTitle');
+  const energyBreakdownText = document.getElementById('energy-breakdown-text');
+  if (energyBreakdownText) {
+    if (isAnimalAtPlayerHome()) {
+      if (energyTooltipTitle) energyTooltipTitle.textContent = `🔒 Резерв быта дома: -${drain}⚡/день`;
+      const details = [];
+      if (state.newborn && state.newborn.active) {
+        details.push('Выкармливание слепышей каждые 2 ч (-30⚡)');
+      } else if (a.totalCount > 1) {
+        details.push(`Выводок (${a.activeCount || a.totalCount}/${a.totalCount} шт.)`);
+      } else {
+        details.push(a.species === 'dog' ? 'Выгул и уход за собакой (-16⚡)' : 'Лоток и кормление кота (-10⚡)');
+      }
+      if (a.knownRingworm === true) details.push('Обработки очагов лишая (-12⚡)');
+      if (a.hiddenState && a.hiddenState.hasSevereTrauma && !a.traumaOperated) details.push('Уход за травмой (-10⚡)');
+      if (state.pr && state.pr.lostSearchActive) details.push('Расклейка объявлений (-10⚡)');
+      energyBreakdownText.textContent = details.length > 0 ? details.join(', ') : 'Ежедневный базовый уход';
+    } else {
+      if (energyTooltipTitle) energyTooltipTitle.textContent = '🔒 Быт дома: 0⚡/день';
+      energyBreakdownText.textContent = 'Питомец находится на передержке, бытовая энергия дома не резервируется.';
+    }
   }
 
   // Жизнь питомца и счетчик хвостов (GDD 7.1, 8.4)
@@ -615,6 +641,11 @@ function renderActionTabs() {
   }
 
   // Онбординг: если игрок еще не погуглил, скрываем вкладки волонтерства
+  const mBtnZoo = document.getElementById('mobileTabBtn_zooshans');
+  const mBtnCare = document.getElementById('mobileTabBtn_care');
+  const mIconZoo = document.getElementById('mobileTabIcon_zooshans');
+  const mIconCare = document.getElementById('mobileTabIcon_care');
+
   if (!state.onboarding.googleDone) {
     if (onbBox) onbBox.classList.remove('hidden');
     if (btnTabZoo) {
@@ -625,6 +656,14 @@ function renderActionTabs() {
       btnTabCare.textContent = '🔒 3. Передержка и Пиар (Закрыто)';
       btnTabCare.classList.add('opacity-40');
     }
+    if (mBtnZoo) {
+      mBtnZoo.classList.add('opacity-40', 'pointer-events-none');
+      if (mIconZoo) mIconZoo.textContent = '🔒';
+    }
+    if (mBtnCare) {
+      mBtnCare.classList.add('opacity-40', 'pointer-events-none');
+      if (mIconCare) mIconCare.textContent = '🔒';
+    }
   } else {
     if (onbBox) onbBox.classList.add('hidden');
     if (btnTabZoo) {
@@ -634,6 +673,14 @@ function renderActionTabs() {
     if (btnTabCare) {
       btnTabCare.textContent = '📸 3. Быт, Передержка и Пиар';
       btnTabCare.classList.remove('opacity-40');
+    }
+    if (mBtnZoo) {
+      mBtnZoo.classList.remove('opacity-40', 'pointer-events-none');
+      if (mIconZoo) mIconZoo.textContent = '🤝';
+    }
+    if (mBtnCare) {
+      mBtnCare.classList.remove('opacity-40', 'pointer-events-none');
+      if (mIconCare) mIconCare.textContent = '📸';
     }
   }
 
@@ -835,6 +882,22 @@ function renderActionTabs() {
           ? 'Челюсть зашинирована! Осталось 18 дней кормления паштетами через шприц/стому.'
           : 'Жизнь спасена в реанимации!';
         addLog(`День ${state.day}: 🏥 Проведена тяжелая операция и реанимация! Теперь вы имеете право открыть официальный сбор на р/с «Зоошанса» (вкладка 2).`, 'success');
+        renderAll();
+      }
+    },
+    {
+      title: 'Курс терапии лишая (Итраконазол / Имаверол)',
+      sub: a.knownRingworm === true
+        ? `Протокол лечения: ежедневная обработка и клетка (${a.ringwormDaysDone}/35 дн.)`
+        : 'Назначается врачом строго при свечении лампы Вуда',
+      disabled: a.knownRingworm !== true,
+      doneText: a.knownRingworm === 'Пролечен (2 чистых просвета)'
+        ? '✓ Лишай полностью излечен (2 чистых просвета)'
+        : (a.knownRingworm === true
+            ? `🍄 Идет курс лечения (${a.ringwormDaysDone}/35 дн.)`
+            : '🔒 Показаний нет (лампа Вуда чистая / осмотр не проводился)'),
+      onClick: () => {
+        addLog(`День ${state.day}: 🍄 Терапия лишая проводится ежедневно дома в изолированной клетке (-12⚡/день). Необходим карантин 35 дней до 2 чистых просветов Вуда!`, 'info');
         renderAll();
       }
     }
@@ -1280,13 +1343,14 @@ function renderDeadlines() {
   // 5. Испытательный срок «ручек» (7 дней)
   if (state.trialAnimals && state.trialAnimals.length > 0) {
     state.trialAnimals.forEach(t => {
+      const trialDaysLeft = Math.max(0, (t.targetDays || 7) - (t.daysPassed || 0));
       items.push({
         icon: '🏡',
         title: `Испытание: ${t.petName || 'Питомец'}`,
-        days: t.daysRemaining,
+        days: trialDaysLeft,
         sub: 'Контроль 7 дней',
-        urgent: t.daysRemaining <= 2,
-        danger: false
+        urgent: trialDaysLeft <= 2,
+        danger: trialDaysLeft <= 1
       });
     });
   }
@@ -1377,11 +1441,12 @@ function renderDeadlines() {
 
   // 12. Зарплата игрока (каждые 30 дней)
   const salaryDays = 30 - (state.day % 30);
+  const freeSalary = state.player.income.monthlyFreeCash || state.player.income.monthlySalary || 400;
   items.push({
     icon: '💵',
     title: 'Зарплата куратора',
     days: salaryDays === 30 ? 0 : salaryDays,
-    sub: `+${state.player.income.amountMonth} BYN`,
+    sub: `+${freeSalary} BYN`,
     urgent: salaryDays <= 2,
     danger: false
   });
@@ -1701,6 +1766,13 @@ function showAlbumModal() {
 function closeAlbumModal() {
   const modal = document.getElementById('savedAlbumModal');
   if (modal) modal.classList.add('hidden');
+}
+
+function toggleEnergyTooltip() {
+  const tt = document.getElementById('energy-tooltip');
+  if (tt) {
+    tt.classList.toggle('hidden');
+  }
 }
 
 function toggleExperiencedCurator(checked) {

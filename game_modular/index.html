@@ -224,7 +224,7 @@
         </div>
 
         <!-- Энергия ⚡ (двухсегментный бар: доступно + полосатый резерв быта) -->
-        <div class="craft-card p-2.5 flex flex-col justify-between" id="energy-widget">
+        <div class="craft-card p-2.5 flex flex-col justify-between relative group cursor-pointer" id="energy-widget" onclick="toggleEnergyTooltip()" title="Нажмите для расшифровки быта">
           <div class="flex justify-between items-center text-[10px] font-mono">
             <span class="uppercase text-[var(--text-secondary)] truncate" id="energyReserveLabel">⚡ Энергия</span>
             <span class="font-bold text-amber-700 shrink-0">
@@ -237,6 +237,11 @@
             <div id="energyBarReserved" class="bar-lock" style="width: 10%"></div>
           </div>
           <div class="text-[10px] font-mono text-[var(--text-muted)] mt-0.5">Свободно / Быт дома</div>
+          <!-- Всплывающий тултип с разбивкой быта (GDD 4.1) -->
+          <div id="energy-tooltip" class="hidden absolute top-full left-0 right-0 mt-1 z-20 bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-lg p-2 shadow-lg text-[10px] font-mono text-[var(--text-primary)]">
+            <div class="font-bold text-amber-800" id="energyTooltipTitle">🔒 Резерв на быт дома</div>
+            <p id="energy-breakdown-text" class="text-[var(--text-secondary)] mt-0.5 leading-snug"></p>
+          </div>
         </div>
 
         <!-- Жизнь подопечного % -->
@@ -504,19 +509,19 @@
 
   <!-- ================= 3. МОБИЛЬНЫЙ ТАБ-БАР (ВИДЕН НА ЭКРАНАХ < 1024px) ================= -->
   <nav class="mobile-bottom-nav">
-    <button onclick="switchTab('vet'); closeDrawers();" class="flex flex-col items-center justify-center text-[10px] font-mono text-[var(--text-secondary)] hover:text-emerald-700 py-1 flex-1">
+    <button id="mobileTabBtn_vet" onclick="switchTab('vet'); closeDrawers();" class="flex flex-col items-center justify-center text-[10px] font-mono text-[var(--text-secondary)] hover:text-emerald-700 py-1 flex-1">
       <span class="text-base">🏥</span>
       <span>Клиника</span>
     </button>
     
-    <button onclick="switchTab('zooshans'); closeDrawers();" class="flex flex-col items-center justify-center text-[10px] font-mono text-[var(--text-secondary)] hover:text-emerald-700 py-1 flex-1">
-      <span class="text-base">🤝</span>
-      <span>Зоошанс</span>
+    <button id="mobileTabBtn_zooshans" onclick="switchTab('zooshans'); closeDrawers();" class="flex flex-col items-center justify-center text-[10px] font-mono text-[var(--text-secondary)] hover:text-emerald-700 py-1 flex-1">
+      <span class="text-base" id="mobileTabIcon_zooshans">🤝</span>
+      <span id="mobileTabLabel_zooshans">Зоошанс</span>
     </button>
     
-    <button onclick="switchTab('care'); closeDrawers();" class="flex flex-col items-center justify-center text-[10px] font-mono text-[var(--text-secondary)] hover:text-emerald-700 py-1 flex-1">
-      <span class="text-base">📸</span>
-      <span>Быт/Пиар</span>
+    <button id="mobileTabBtn_care" onclick="switchTab('care'); closeDrawers();" class="flex flex-col items-center justify-center text-[10px] font-mono text-[var(--text-secondary)] hover:text-emerald-700 py-1 flex-1">
+      <span class="text-base" id="mobileTabIcon_care">📸</span>
+      <span id="mobileTabLabel_care">Быт/Пиар</span>
     </button>
     
     <button onclick="toggleDrawer('left')" class="flex flex-col items-center justify-center text-[10px] font-mono text-[var(--text-secondary)] hover:text-emerald-700 py-1 flex-1">

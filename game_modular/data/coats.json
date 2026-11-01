@@ -93,7 +93,7 @@
     "purebred": {
       "id": "purebred",
       "tier": "maximum",
-      "popularity": 2.0,
+      "popularity": 2,
       "name": "Фенотип породы (Шотландец / Британец)",
       "adjFemale": "породистая шотландская",
       "adjMale": "породистый шотландский",
@@ -105,22 +105,26 @@
     {
       "name": "Черно-подпалый («Овчаристый дворик»)",
       "popularity": 0.32,
-      "tagColor": "bg-amber-950 text-amber-300"
+      "tagColor": "bg-amber-950 text-amber-300",
+      "id": "dark"
     },
     {
       "name": "Рыже-палевый («Лисичка»)",
       "popularity": 0.42,
-      "tagColor": "bg-amber-700/80 text-amber-100"
+      "tagColor": "bg-amber-700/80 text-amber-100",
+      "id": "foxy"
     },
     {
       "name": "Чепрачный («Зонарный»)",
       "popularity": 0.28,
-      "tagColor": "bg-stone-800 text-stone-200"
+      "tagColor": "bg-stone-800 text-stone-200",
+      "id": "cheprak"
     },
     {
       "name": "Светло-кремовый («Беляк»)",
       "popularity": 0.45,
-      "tagColor": "bg-amber-100 text-slate-900 font-bold"
+      "tagColor": "bg-amber-100 text-slate-900 font-bold",
+      "id": "cream"
     }
   ]
 }
