@@ -27,6 +27,7 @@ function getSeasonLabelRu(season) {
 }
 
 function formatCalendarDate(d) {
+  d = d || (window.state && window.state.calendarDate) || new Date();
   return `${d.getDate()} ${MONTH_NAMES_RU[d.getMonth()]}`;
 }
 
@@ -42,31 +43,50 @@ function getSavedAlbum() {
 function savePetToAlbum(record) {
   try {
     const album = getSavedAlbum();
-    album.unshift(record);
+    const existingIndex = album.findIndex(item => String(item.id) === String(record.id));
+    if (existingIndex >= 0) {
+      album[existingIndex] = { ...album[existingIndex], ...record };
+    } else {
+      album.unshift(record);
+    }
     localStorage.setItem('zooshans_saved_album', JSON.stringify(album));
   } catch (e) {
     console.error('Failed to save pet to album:', e);
   }
 }
 
-function startNewRun(experiencedCurator = false) {
+function startNewRun(experiencedCurator = false, forcedScenario = null) {
   stopTimer();
   document.getElementById('endGameModal').classList.add('hidden');
+  const endBanner = document.getElementById('endGameOverviewBanner');
+  if (endBanner) endBanner.classList.add('hidden');
+  const animModal = document.getElementById('animalModal');
+  if (animModal) animModal.classList.add('hidden');
+  const scenModal = document.getElementById('scenarioPickerModal');
+  if (scenModal) scenModal.classList.add('hidden');
   document.getElementById('eventOverlayBox').classList.add('hidden');
   document.getElementById('actionsDashboard').classList.remove('hidden');
 
   const inc = randomItem(window.GAME_DATA.playerAxes.incomes);
-  const hous = randomItem(window.GAME_DATA.playerAxes.housing);
-  const fam = randomItem(window.GAME_DATA.playerAxes.family);
+  let hous = randomItem(window.GAME_DATA.playerAxes.housing);
+  let fam = randomItem(window.GAME_DATA.playerAxes.family);
+
+  // Фикс генерации взаимоисключающих перков (GDD v2.2):
+  // «С родней» и «Живу один/одна» не могут выпадать одновременно
+  if (hous.id === 'with_relatives' && fam.id === 'single') {
+    const nonSingleFam = window.GAME_DATA.playerAxes.family.filter(f => f.id !== 'single');
+    fam = randomItem(nonSingleFam);
+  }
+
   const pets = randomItem(window.GAME_DATA.playerAxes.ownPets);
   const mob = randomItem(window.GAME_DATA.playerAxes.mobility);
   const soc = randomItem(window.GAME_DATA.playerAxes.socialCapital);
 
   // Предохранитель генерации (GDD 3.7):
   // При опасной комбинации low доход (280 BYN) + rent_strict + small_kids блокируем спавн тяжелых выводков
-  let arch = generateRandomAnimalScenario();
+  let arch = forcedScenario ? (forcedScenario.coat ? forcedScenario : generateRandomAnimalScenario(forcedScenario)) : generateRandomAnimalScenario();
   const isHighRiskProfile = inc.id === 'low' && hous.id === 'rent_strict' && fam.id === 'small_kids';
-  if (isHighRiskProfile) {
+  if (isHighRiskProfile && !forcedScenario) {
     let retries = 0;
     while ((arch.id === 'orphan_puppies_litter' || arch.id === 'dacha_mother_with_kittens') && retries < 15) {
       arch = generateRandomAnimalScenario();
@@ -111,7 +131,7 @@ function startNewRun(experiencedCurator = false) {
     // Онбординг новичка и Острая фаза (Дни 1-3)
     onboarding: {
       acutePhase: true,       // Первые 3 дня — пошаговый режим без таймера (кнопка «Завершить день»)
-      googleDone: isExperienced, // Если опытный куратор — открываем сразу
+      googleDone: true,       // Доступ ко всем вкладкам открыт сразу (без тумана войны)
       gurskogoCalled: false,
       dumpBoxAttempted: false
     },
@@ -156,7 +176,15 @@ function startNewRun(experiencedCurator = false) {
       tickProtectionDaysLeft: 0, // Защита от клещей для собак весной/летом (35 BYN / 30 дн.)
       parasitesAndVaccinated: false,
       isSterilized: false,
-      traumaOperated: !arch.hiddenState.hasSevereTrauma,
+      traumaOperated: false, // true только после фактического проведения операции
+      inStationaryDaysLeft: 0, // дни нахождения в стационаре после операции/реанимации
+      stationaryReason: null, // 'virus' или 'trauma'
+      virusRecoveryDaysLeft: 0, // 14 дней восстановления после выписки из инфекционного ОРИТ
+      traumaRehabDaysLeft: 0, // 45 дней (1.5 мес) сращения костей после остеосинтеза
+      felvConfirmed: false, // сдан ли подтверждающий тест на провирус FeLV
+      felvInfectiousConsultDone: false, // консультация инфекциониста
+      felvAntiviralActive: false, // противовирусная терапия (Ралтегравир)
+      felvAntiviralDaysLeft: 0,
       bloodDonorFound: !arch.hiddenState.needsBloodDonor,
       eyeDropsCompleted: arch.hiddenState.deadlyVirus !== 'rhinotracheitis_eyes',
       eyeDropsDaysDone: 0,
@@ -219,11 +247,11 @@ function startNewRun(experiencedCurator = false) {
     // Колл-центр «Зоошанса», Лимит долга 1000 BYN и Лимит карты 6500 BYN
     zooshans: {
       applicationSubmitted: false,
-      clinicMode: 'major_voucher', // 'partner_cash' vs 'major_voucher'
+      clinicMode: 'partner_cash', // 'partner_cash' (по умолчанию до подачи заявления) vs 'major_voucher'
       expensiveApproved: false,
       askedToTakeAnimal: false,
       tempVolunteerChance: isHighRiskProfile ? 0.60 : 0.20,
-      locationStatus: 'home_floor', // 'home_floor', 'home_cage', 'paid_foster', 'temp_volunteer_10d', 'full_volunteer_fincuration', 'social_foster_volunteer', 'social_foster_novice'
+      locationStatus: 'home_floor', // 'home_floor', 'home_cage', 'paid_foster', 'temp_volunteer_14d', 'full_volunteer_fincuration', 'social_foster_volunteer', 'social_foster_novice'
       tempVolunteerDaysLeft: 0,
       socialFosterDaysElapsed: 0,
       socialFosterConflictTriggered: false,
@@ -265,7 +293,8 @@ function startNewRun(experiencedCurator = false) {
       daysSinceAdRefresh: 0,
       earlyBookedAdopterWaiting: false,
       storytellingBoost: 0,
-      storytellingCallBonus: 0
+      storytellingCallBonus: 0,
+      lastStorytellingDay: -999
     },
 
     triggeredEvents: {},
@@ -274,10 +303,14 @@ function startNewRun(experiencedCurator = false) {
 
   const calStr = formatCalendarDate(state.calendarDate);
   const sLabel = getSeasonLabelRu(state.currentSeason);
-  addLog(`День 1 (${calStr}, ${sLabel}): Вы нашли подопечного — «${state.animal.petName}» (${state.animal.title}).`, 'info');
+  const initialPetNameText = state.animal.petName
+    ? `«${state.animal.petName}»`
+    : (state.animal.count > 1 ? `Выводок (${state.animal.count} малышей, без клички)` : '«Найденыш»');
+  addLog(`День 1 (${calStr}, ${sLabel}): Вы нашли подопечных — ${initialPetNameText} (${state.animal.title}).`, 'info');
   addLog(`День 1: Началась пошаговая острая фаза (Дни 1–3). Таймер отключен. Изучайте обстановку и завершайте дни вручную.`, 'info');
   renderAll();
   triggerDay1IntroModal();
+  showAnimalModal();
 }
 
 function isAnimalAtPlayerHome() {
@@ -285,8 +318,8 @@ function isAnimalAtPlayerHome() {
 }
 
 function calculateDailyHouseholdEnergyDrain() {
-  // На передержке или когда все животные на испытательном сроке/дома — быт = 0⚡/день
-  if (!isAnimalAtPlayerHome()) return 0;
+  // На передержке, в стационаре ветклиники или когда все животные на испытательном сроке/дома — быт = 0⚡/день
+  if (!isAnimalAtPlayerHome() || (state.animal && state.animal.inStationaryDaysLeft > 0)) return 0;
   const a = state.animal;
   const nActive = a.activeCount !== undefined ? a.activeCount : a.count;
   if (nActive <= 0) return 0;
@@ -310,6 +343,7 @@ function calculateDailyHouseholdEnergyDrain() {
 }
 
 function spendEnergy(amount) {
+  if (state.gameOver) return false;
   if (state.energy < amount) {
     addLog(`День ${state.day}: ⚡ Не хватает энергии (нужно ${amount}⚡)! Отдохните до следующего дня.`, 'warn');
     return false;
@@ -319,11 +353,19 @@ function spendEnergy(amount) {
 }
 
 function addLog(text, type = 'info') {
+  if (!state.logs) state.logs = [];
   state.logs.unshift({ text, type });
-  renderLog();
+  if (typeof renderLog === 'function') renderLog();
 }
 
 function selectClinicMode(mode) {
+  if (state.gameOver) return;
+  if (mode === 'major_voucher' && !state.zooshans.applicationSubmitted) {
+    if (typeof addLog === 'function') {
+      addLog(`День ${state.day}: 🔒 Ветцентр Б (Талон) недоступен: сначала подайте заявление в Колл-центр «Зоошанса» (вкладка 2).`, 'warn');
+    }
+    return;
+  }
   state.zooshans.clinicMode = mode;
   renderAll();
 }
