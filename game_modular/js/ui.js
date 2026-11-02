@@ -457,8 +457,9 @@ function renderPlayerAndAnimalCards() {
   // Строка запаса спецсмеси для котят
   const milkBox = document.getElementById('milkSupplyBox');
   if (milkBox) {
-    const hasKittens = (a && a.species === 'cat' && (a.ageCategory === 'kitten' || a.ageDays < 60 || (a.hiddenState && a.hiddenState.isNewborn) || state.newborn.active));
-    if (hasKittens) {
+    const isUnder2Months = a && a.species === 'cat' && a.ageDays < 60 && a.ageCategory !== 'adult';
+    const hasRemainingMilk = state.newborn && (state.newborn.milkDaysLeft || 0) > 0;
+    if (isUnder2Months || hasRemainingMilk) {
       milkBox.classList.remove('hidden');
       document.getElementById('milkSupplyLabel').textContent = `🍼 Смесь: ${state.newborn.milkDaysLeft || 0} дн.`;
     } else {
@@ -468,10 +469,15 @@ function renderPlayerAndAnimalCards() {
 
   const btnSidebarFormula = document.getElementById('btnSidebarBuyFormula');
   if (btnSidebarFormula) {
+    const isPast2Months = a && (a.ageDays >= 60 || a.ageCategory === 'adult');
     if (state.gameOver) {
       btnSidebarFormula.disabled = true;
       btnSidebarFormula.className = 'px-2 py-0.5 rounded text-[10px] font-bold font-mono transition bg-slate-100 text-slate-400 border border-slate-300 opacity-50 cursor-not-allowed';
       btnSidebarFormula.title = 'Партия окончена: только просмотр';
+    } else if (isPast2Months) {
+      btnSidebarFormula.disabled = true;
+      btnSidebarFormula.className = 'px-2 py-0.5 rounded text-[10px] font-bold font-mono transition bg-slate-100 text-slate-400 border border-slate-300 opacity-50 cursor-not-allowed';
+      btnSidebarFormula.title = 'Котята старше 2 месяцев переведены на влажный/сухой корм (смесь не требуется)';
     } else {
       btnSidebarFormula.disabled = false;
       btnSidebarFormula.className = 'px-2 py-0.5 rounded text-[10px] font-bold font-mono transition bg-indigo-50 text-indigo-800 border border-indigo-300 hover:bg-indigo-100 cursor-pointer';
@@ -1602,13 +1608,13 @@ function renderActionTabs() {
   });
 
   // 3.2b. Спецпитание и смесь для котят (Royal Canin Babycat Milk / Mousse)
-  const isKittenGrowing = (a.species === 'cat' && (a.ageCategory === 'kitten' || a.ageDays < 60 || (h && h.isNewborn) || state.newborn.active));
+  const isKittenGrowing = (a.species === 'cat' && a.ageCategory !== 'adult' && a.ageDays < 60);
   if (isKittenGrowing) {
     careButtons.push({
       icon: '🍼',
       title: 'Смесь Babycat Milk для котят',
       badge: '+7 дн.',
-      sub: 'Банка спецсмеси Royal Canin Babycat Milk / паштет для выкорма и роста котят.',
+      sub: 'Банка спецсмеси Royal Canin Babycat Milk / паштет для выкорма и роста котят до 2 месяцев.',
       costBYN: 105,
       costEnergy: 5,
       state: 'active',

@@ -479,6 +479,10 @@ function feedCowMilkTrap() {
 
 function buyBabycatFormula() {
   if (state.gameOver) return;
+  if (state.animal && (state.animal.ageDays >= 60 || state.animal.ageCategory === 'adult')) {
+    addLog(`День ${state.day}: ⚠️ Котятам уже 2+ месяца (${state.animal.ageDays} дн.)! В этом возрасте они полностью переведены на влажный и сухой корм для котят, молочная смесь больше не требуется.`, 'warn');
+    return;
+  }
   if (state.cash < 105) {
     addLog(`День ${state.day}: Не хватает средств на банку спецсмеси Royal Canin Babycat Milk (105 BYN)!`, 'danger');
     return;
