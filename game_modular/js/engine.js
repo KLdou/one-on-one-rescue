@@ -836,23 +836,31 @@ function processDayTick() {
             state.animal.savedCount += item.count;
             state.mental = Math.min(100, state.mental + 15);
 
-            const tailRecord = {
-              id: Date.now() + Math.random(),
-              petName: item.petName,
-              species: a.species,
-              archetypeId: a.id,
-              archetypeTitle: a.title,
-              coatName: a.coatName,
-              coatTier: a.coatTier,
-              daysSpent: state.day,
-              seasonsPassed: [...state.seasonsPassed],
-              adopterSummary: item.adopterSummary || 'Любящая семья',
-              dateSaved: formatCalendarDate(state.calendarDate),
-              personalSpent: state.personalMoneySpent || 0,
-              prChannel: item?.prChannel || (state.zooshans.hasProPhotos ? 'Профи-пиар Зоошанса' : 'Куфар / Соцсети')
-            };
-            state.savedTails.push(tailRecord);
-            savePetToAlbum(tailRecord);
+            const names = (item.petNames && item.petNames.length > 0)
+              ? item.petNames
+              : (item.count > 1 && item.petName.includes(' и ')
+                  ? item.petName.split(' и ')
+                  : [item.petName]);
+
+            names.forEach((petName, idx) => {
+              const tailRecord = {
+                id: Date.now() + Math.floor(Math.random() * 10000) + idx,
+                petName: petName.trim(),
+                species: a.species,
+                archetypeId: a.id,
+                archetypeTitle: a.title,
+                coatName: a.coatName,
+                coatTier: a.coatTier,
+                daysSpent: state.day,
+                seasonsPassed: [...state.seasonsPassed],
+                adopterSummary: item.adopterSummary || 'Любящая семья',
+                dateSaved: formatCalendarDate(state.calendarDate),
+                personalSpent: state.personalMoneySpent || 0,
+                prChannel: item?.prChannel || (state.zooshans.hasProPhotos ? 'Профи-пиар Зоошанса' : 'Куфар / Соцсети')
+              };
+              state.savedTails.push(tailRecord);
+              savePetToAlbum(tailRecord);
+            });
 
             triggerTrialSuccessModal(item);
             renderAll();

@@ -1561,11 +1561,14 @@ function renderActionTabs() {
   // 3.1. Проверить подопечного на испытательном сроке (если есть)
   if (state.trialAnimals && state.trialAnimals.length > 0) {
     const activeTrial = state.trialAnimals[0];
+    const isPair = (activeTrial.count || 1) > 1;
     careButtons.push({
       icon: '📱',
-      title: 'Проверить хвостика у ручек',
+      title: isPair ? 'Проверить малышей у ручек' : 'Проверить хвостика у ручек',
       badge: `${activeTrial.daysPassed}/${activeTrial.trialDaysTotal || 14} дн.`,
-      sub: `Узнать, как освоился(лась) «${activeTrial.petName}» (+5% Менталки).`,
+      sub: isPair
+        ? `Узнать, как освоились «${activeTrial.petName}» (+5% Менталки).`
+        : `Узнать, как освоился(лась) «${activeTrial.petName}» (+5% Менталки).`,
       costBYN: 0,
       costEnergy: 5,
       state: 'active',
@@ -2911,7 +2914,11 @@ function actionCancelTrialReturn(trialId) {
   state.animal.activeCount = (state.animal.activeCount || 0) + trial.count;
   state.animal.count = state.animal.activeCount;
   state.animal.trialCount = Math.max(0, (state.animal.trialCount || 0) - trial.count);
-  addLog(`День ${state.day}: ⚠️ Куратор решил забрать подопечного («${trial.petName}») обратно с испытательного срока из-за сомнений в семье. Хвостик снова под вашим бытовым попечением.`, 'warn');
+  const isPair = (trial.count || 1) > 1;
+  const cancelMsg = isPair
+    ? `День ${state.day}: ⚠️ Куратор решил забрать подопечных («${trial.petName}») обратно с испытательного срока из-за сомнений в семье. Хвостики снова под вашим бытовым попечением.`
+    : `День ${state.day}: ⚠️ Куратор решил забрать подопечного («${trial.petName}») обратно с испытательного срока из-за сомнений в семье. Хвостик снова под вашим бытовым попечением.`;
+  addLog(cancelMsg, 'warn');
   renderAll();
   showAlbumModal();
 }
@@ -2928,7 +2935,11 @@ function actionReceiveGreetingFromHome(tailId) {
   tail.greetingReceived = true;
   savePetToAlbum(tail);
   state.mental = Math.min(100, state.mental + 5);
-  addLog(`День ${state.day}: 💌 Теплый фото-привет из дома от подопечного («${tail.petName}»)! Счастливая мордочка на пушистом коврике восстанавливает душевные силы куратора (+5% 🧠).`, 'success');
+  const isPair = tail.petName && tail.petName.includes(' и ');
+  const greetingText = isPair
+    ? `Теплый фото-привет из дома от подопечных («${tail.petName}»)! Счастливые мордочки на пушистом коврике восстанавливают душевные силы куратора (+5% 🧠).`
+    : `Теплый фото-привет из дома от подопечного («${tail.petName}»)! Счастливая мордочка на пушистом коврике восстанавливает душевные силы куратора (+5% 🧠).`;
+  addLog(`День ${state.day}: 💌 ${greetingText}`, 'success');
   renderAll();
   showAlbumModal();
 }

@@ -582,15 +582,32 @@ function finishTransferToTrial(countToGive, callData, options, fosterSpotHeld) {
   a.count = a.activeCount;
   a.trialCount = (a.trialCount || 0) + countToGive;
 
-  let assignedPetName = a.petName;
-  if (!assignedPetName) {
-    assignedPetName = getRandomPetname();
-    addLog(`День ${state.day}: 🏷️ Уезжающему в семью малышу присвоена индивидуальная кличка из картотеки «Зоошанса»: «${assignedPetName}»!`, 'info');
+  let assignedPetNames = [];
+  if (countToGive > 1) {
+    const n1 = getRandomPetname();
+    let n2 = getRandomPetname();
+    while (n2 === n1) {
+      n2 = getRandomPetname();
+    }
+    assignedPetNames = [n1, n2];
+    addLog(`День ${state.day}: 🏷️ Уезжающим в семью малышам присвоены индивидуальные клички из картотеки «Зоошанса»: «${n1}» и «${n2}»!`, 'info');
+  } else {
+    let singleName = a.petName;
+    if (!singleName || (a.totalCount > 1 || a.initialCount > 1)) {
+      singleName = getRandomPetname();
+      addLog(`День ${state.day}: 🏷️ Уезжающему в семью малышу присвоена индивидуальная кличка из картотеки «Зоошанса»: «${singleName}»!`, 'info');
+    }
+    assignedPetNames = [singleName];
   }
 
+  const assignedPetName = countToGive > 1
+    ? `${assignedPetNames[0]} и ${assignedPetNames[1]}`
+    : assignedPetNames[0];
+
   const trialItem = {
-    id: Date.now() + Math.random(),
+    id: Date.now() + Math.floor(Math.random() * 10000),
     petName: assignedPetName,
+    petNames: assignedPetNames,
     species: a.species,
     count: countToGive,
     daysPassed: 0,
@@ -612,8 +629,8 @@ function finishTransferToTrial(countToGive, callData, options, fosterSpotHeld) {
 
   state.trialAnimals.push(trialItem);
 
-  const displayTarget = assignedPetName ? `«${assignedPetName}»` : (countToGive > 1 ? 'парочка котят' : 'малыш');
-  addLog(`День ${state.day}: 🚚 ${displayTarget} (${countToGive > 1 ? 'парочка котят' : 'подопечный'}) отправлен(ы) в новый дом на 14-дневный испытательный срок! Бытовой расход корма и энергии снят.`, 'success');
+  const displayTarget = countToGive > 1 ? `«${assignedPetName}» (парочка котят)` : `«${assignedPetName}» (подопечный)`;
+  addLog(`День ${state.day}: 🚚 ${displayTarget} отправлен(ы) в новый дом на 14-дневный испытательный срок! Бытовой расход корма и энергии снят.`, 'success');
 
   closeEventModal();
   renderAll();
@@ -627,26 +644,37 @@ function completeOneOrPairAdoption(isPair, successStoryText) {
   a.count = a.activeCount;
   a.savedCount = (a.savedCount || 0) + countSaved;
 
-  const savedPetName = a.petName || getRandomPetname();
+  let assignedNames = [];
+  if (countSaved > 1) {
+    const n1 = getRandomPetname();
+    let n2 = getRandomPetname();
+    while (n2 === n1) n2 = getRandomPetname();
+    assignedNames = [n1, n2];
+  } else {
+    assignedNames = [a.petName || getRandomPetname()];
+  }
 
-  const tailRecord = {
-    id: Date.now() + Math.random(),
-    petName: savedPetName,
-    species: a.species,
-    archetypeId: a.id,
-    archetypeTitle: a.title,
-    coatName: a.coatName,
-    coatTier: a.coatTier,
-    daysSpent: state.day,
-    seasonsPassed: [...state.seasonsPassed],
-    adopterSummary: 'Оставлен себе / близким друзьям',
-    dateSaved: formatCalendarDate(state.calendarDate),
-    personalSpent: state.personalMoneySpent || 0,
-    prChannel: 'Личные контакты'
-  };
-  state.savedTails.push(tailRecord);
-  savePetToAlbum(tailRecord);
+  assignedNames.forEach((savedPetName, idx) => {
+    const tailRecord = {
+      id: Date.now() + Math.floor(Math.random() * 10000) + idx,
+      petName: savedPetName,
+      species: a.species,
+      archetypeId: a.id,
+      archetypeTitle: a.title,
+      coatName: a.coatName,
+      coatTier: a.coatTier,
+      daysSpent: state.day,
+      seasonsPassed: [...state.seasonsPassed],
+      adopterSummary: 'Оставлен себе / близким друзьям',
+      dateSaved: formatCalendarDate(state.calendarDate),
+      personalSpent: state.personalMoneySpent || 0,
+      prChannel: 'Личные контакты'
+    };
+    state.savedTails.push(tailRecord);
+    savePetToAlbum(tailRecord);
+  });
 
+  const namesStr = assignedNames.map(n => `«${n}»`).join(' и ');
   if (a.savedCount >= (a.totalCount || a.initialCount || 1)) {
     if (a.hasMotherCat && !a.motherSterilized) {
       addLog(`День ${state.day}: ℹ️ Все котята благополучно обрели дом! Но мама-кошка еще не стерилизована — проведите операцию во вкладке «Клиника» для завершения кураторства!`, 'info');
@@ -660,7 +688,10 @@ function completeOneOrPairAdoption(isPair, successStoryText) {
       );
     }
   } else {
-    addLog(`День ${state.day}: 🏠 Подопечный («${savedPetName}») обрел постоянный дом! На руках осталось: ${a.activeCount}.`, 'success');
+    const logMsg = countSaved > 1
+      ? `День ${state.day}: 🏠 Подопечные (${namesStr}) обрели постоянный дом! На руках осталось: ${a.activeCount}.`
+      : `День ${state.day}: 🏠 Подопечный (${namesStr}) обрел постоянный дом! На руках осталось: ${a.activeCount}.`;
+    addLog(logMsg, 'success');
     closeEventModal();
     renderAll();
   }

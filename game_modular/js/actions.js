@@ -636,7 +636,11 @@ function actionCheckTrialPetStatus() {
     triggerRedFlagDelayedStrikeModal(item);
   } else {
     state.mental = Math.min(100, state.mental + 5);
-    addLog(`День ${state.day}: 📱 Вы написали хозяевам «${item.petName}». Прислали фото-привет: хвостик сладко спит на диване, аппетит отличный! Испытательный срок: день ${item.daysPassed}/${item.trialDaysTotal || 14} (+5% Менталки).`, 'success');
+    const isPair = (item.count || 1) > 1;
+    const greetingText = isPair
+      ? `Прислали фото-привет: малыши сладко спят в обнимку на диване, аппетит отличный у обоих!`
+      : `Прислали фото-привет: хвостик сладко спит на диване, аппетит отличный!`;
+    addLog(`День ${state.day}: 📱 Вы написали хозяевам «${item.petName}». ${greetingText} Испытательный срок: день ${item.daysPassed}/${item.trialDaysTotal || 14} (+5% Менталки).`, 'success');
   }
   renderAll();
 }

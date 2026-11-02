@@ -768,16 +768,24 @@ function triggerEarlyBookedTransferModal() {
 
 function triggerTrialSuccessModal(trialItem) {
   stopTimer();
+  const isPair = (trialItem.count || 1) > 1;
+  const desc = isPair
+    ? `Семья («${trialItem.adopterSummary}») прислала долгожданный фото-привет с дивана:\n\n«${trialItem.petName}» полностью освоились, спят в обнимку на мягких подушках, мурчат на руках и радуют всю семью! 14-дневный испытательный срок успешно завершен (+15% Менталки)!\n\nОба хвостика официально занесены в ваш личный «Альбом спасенных хвостиков»!`
+    : `Семья («${trialItem.adopterSummary}») прислала долгожданный фото-привет с дивана:\n\n«${trialItem.petName}» полностью освоился, спит на мягких подушках, мурчит на руках и радует всю семью! 14-дневный испытательный срок успешно завершен (+15% Менталки)!\n\nХвостик официально занесен в ваш личный «Альбом спасенных хвостиков»!`;
+
   showEventModal(
     '🎉 ИСПЫТАТЕЛЬНЫЙ СРОК УСПЕШНО ПРОЙДЕН!',
-    `Семья («${trialItem.adopterSummary}») прислала долгожданный фото-привет с дивана:\n\n«${trialItem.petName}» полностью освоился, спит на мягких подушках, мурчит на руках и радует всю семью! 14-дневный испытательный срок успешно завершен (+15% Менталки)!\n\nХвостик официально занесен в ваш личный «Альбом спасенных хвостиков»!`,
+    desc,
     [
       {
         label: 'Какое счастье! (Продолжить партию)',
         style: 'primary',
         action: () => {
           closeEventModal();
-          addLog(`День ${state.day}: 🎉 «${trialItem.petName}» успешно пристроен! В альбоме куратора пополнение.`, 'success');
+          const logMsg = isPair
+            ? `День ${state.day}: 🎉 «${trialItem.petName}» успешно пристроены в одну семью! В альбоме куратора пополнение сразу на два хвостика.`
+            : `День ${state.day}: 🎉 «${trialItem.petName}» успешно пристроен! В альбоме куратора пополнение.`;
+          addLog(logMsg, 'success');
           if (state.animal.savedCount >= (state.animal.totalCount || state.animal.count || 1)) {
             if (state.animal.hasMotherCat && !state.animal.motherSterilized) {
               addLog(`День ${state.day}: 🐾 Все котята благополучно пристроены! Но мама-кошка еще не стерилизована — завершите операцию до победы!`, 'info');
@@ -797,28 +805,38 @@ function triggerTrialSuccessModal(trialItem) {
 
 function triggerTrialReturnModal(trialItem) {
   stopTimer();
+  const isPair = (trialItem.count || 1) > 1;
   if (trialItem.fosterSpotHeld) {
     state.mental = Math.max(0, state.mental - 10);
     state.zooshans.locationStatus = trialItem.fosterLocation || 'home_floor';
+    const returnMsg = isPair
+      ? `Семья не справилась с адаптацией и вернула «${trialItem.petName}». К счастью, вы предусмотрительно придержали места на передержке — малыши вернулись в знакомый бокс (-10% Менталки)!\n\nПродолжаем поиск подходящих хозяев.`
+      : `Семья не справилась с адаптацией и вернула «${trialItem.petName}». К счашьтю, вы предусмотрительно придержали место на передержке — питомец вернулся в знакомый бокс (-10% Менталки)!\n\nПродолжаем поиск подходящих хозяев.`;
     showEventModal(
       '↩️ БЫТОВОЙ ВОЗВРАТ С ИСПЫТАТЕЛЬНОГО СРОКА',
-      `Семья не справилась с адаптацией и вернула «${trialItem.petName}». К счастью, вы предусмотрительно придержали место на передержке — питомец вернулся в знакомый бокс (-10% Менталки)!\n\nПродолжаем поиск подходящих хозяев.`,
+      returnMsg,
       [
         {
           label: 'Принять возврат и продолжить пиар',
           style: 'primary',
           action: () => {
             closeEventModal();
-            addLog(`День ${state.day}: ↩️ Питомец вернулся на придержанную передержку. Пиар продолжается!`, 'warn');
+            const logMsg = isPair
+              ? `День ${state.day}: ↩️ Малыши («${trialItem.petName}») вернулись на придержанную передержку. Пиар продолжается!`
+              : `День ${state.day}: ↩️ Питомец вернулся на придержанную передержку. Пиар продолжается!`;
+            addLog(logMsg, 'warn');
           }
         }
       ]
     );
   } else {
     state.mental = Math.max(0, state.mental - 20);
+    const ultimatumMsg = isPair
+      ? `Хозяева позвонили с ультиматумом: «Забирайте «${trialItem.petName}» сегодня же, мы больше не можем!»\n\nПоскольку места на передержке не были придержаны, их уже заняли! Что будете делать? (-20% Менталки)`
+      : `Хозяева позвонили с ультиматумом: «Забирайте «${trialItem.petName}» сегодня же, мы больше не можем!»\n\nПоскольку место на передержке не было придержано, его уже заняли! Что будете делать? (-20% Менталки)`;
     showEventModal(
       '🚨 УЛЬТИМАТИВНЫЙ ВОЗВРАТ: МЕСТО НА ПЕРЕДЕРЖКЕ НЕ ПРИДЕРЖАНО!',
-      `Хозяева позвонили с ультиматумом: «Забирайте «${trialItem.petName}» сегодня же, мы больше не можем!»\n\nПоскольку место на передержке не было придержано, его уже заняли! Что будете делать? (-20% Менталки)`,
+      ultimatumMsg,
       [
         {
           label: '⏳ Попытаться договориться на 3 дня для маневра (-15⚡, 65% шанс)',
@@ -828,11 +846,17 @@ function triggerTrialReturnModal(trialItem) {
             if (Math.random() < 0.65) {
               state.maneuver = { active: true, daysRemaining: 3, petData: trialItem };
               state.zooshans.locationStatus = 'maneuver_adopters';
-              addLog(`День ${state.day}: ⏳ Ручки согласились потерпеть 3 дня! Подопечный временно у них. Срочно найдите новую передержку в соцсетях или оплатите платную.`, 'success');
+              const logMsg = isPair
+                ? `День ${state.day}: ⏳ Ручки согласились потерпеть 3 дня! Подопечные временно у них. Срочно найдите новую передержку в соцсетях или оплатите платную.`
+                : `День ${state.day}: ⏳ Ручки согласились потерпеть 3 дня! Подопечный временно у них. Срочно найдите новую передержку в соцсетях или оплатите платную.`;
+              addLog(logMsg, 'success');
               closeEventModal();
             } else {
               state.zooshans.locationStatus = state.zooshans.hasCage ? 'home_cage' : 'home_floor';
-              addLog(`День ${state.day}: ❌ Ручки наотрез отказались ждать — питомец прямо сейчас возвращен к вам в квартиру!`, 'danger');
+              const logMsg = isPair
+                ? `День ${state.day}: ❌ Ручки наотрез отказались ждать — малыши прямо сейчас возвращены к вам в квартиру!`
+                : `День ${state.day}: ❌ Ручки наотрез отказались ждать — питомец прямо сейчас возвращен к вам в квартиру!`;
+              addLog(logMsg, 'danger');
               closeEventModal();
             }
           }
@@ -851,11 +875,17 @@ function triggerTrialReturnModal(trialItem) {
             if (Math.random() < 0.90) {
               state.maneuver = { active: true, daysRemaining: 3, petData: trialItem };
               state.zooshans.locationStatus = 'maneuver_adopters';
-              addLog(`День ${state.day}: ⏳ Компенсация 20 BYN помогла! Ручки согласились подержать питомца еще 3 дня. Ищите передержку!`, 'success');
+              const logMsg = isPair
+                ? `День ${state.day}: ⏳ Компенсация 20 BYN помогла! Ручки согласились подержать малышей еще 3 дня. Ищите передержку!`
+                : `День ${state.day}: ⏳ Компенсация 20 BYN помогла! Ручки согласились подержать питомца еще 3 дня. Ищите передержку!`;
+              addLog(logMsg, 'success');
               closeEventModal();
             } else {
               state.zooshans.locationStatus = state.zooshans.hasCage ? 'home_cage' : 'home_floor';
-              addLog(`День ${state.day}: Ручки все равно отказались — питомец возвращен к вам в квартиру.`, 'danger');
+              const logMsg = isPair
+                ? `День ${state.day}: Ручки все равно отказались — малыши возвращены к вам в квартиру.`
+                : `День ${state.day}: Ручки все равно отказались — питомец возвращен к вам в квартиру.`;
+              addLog(logMsg, 'danger');
               closeEventModal();
             }
           }
@@ -866,7 +896,10 @@ function triggerTrialReturnModal(trialItem) {
           action: () => {
             if (!spendEnergy(15)) return;
             state.zooshans.locationStatus = state.zooshans.hasCage ? 'home_cage' : 'home_floor';
-            addLog(`День ${state.day}: Вы привезли питомца обратно к себе домой. Бытовой резерв энергии снова отнимает силы.`, 'info');
+            const logMsg = isPair
+              ? `День ${state.day}: Вы привезли малышей обратно к себе домой. Бытовой резерв энергии снова отнимает силы.`
+              : `День ${state.day}: Вы привезли питомца обратно к себе домой. Бытовой резерв энергии снова отнимает силы.`;
+            addLog(logMsg, 'info');
             closeEventModal();
           }
         }
@@ -886,9 +919,13 @@ function triggerTrialAsthmaReturnModal(trialItem) {
   } else {
     state.zooshans.locationStatus = state.zooshans.hasCage ? 'home_cage' : 'home_floor';
   }
+  const isPair = (trialItem.count || 1) > 1;
+  const desc = isPair
+    ? `На 6-й день семья позвонила в слезах: у мужа началась острая бронхиальная астма (прислали заключение пульмонолога).\n\nПо договору об испытательном сроке они бережно привезли «${trialItem.petName}» обратно, передали мешок корма (+10 дней) и 85 BYN на передержку/клинику.\n\nЭто обычный рабочий момент зоозащиты — продолжаем поиск любящего дома!`
+    : `На 6-й день семья позвонила в слезах: у мужа началась острая бронхиальная астма (прислали заключение пульмонолога).\n\nПо договору об испытательном сроке они бережно привезли «${trialItem.petName}» обратно, передали мешок корма (+10 дней) и 85 BYN на передержку/клинику.\n\nЭто обычный рабочий момент зоозащиты — продолжаем поиск любящего дома!`;
   showEventModal(
     'ЧЕСТНЫЙ ВОЗВРАТ С ИСПЫТАТЕЛЬНОГО СРОКА (АСТМА)',
-    `На 6-й день семья позвонила в слезах: у мужа началась острая бронхиальная астма (прислали заключение пульмонолога).\n\nПо договору об испытательном сроке они бережно привезли «${trialItem.petName}» обратно, передали мешок корма (+10 дней) и 85 BYN на передержку/клинику.\n\nЭто обычный рабочий момент зоозащиты — продолжаем поиск любящего дома!`,
+    desc,
     [
       {
         label: 'Поблагодарить за честность и продолжить пиар',
