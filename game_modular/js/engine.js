@@ -509,7 +509,12 @@ function processDayTick() {
 
   if (a.dewormStage === 1) {
     a.daysSinceDeworm1 += 1;
-    if (a.daysSinceDeworm1 === 10) {
+    if (a.volunteerHandlesDeworming && a.daysSinceDeworm1 >= 10) {
+      a.dewormStage = 2;
+      a.daysSinceDeworm2 = 0;
+      a.volunteerHandlesDeworming = false;
+      addLog(`День ${state.day}: 💊 Опытный волонтер строго по графику (на 10-й день) дала 2-ю таблетку от паразитов! Курс дегельминтизации успешно завершен без расхода ваших сил.`, 'success');
+    } else if (a.daysSinceDeworm1 === 10) {
       addLog(`День ${state.day}: 📌 НАПОМИНАНИЕ: Прошло 10 дней после 1-й глистогонки! Пора дать вторую таблетку от паразитов (20 BYN).`, 'warn');
     }
   } else if (a.dewormStage === 2) {
@@ -1027,6 +1032,21 @@ function processDayTick() {
 
     if (Math.random() < callChance) {
       triggerRandomAdopterCall();
+      renderAll();
+      return;
+    }
+  }
+
+  // Запрос на обеспечение таблетками от передержки, если еще не начата дегельминтизация
+  const isWithExpVolunteer = state.zooshans && (
+    state.zooshans.locationStatus === 'temp_volunteer_14d' ||
+    state.zooshans.locationStatus === 'full_volunteer_fincuration' ||
+    state.zooshans.locationStatus === 'social_foster_volunteer'
+  );
+  if (isWithExpVolunteer && a.dewormStage === 0 && !a.volunteerHandlesDeworming && state.day >= 2 && (state.day % 3 === 0)) {
+    const vName = state.zooshans.locationStatus === 'social_foster_volunteer' ? 'Катя' : 'Таня';
+    if (typeof promptVolunteerDewormingRequest === 'function') {
+      promptVolunteerDewormingRequest(vName);
       renderAll();
       return;
     }

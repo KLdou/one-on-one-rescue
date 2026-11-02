@@ -930,16 +930,18 @@ function renderActionTabs() {
     });
   } else if (a.dewormStage === 1) {
     const waitLeft = Math.max(0, 10 - a.daysSinceDeworm1);
+    const volunteerNote = a.volunteerHandlesDeworming ? 'Передержка контролирует график: даст вторую таблетку сама.' : 'Обязательна перед вакцинацией! Защита действует 6 месяцев (180 дн.).';
+    const volunteerStatus = a.volunteerHandlesDeworming ? (waitLeft > 0 ? `⏳ Волонтер даст через ${waitLeft} дн.` : 'Волонтер дает сегодня!') : (waitLeft > 0 ? `⏳ Повтор через ${waitLeft} дн.` : 'Пора дать сегодня!');
     vetButtons.push({
       icon: '💊',
       title: '2-я обработка от паразитов',
-      badge: waitLeft > 0 ? `${waitLeft} дн.` : 'Этап 2/2',
-      sub: 'Обязательна перед вакцинацией! Защита действует 6 месяцев (180 дн.).',
+      badge: a.volunteerHandlesDeworming ? 'Передержка' : (waitLeft > 0 ? `${waitLeft} дн.` : 'Этап 2/2'),
+      sub: volunteerNote,
       costBYN: waitLeft > 0 ? 0 : pillCost2,
       costEnergy: waitLeft > 0 ? 0 : 5,
       isVoucherEligible: false,
       state: waitLeft > 0 ? 'cooldown' : 'active',
-      statusText: waitLeft > 0 ? `⏳ Повтор через ${waitLeft} дн.` : 'Пора дать сегодня!',
+      statusText: volunteerStatus,
       onClick: () => {
         if (!spendEnergy(5)) return;
         if (state.zooshans.hasGiftedDewormPill) {

@@ -204,9 +204,10 @@ function actionAskZooshansTakeover() {
     // 20% (или 60% при предохранителе баланса) — перехват на 14 дней карантина и стабилизации
     state.zooshans.locationStatus = 'temp_volunteer_14d';
     state.zooshans.tempVolunteerDaysLeft = 14;
+    const woodExamText = handleVolunteerTakeoverExamination('Таня');
     showEventModal(
       'ВРЕМЕННЫЙ ПЕРЕХВАТ НА 14 ДНЕЙ: Опытный волонтер берет на карантин и стабилизацию!',
-      `Координатор Колл-центра нашла окно: опытная волонтер Таня согласилась выручить вас на первые 14 дней (стандартный срок карантина):\n\n«Я заберу ${g.acc} к себе на 14 дней: выдержу карантин, сниму острое состояние, выкормлю и сделаю уколы. Но ты отвечаешь за покупку корма/смеси и через 14 дней ОБЯЗАН(А) забрать ${g.acc} обратно до пристройства!»` + milkBonusText,
+      `Координатор Колл-центра нашла окно: опытная волонтер Таня согласилась выручить вас на первые 14 дней (стандартный срок карантина):\n\n«Я заберу ${g.acc} к себе на 14 дней: выдержу карантин, сниму острое состояние, выкормлю и сделаю уколы. Но ты отвечаешь за покупку корма/смеси и через 14 дней ОБЯЗАН(А) забрать ${g.acc} обратно до пристройства!»` + milkBonusText + woodExamText,
       [
         {
           label: `Передать ${g.acc} на 14 дней (Быт и карантин сняты с вас, следите за расходниками!)`,
@@ -214,6 +215,9 @@ function actionAskZooshansTakeover() {
           action: () => {
             addLog(`День ${state.day}: ⏳ Волонтер забрала ${g.acc} на 14 дней карантина и стабилизации с возвратом! Ежедневный быт полностью снят с вас.`, 'success');
             closeEventModal();
+            if (state.animal && state.animal.dewormStage === 0) {
+              setTimeout(() => promptVolunteerDewormingRequest('Таня'), 300);
+            }
           }
         }
       ]
@@ -221,9 +225,10 @@ function actionAskZooshansTakeover() {
   } else {
     // 5% — редкое чудо: волонтер забирает до пристройства под финкураторство
     state.zooshans.locationStatus = 'full_volunteer_fincuration';
+    const woodExamText = handleVolunteerTakeoverExamination('Ольга');
     showEventModal(
       'РЕДКОЕ ЧУДО (5%): Волонтер забрал питомца под ваше полное финкураторство!',
-      `Невероятная удача: у волонтера освободилось место, и ${g.acc} забрали на постоянную передержку до пристройства!\n\nВесь ежедневный быт снят с вас, но вы обязаны бесперебойно оплачивать корм, расходники и лечение по талонам.` + milkBonusText,
+      `Невероятная удача: у волонтера освободилось место, и ${g.acc} забрали на постоянную передержку до пристройства!\n\nВесь ежедневный быт снят с вас, но вы обязаны бесперебойно оплачивать корм, расходники и лечение по талонам.` + milkBonusText + woodExamText,
       [
         {
           label: 'Стать финкуратором (Обеспечивать закупку расходников)',
@@ -231,6 +236,9 @@ function actionAskZooshansTakeover() {
           action: () => {
             addLog(`День ${state.day}: 🎉 Волонтеры приютили ${g.acc} насовсем под ваше финансовое обеспечение и снабжение!`, 'success');
             closeEventModal();
+            if (state.animal && state.animal.dewormStage === 0) {
+              setTimeout(() => promptVolunteerDewormingRequest('Ольга'), 300);
+            }
           }
         }
       ]
@@ -259,9 +267,10 @@ function actionSearchSocialFosterPost() {
     state.zooshans.locationStatus = 'social_foster_volunteer';
     state.zooshans.hasCage = true;
     if (state.maneuver) state.maneuver.active = false;
+    const woodExamText = handleVolunteerTakeoverExamination('Катя');
     showEventModal(
       'ОТКЛИК В СОЦСЕТЯХ: Опытный волонтер берет на передержку!',
-      `Ваш пост заметила опытная волонтер Катя:\n\n«Я возьму ${g.acc} в свою карантинную клетку! Быт, уборка и капли — на мне. Но вы остаетесь куратором: снабжаете кормом/наполнителем, оплачиваете клинику и ведете пиар!»`,
+      `Ваш пост заметила опытная волонтер Катя:\n\n«Я возьму ${g.acc} в свою карантинную клетку! Быт, уборка и капли — на мне. Но вы остаетесь куратором: снабжаете кормом/наполнителем, оплачиваете клинику и ведете пиар!»` + woodExamText,
       [
         {
           label: `Передать ${g.acc} волонтеру (Быт снят с вас, следите за расходниками!)`,
@@ -269,6 +278,9 @@ function actionSearchSocialFosterPost() {
           action: () => {
             addLog(`День ${state.day}: 🤝 Со-кураторство с волонтером! Быт снят, но не забывайте вовремя пополнять запас корма!`, 'success');
             closeEventModal();
+            if (state.animal && state.animal.dewormStage === 0) {
+              setTimeout(() => promptVolunteerDewormingRequest('Катя'), 300);
+            }
           }
         }
       ]
@@ -713,5 +725,104 @@ function actionSetPetName(customName) {
   renderAll();
 }
 
+// 15. ОСМОТР ВУДА И ОБРАБОТКИ ПРИ ПЕРЕХВАТЕ ОПЫТНЫМ ВОЛОНТЕРОМ
+function handleVolunteerTakeoverExamination(volunteerName = 'волонтер') {
+  if (!state.animal) return '';
+  const a = state.animal;
+  const wasExamined = a.examinedWood;
+  a.examinedWood = true;
+  let text = '';
+
+  if (a.hiddenState && a.hiddenState.hasRingworm) {
+    a.knownRingworm = true;
+    a.ringwormDaysDone = 0;
+    text = `\n\n🔬 ОСМОТР ЛАМПОЙ ВУДА: Опытная ${volunteerName} сразу просветила подопечного в карантине — обнаружено изумрудное свечение (микроспория/лишай)! Животное изолировано в боксе, волонтер начинает наружные обработки.`;
+    addLog(`День ${state.day}: 🔬 Волонтер ${volunteerName} бесплатно просветила лампой Вуда: обнаружен лишай! Начат курс лечения в клетке.`, 'warn');
+  } else {
+    text = `\n\n🔬 ОСМОТР ЛАМПОЙ ВУДА: Опытная ${volunteerName} сразу просветила подопечного лампой Вуда в карантине: шерсть чистая, свечения нет, микроспория исключена!`;
+    if (!wasExamined) {
+      addLog(`День ${state.day}: 🔬 Волонтер ${volunteerName} бесплатно провела первичный осмотр и просвет лампой Вуда (чисто).`, 'success');
+    }
+  }
+  return text;
+}
+
+function promptVolunteerDewormingRequest(volunteerName = 'Таня') {
+  if (state.gameOver) return;
+  const a = state.animal;
+  if (!a || a.dewormStage >= 2 || a.volunteerHandlesDeworming) return;
+
+  showEventModal(
+    'ЗАПРОС ОТ ВОЛОНТЕРА: Препараты для дегельминтизации',
+    `Опытная волонтер ${volunteerName} пишет вам:\n\n«Привет! На передержке подопечному нужно провести плановую дегельминтизацию (2 обработки с интервалом 10 дней), чтобы подготовить к вакцинации. Сами дачи таблеток и график я беру на себя, но вам нужно передать препараты. Как поступим?»`,
+    [
+      {
+        label: 'Купить в ветклинике/аптеке (26 BYN, 0⚡)',
+        style: 'primary',
+        action: () => {
+          provideVolunteerDeworming('clinic', volunteerName);
+        }
+      },
+      {
+        label: 'Забрать на волонтерской барахолке в чате (0 BYN, -10⚡)',
+        style: 'secondary',
+        action: () => {
+          provideVolunteerDeworming('flea_market', volunteerName);
+        }
+      },
+      {
+        label: 'Отложить на пару дней (напомнить позже)',
+        style: 'muted',
+        action: () => {
+          addLog(`День ${state.day}: ⏳ Вы отложили передачу таблеток от глистов. Волонтер ${volunteerName} напомнит через пару дней.`, 'info');
+          closeEventModal();
+        }
+      }
+    ]
+  );
+}
+
+function provideVolunteerDeworming(source, volunteerName = 'волонтер') {
+  if (state.gameOver) return;
+  const a = state.animal;
+  if (!a) return;
+
+  if (source === 'flea_market') {
+    if (state.energy < 10) {
+      addLog(`День ${state.day}: ❌ Не хватает энергии (нужно 10⚡), чтобы съездить через весь город за остатками таблеток на барахолке! Выберите покупку или отдохните.`, 'warn');
+      return;
+    }
+    spendEnergy(10);
+    a.volunteerHandlesDeworming = true;
+    if (a.dewormStage === 0) {
+      a.dewormStage = 1;
+      a.daysSinceDeworm1 = 0;
+    }
+    addLog(`День ${state.day}: 🚇 ВОЛОНТЕРСКАЯ БАРАХОЛКА: Вы съездили на другой конец Минска (-10⚡, 0 BYN) и передали ${volunteerName} таблетки от паразитов! 1-я доза дана, 2-ю передержка даст строго через 10 дней сама.`, 'success');
+    closeEventModal();
+    renderAll();
+    return;
+  }
+
+  // Clinic purchase (26 BYN)
+  if (state.cash < 26) {
+    addLog(`День ${state.day}: ❌ Не хватает средств (нужно 26 BYN) на покупку таблеток от глистов! Попробуйте забрать остатки на барахолке в чате (-10⚡).`, 'danger');
+    return;
+  }
+  state.cash = +(state.cash - 26).toFixed(1);
+  state.personalMoneySpent = +(state.personalMoneySpent + 26).toFixed(1);
+  a.volunteerHandlesDeworming = true;
+  if (a.dewormStage === 0) {
+    a.dewormStage = 1;
+    a.daysSinceDeworm1 = 0;
+  }
+  addLog(`День ${state.day}: 💊 Куплены таблетки от глистов (-26 BYN). ${volunteerName} дала 1-ю дозу! Вторую обработку волонтер проведет на 10-й день без вашего участия.`, 'success');
+  closeEventModal();
+  renderAll();
+}
+
 window.canAffordVetBill = canAffordVetBill;
 window.payVetBill = payVetBill;
+window.handleVolunteerTakeoverExamination = handleVolunteerTakeoverExamination;
+window.promptVolunteerDewormingRequest = promptVolunteerDewormingRequest;
+window.provideVolunteerDeworming = provideVolunteerDeworming;

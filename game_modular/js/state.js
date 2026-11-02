@@ -172,6 +172,7 @@ function startNewRun(experiencedCurator = false, forcedScenario = null) {
       dewormStage: 0, // 0 -> 1 (ждем 10 дн.) -> 2 (действует 180 дн.)
       daysSinceDeworm1: 0,
       daysSinceDeworm2: 0,
+      volunteerHandlesDeworming: false, // Опытный волонтер сам контролирует дачи таблеток
 
       tickProtectionDaysLeft: 0, // Защита от клещей для собак весной/летом (35 BYN / 30 дн.)
       parasitesAndVaccinated: false,

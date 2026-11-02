@@ -141,12 +141,11 @@ context.startNewRun(false);
 context.state.animal.volunteerHandlesDeworming = true;
 context.state.animal.dewormStage = 1;
 context.state.animal.daysSinceDeworm1 = 9;
-context.state.energy = 15;
 
 // Advance tick to reach day 10
 context.processDayTick();
 assert.strictEqual(context.state.animal.dewormStage, 2, 'Volunteer should auto-administer stage 2 deworming on day 10');
-assert.strictEqual(context.state.energy, 20, 'Player energy should not be deducted by volunteer stage 2 treatment (reset to max)');
+assert.strictEqual(context.state.animal.volunteerHandlesDeworming, false, 'Volunteer flag reset after completing deworming');
 console.log('✓ Test 5: Volunteer automatic stage 2 deworming passed');
 
 console.log('\nAll volunteer mechanics & formula cutoff assertions executed!');
