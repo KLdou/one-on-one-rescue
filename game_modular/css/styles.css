@@ -121,6 +121,13 @@ body {
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+/* Постоянный закрепленный слот управления временем справа в шапке */
+#headerTimeControlSlot {
+  min-height: 28px;
+  min-width: 130px;
+  justify-content: flex-end;
+}
+
 .craft-card:hover {
   border-color: var(--border-strong);
 }

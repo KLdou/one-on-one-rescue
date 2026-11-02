@@ -15,16 +15,16 @@
     <div class="max-w-[1440px] mx-auto flex items-center justify-between gap-2 flex-wrap">
       
       <!-- Левый блок: Название, День, Дата, Сезон, Острая фаза -->
-      <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-        <span id="tickIndicator" class="inline-flex items-center justify-center w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
-        <span class="font-extrabold text-xs sm:text-sm tracking-tight text-[var(--text-primary)]">ОДИН НА ОДИН</span>
+      <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
+        <span id="tickIndicator" class="inline-flex items-center justify-center w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
+        <span class="font-extrabold text-xs sm:text-sm tracking-tight text-[var(--text-primary)] shrink-0">ОДИН НА ОДИН</span>
         
-        <span class="inline-flex items-center font-bold font-mono text-xs text-[var(--text-primary)] px-1.5 py-0.5 rounded bg-[var(--bg-muted)]">
+        <span class="inline-flex items-center font-bold font-mono text-xs text-[var(--text-primary)] px-1.5 py-0.5 rounded bg-[var(--bg-muted)] shrink-0">
           ДЕНЬ <span id="dayCounter" class="ml-1">1</span>
         </span>
 
         <!-- Карточка подопечного: фото (SVG) и кличка с вызовом модального окна -->
-        <button id="btnHeaderPetInfo" onclick="showAnimalModal()" class="flex items-center gap-1.5 px-2 py-0.5 sm:py-1 rounded-lg bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-emerald-500 text-[var(--text-primary)] transition shadow-sm cursor-pointer group" title="Посмотреть карточку подопечного">
+        <button id="btnHeaderPetInfo" onclick="showAnimalModal()" class="flex items-center gap-1.5 px-2 py-0.5 sm:py-1 rounded-lg bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-emerald-500 text-[var(--text-primary)] transition shadow-sm cursor-pointer group shrink-0" title="Посмотреть карточку подопечного">
           <div id="headerPetAvatar" class="w-6 h-6 sm:w-7 sm:h-7 rounded-full overflow-hidden border border-[var(--border-subtle)] bg-[var(--bg-card)] shrink-0 flex items-center justify-center">
             <!-- SVG рендерится JS функцией buildPetSVG -->
           </div>
@@ -35,71 +35,78 @@
         </button>
 
         <!-- Индикатор количества хвостов на руках и испытательном сроке -->
-        <span id="headerTailsStatusBadge" class="hidden text-xs font-mono font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-300">
+        <span id="headerTailsStatusBadge" class="hidden text-xs font-mono font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-300 shrink-0">
           🐾 На руках: 1
         </span>
         
-        <span id="calendarDateBadge" class="inline-flex items-center gap-1 text-xs font-mono font-medium text-slate-700 px-1 py-0.5">
+        <span id="calendarDateBadge" class="inline-flex items-center gap-1 text-xs font-mono font-medium text-slate-700 px-1 py-0.5 shrink-0">
           📅 12 мая
         </span>
         
-        <span id="seasonBadge" class="inline-flex items-center gap-1 text-[11px] font-sans font-medium px-2 py-0.5 rounded-full" style="background: var(--season-badge-bg); color: var(--season-badge-text);">
+        <span id="seasonBadge" class="inline-flex items-center gap-1 text-[11px] font-sans font-medium px-2 py-0.5 rounded-full shrink-0" style="background: var(--season-badge-bg); color: var(--season-badge-text);">
           ☀️ Сезон котят (-75% звонков)
         </span>
 
-        <span id="acutePhaseBadge" class="inline-flex items-center gap-1 text-[11px] font-sans font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full">
+        <span id="acutePhaseBadge" class="inline-flex items-center gap-1 text-[11px] font-sans font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full shrink-0">
           🌙 Острая фаза (День 1/3)
         </span>
       </div>
 
-      <!-- Правый блок: Мобильные шторки, Время, Скорость, Штиль, Новая партия -->
-      <div class="flex items-center gap-1.5 flex-wrap">
+      <!-- Правый блок управления: вспомогательные кнопки и жестко закрепленный блок скоростей -->
+      <div class="flex items-center gap-2 shrink-0 ml-auto flex-wrap">
         
-        <!-- Кнопки мобильных шторок (видны только на экранах < 1024px) -->
-        <button onclick="toggleDrawer('left')" class="lg:hidden px-2 py-1 rounded-lg text-xs font-mono font-bold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] transition" title="Профиль куратора и запасы">
-          👤 Профиль
-        </button>
-
-        <button onclick="toggleDrawer('right')" class="lg:hidden px-2 py-1 rounded-lg text-xs font-mono font-bold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] transition" title="Радар дедлайнов и дневник">
-          ⏱️ Радар
-        </button>
-
-        <!-- Кнопка пошагового режима в острой фазе (Дни 1-3) -->
-        <button id="btnAdvanceAcuteDay" onclick="advanceAcuteDay()" class="urgent-btn px-3 py-1 rounded-lg text-xs font-mono font-extrabold bg-amber-500 hover:bg-amber-400 text-slate-950 border border-amber-600 transition">
-          🌙 Завершить день
-        </button>
-
-        <!-- Группа скоростей (активна с 4-го дня) -->
-        <div id="speedButtonsGroup" class="hidden items-center gap-1">
-          <button id="btnSpeed0" onclick="setSpeed(0)" class="px-2 py-1 rounded-lg text-xs font-mono font-bold bg-emerald-600 text-white transition">
-            ⏸ Пауза
+        <!-- Вспомогательные сервисные действия (Альбом, Сценарии, Шторки, Новая) -->
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <!-- Кнопки мобильных шторок (видны только на экранах < 1024px) -->
+          <button onclick="toggleDrawer('left')" class="lg:hidden px-2 py-1 rounded-lg text-xs font-mono font-bold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] transition" title="Профиль куратора и запасы">
+            👤 Профиль
           </button>
-          <button id="btnSpeed1" onclick="setSpeed(1)" class="px-2 py-1 rounded-lg text-xs font-mono font-semibold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] transition">
-            1x
+
+          <button onclick="toggleDrawer('right')" class="lg:hidden px-2 py-1 rounded-lg text-xs font-mono font-bold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] transition" title="Радар дедлайнов и дневник">
+            ⏱️ Радар
           </button>
-          <button id="btnSpeed2" onclick="setSpeed(2)" class="px-2 py-1 rounded-lg text-xs font-mono font-semibold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] transition">
-            2x
+
+          <button onclick="showAlbumModal()" class="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] transition" title="Личный альбом спасенных хвостиков">
+            📖 Альбом: <span id="headerAlbumCount">0</span>
           </button>
-          <button id="btnSpeed5" onclick="setSpeed(5)" class="px-2 py-1 rounded-lg text-xs font-mono font-semibold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] transition">
-            5x
+
+          <button onclick="openScenarioPickerModal()" class="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-emerald-600/15 hover:bg-emerald-600/25 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 transition flex items-center gap-1 shadow-sm" title="Выбрать сценарий подопечного для проверки">
+            <span>📋</span> Сценарии
+          </button>
+
+          <button onclick="startNewRun()" class="px-2.5 py-1 rounded-lg text-xs font-mono font-semibold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-subtle)] transition" title="Начать заново">
+            ↻ Новая
           </button>
         </div>
 
-        <button id="btnFastForward" onclick="fastForwardCalmDays()" title="Промотать спокойные дни (авто-стоп за 1 день до любого дедлайна)" class="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-sm">
-          ⏩ Штиль
-        </button>
+        <!-- ЖЕСТКО ЗАКРЕПЛЕННЫЙ ПЕРЕКЛЮЧАТЕЛЬ СКОРОСТЕЙ И ВРЕМЕНИ (СПРАВА) -->
+        <div id="headerTimeControlSlot" class="flex items-center gap-1 pl-2 border-l border-[var(--border-subtle)] shrink-0">
+          <!-- Кнопка пошагового режима в острой фазе (Дни 1-3) -->
+          <button id="btnAdvanceAcuteDay" onclick="advanceAcuteDay()" class="urgent-btn px-3 py-1 rounded-lg text-xs font-mono font-extrabold bg-amber-500 hover:bg-amber-400 text-slate-950 border border-amber-600 transition">
+            🌙 Завершить день
+          </button>
 
-        <button onclick="showAlbumModal()" class="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] transition" title="Личный альбом спасенных хвостиков">
-          📖 Альбом: <span id="headerAlbumCount">0</span>
-        </button>
+          <!-- Группа скоростей (активна с 4-го дня) -->
+          <div id="speedButtonsGroup" class="hidden items-center gap-1">
+            <button id="btnSpeed0" onclick="setSpeed(0)" class="px-2 py-1 rounded-lg text-xs font-mono font-bold bg-emerald-600 text-white transition">
+              ⏸ Пауза
+            </button>
+            <button id="btnSpeed1" onclick="setSpeed(1)" class="px-2 py-1 rounded-lg text-xs font-mono font-semibold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] transition">
+              1x
+            </button>
+            <button id="btnSpeed2" onclick="setSpeed(2)" class="px-2 py-1 rounded-lg text-xs font-mono font-semibold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] transition">
+              2x
+            </button>
+            <button id="btnSpeed5" onclick="setSpeed(5)" class="px-2 py-1 rounded-lg text-xs font-mono font-semibold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] transition">
+              5x
+            </button>
+          </div>
 
-        <button onclick="openScenarioPickerModal()" class="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-emerald-600/15 hover:bg-emerald-600/25 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 transition flex items-center gap-1 shadow-sm" title="Выбрать сценарий подопечного для проверки">
-          <span>📋</span> Сценарии
-        </button>
+          <button id="btnFastForward" onclick="fastForwardCalmDays()" title="Промотать спокойные дни (авто-стоп за 1 день до любого дедлайна)" class="hidden px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-sm">
+            ⏩ Штиль
+          </button>
+        </div>
 
-        <button onclick="startNewRun()" class="px-2.5 py-1 rounded-lg text-xs font-mono font-semibold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-subtle)] transition" title="Начать заново">
-          ↻ Новая
-        </button>
       </div>
 
     </div>

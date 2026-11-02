@@ -93,6 +93,11 @@ function updateSpeedButtonsUI() {
 
   const btnFastForward = document.getElementById('btnFastForward');
   if (btnFastForward) {
+    if (isAcute) {
+      btnFastForward.classList.add('hidden');
+    } else {
+      btnFastForward.classList.remove('hidden');
+    }
     if (state.gameOver) {
       btnFastForward.disabled = true;
       btnFastForward.className = 'px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-indigo-950/40 text-indigo-300/40 border border-indigo-900/40 cursor-not-allowed opacity-50';
