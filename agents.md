@@ -1,136 +1,95 @@
-# 🧭 AGENTS.MD: Руководство по архитектуре и кодовой базе проекта
-**Проект:** «Один на один: Симулятор спасения» (Симулятор куратора-волонтера МБООПЖ «Зоошанс», г. Минск)  
-**Актуальная версия спецификации:** Master GDD v2.2 ([`v2_2.md`](file:///d:/projects/volontiers/v2_2.md))  
-**Основная рабочая кодовая база:** Папка [`game_modular/`](file:///d:/projects/volontiers/game_modular)
+# 🧭 AGENTS.MD: Architecture, Code Standards & AI Guide
+**Project:** "One on One: Rescue Simulator" (Volunteer curator simulator for "Zooshans", Minsk)  
+**Spec:** Master GDD v2.2 ([`v2_2.md`](file:///d:/projects/volontiers/v2_2.md)) | **Active Codebase:** [`game_modular/`](file:///d:/projects/volontiers/game_modular)
 
 ---
 
-## 1. Концепция, Философия и Стек
-
-* **Жанр:** Текстовый рогалик-симулятор выживания, тайм-менеджмента и ухода за животными в реальном времени с пошаговой острой фазой.
-* **Главный герой:** Обычный минчанин с улицы, который случайно нашел бездомное животное. Он не знает правил волонтерства, не имеет опыта и постепенно набивает шишки или учится на подсказках.
-* **Платформа:** Web SPA (Mobile-first) / Telegram WebApp.
-* **Стек:** Vanilla HTML5, JavaScript (ES6+), CSS3, Tailwind CSS (CDN). Проект **не использует** Webpack/Vite/React/npm-сборщики, запускается напрямую через любой статический веб-сервер или двойным кликом по `index.html` (оффлайн `file://`).
-* **Миссия конверсии:** В финале каждой партии направить игрока на реальную помощь волонтерам МБООПЖ «Зоошанс»:
-  * Код услуги ЕРИП: `4346991` (`https://zooshans.by/help-us`)
-  * Чат взаимопомощи: `https://t.me/zooshans_chat`
-  * Справочный бот: `https://t.me/zooshans_info_bot`
-  * Канал хроник: `https://t.me/zooshans`
-  * Картотека кличек форума: `https://forum.zooshans.by/app.php/petnames`
+## 1. Concept & Tech Stack
+- **Genre:** Text roguelike survival, real-time time-management & animal rescue simulator with a turn-based acute phase.
+- **Protagonist:** Everyday citizen of Minsk unexpectedly finding a stray animal with zero volunteer experience.
+- **Platform:** Web SPA (Mobile-first) / Telegram WebApp.
+- **Stack:** Vanilla HTML5, ES6+ JS, CSS3, Tailwind CSS (CDN). **No bundlers/npm build** (Webpack/Vite/React). Must run offline via `file://` or static web servers.
+- **Real-world Conversion (Zooshans):** ERIP service code `4346991` (`https://zooshans.by/help-us`), Telegram `@zooshans_chat`, `@zooshans_info_bot`, Forum names `https://forum.zooshans.by/app.php/petnames`.
 
 ---
 
-## 2. Структура Репозитория
-
-```text
-d:\projects\volontiers\
-├── v2_2.md                     # Главный мастер-документ (Master GDD v2.2) — ИСТОЧНИК ИСТИНЫ
-├── agents.md                   # Данный навигатор для ИИ-агентов и разработчиков
-│
-└── game_modular/               # РАБОЧАЯ МОДУЛЬНАЯ ВЕРСИЯ ИГРЫ
-    ├── index.html              # HTML-разметка интерфейса, острая фаза, Альбом, Stories 9:16
-    ├── README.md               # Документация для пользователей
-    │
-    ├── css/
-    │   └── styles.css          # Стили оформления, шрифты, анимации, рамка Stories 9:16
-    │
-    ├── data/                   # Конфигурации и базы игры (JSON в единой валюте BYN)
-    │   ├── config.json         # Цены процедур в BYN, бронь передержки (15/55/110 BYN), маневр (20 BYN)
-    │   ├── player_axes.json    # 6 осей профиля игрока (+социальный капитал: 0.6x, 1.0x, 1.6x)
-    │   ├── coats.json          # 10 кошачьих и 4 собачьих окраса с коэффициентами спроса
-    │   ├── scenarios.json      # Все 19 архетипов животных со скрытыми инфекциями и статусами
-    │   ├── petnames.json       # База кличек и минских топонимов/районов картотеки форума
-    │   └── calls.json          # Пул звонков: мошенники, перекупщики, красные флаги (+колор-пойнт), компромисс
-    │
-    └── js/                     # Модули JavaScript (ES6+)
-        ├── data_loader.js      # Загрузчик fetch() + встроенный fallback для запуска из file://
-        ├── state.js            # Глобальное состояние state, календарь, сезоны, расчет быта выводка
-        ├── engine.js           # Острая фаза, 7-дневный испытательный срок, отложенный удар, перемотка
-        ├── events.js           # ЧП, пироплазмоз, возврат с испытательного срока, переговоры на 3 дня
-        ├── actions.js          # Онбординг, клиника, выручка от своего кота, капли от клещей, имена
-        ├── adopters.js         # Звонки ручек, компромисс (95%), передача на испытательный срок, бронь места
-        ├── ui.js               # Рендеринг интерфейса, Альбом спасенных хвостов, разбор ошибок, Stories 9:16
-        └── app.js              # Точка входа (window.onload, асинхронный старт)
-```
+## 2. Directory Layout & Module Responsibilities
+- `v2_2.md`: Master GDD (Single source of truth).
+- `game_modular/`:
+  - `index.html`: Base DOM layout, modal containers, Stories 9:16 viewport.
+  - `css/styles.css`: Custom animations, layout tweaks, Stories frame.
+  - `data/*.json`: Game balance & databases in BYN (`config.json`, `player_axes.json`, `coats.json`, `scenarios.json`, `petnames.json`, `calls.json`).
+  - `js/`:
+    - `data_loader.js`: Async loader + inline `window.GAME_DATA` fallback for `file://`; name & scenario generation.
+    - `state.js`: Global `state`, calendar/seasons, litter energy formula, localStorage Album.
+    - `engine.js`: Daily tick, 7-day trial loop, delayed red flags, social capital fundraising.
+    - `events.js`: Modals for crises, piroplasmosis, trial returns (3-day grace period), naming.
+    - `actions.js`: Clinic visits, tick drops, cat food sharing, naming actions, trial checks.
+    - `adopters.js`: Calls pool, red flags, compromise (95%), trial transfers, foster reservations.
+    - `ui.js`: DOM rendering, Album UI, educational defeat debriefs, Stories 9:16 generator.
+    - `app.js`: Entry point (`window.onload`), bootstrap sequence.
 
 ---
 
-## 3. Ключевые Механики и Правила Реализации (GDD v2.2)
-
-### 3.1. Единая валюта — BYN (Белорусские рубли)
-Вся экономика ведется **строго в BYN** (никаких `$` или `USD`).
-* Зарплаты каждые 30 дней: `low` (280 BYN старт / +400 BYN мес), `mid` (600 / +825), `high` (1120 / +1500).
-* Лимит гарантийного талона «Зоошанса»: **1000 BYN** (срок 30 дней, скидка 20%).
-* Лимит сбора на личную карту: **6500 BYN в год** (необлагаемый налог, обязательный финотчет каждые 7 дней).
-* Порог сбора на официальный р/с «Зоошанса»: **от 330 BYN+** долга строго при жизнеугрожающих операциях/стационаре.
-* Снабжение на 14 дней: кот — **65 BYN**, собака/выводок — **120 BYN**.
-* Спецсмесь для слепышей *Royal Canin Babycat Milk*: **105 BYN** (банка 300 г).
-* Платная передержка: кот — **16 BYN/сут**, собака — **33 BYN/сут**.
-* Защита от клещей для собак (капли на холку): **35 BYN** на 30 дней.
-
-### 3.2. Динамический Календарь, Сезоны и 6-я Ось Соцкапитала
-* **Календарь дат:** Стартует со случайной даты и продвигается на +1 день каждый игровой тик.
-* **4 Сезона:**
-  * **Лето (июнь–август):** Сезон котят — звонки на взрослых кошек падают на `-75%`, передержки переполнены.
-  * **Осень (сентябрь–ноябрь):** Звонки растут на `+25%`; с 15 по 31 октября действует жесткий мораторий на отдачу черных котов (Хэллоуин).
-  * **Зима (декабрь–февраль):** 15–31 декабря всплеск импульсивных звонков к Новому году; при побеге на улице мороз наносит двойной урон.
-  * **Весна (март–май):** Сезон иксодовых клещей (собакам необходимы капли 35 BYN против пироплазмоза) и беременных кошек.
-* **6-я ось профиля игрока:** `socialCapital` (`introvert` 0.6x, `average_social` 1.0x, `wide_circle` 1.6x) — масштабирует сборы на личную карту.
-
-### 3.3. Картотека Кличек «Зоошанса» (`petnames.json`)
-По канону форума `forum.zooshans.by/app.php/petnames` каждому подопечному дается уникальное составное имя из базы кличек и минского топонима/района (например, *«Абрикос Рокоссовский»*, *«Агата Ждановичская»*). Доступна генерация по кнопке 🎲 или ввод своего имени с автоподбором района.
-
-### 3.4. Динамическая Нагрузка Выводка (Scaling)
-При пристройстве части котят/щенков нагрузка на быт дома плавно снижается по формуле:
-$$E_{reserve} = \lceil E_{base} \cdot (0.4 + 0.6 \cdot \frac{N_{active}}{N_{total}}) \rceil$$
-Расход корма также пропорционален оставшимся хвостикам ($Rate = N_{active} / N_{total}$). Когда все уехали на испытательный срок или пристроены — резерв быта дома обнуляется (`0⚡/день`).
-
-### 3.5. Механика 7-дневного Испытательного срока и Отложенный Удар
-* При согласии ручек животное отправляется в `state.trialAnimals` на **7 дней**.
-* **Бронь передержки:** При передаче с передержки можно придержать место:
-  * Бесплатно: `-10⚡` (шанс 60%, либо 100% за коробку конфет `15 BYN`).
-  * Платно: `50%` тарифа недели (`55 BYN` кот, `110 BYN` собака).
-* **Красные флаги (Отложенный удар):** Экран поражения не появляется сразу. 3–5 дней царит спокойствие, а на 4-й день (или при проверке статуса) наступает развязка (черный список, гибель из-за падения из окна, побег в деревне).
-* **Сюрприз-возврат и Переговоры «Время для маневра»:** Если питомца возвращают без придержанного места, игрок может нажать «Попытаться договориться на 3 дня (-15⚡)» (шанс 65% или 90% за `20 BYN` на корм), получая 3-дневный таймер для срочного поиска новой передержки без завоза животного к себе домой.
-
-### 3.6. Мета-прогрессия: «Альбом спасенных хвостиков» (`localStorage`)
-Каждый спасенный подопечный сохраняется в личный Альбом в браузере с кличкой, окрасом, днями, сезонами и семьей. Наличие хотя бы 1 записи открывает в следующих играх переключатель **«Я уже опытный куратор»** (пропуск онбординг-гугления).
-
-### 3.7. Разбор ошибок и Карточка Stories 9:16
-* **Работа над ошибками:** При поражении дается разбор реальной ошибки (коровье молоко, Гурского 42, падение из окна, цепь, пироплазмоз, черные коты на Хэллоуин и т.д.).
-* **Stories 9:16:** Вертикальная карточка для репоста с днями, кличкой, тратами в BYN, кодом ЕРИП `4346991` и прямыми контактами «Зоошанса».
+## 3. Core Mechanics & Constraints (GDD v2.2)
+- **Currency (Strictly BYN):** All prices, balances, and UI texts use **BYN** (never `$` or `USD`).
+  - Monthly salaries (every 30d): `low` (280 start / +400 mo), `mid` (600 / +825 mo), `high` (1120 / +1500 mo).
+  - Zooshans voucher: Max 1000 BYN (30-day term, 20% clinic discount).
+  - Fundraising caps: Personal card max 6500 BYN/yr. Zooshans official account debt threshold >= 330 BYN (life-threatening surgeries/hospital only).
+  - Living costs (14d supply): Cat 65 BYN, Dog/Litter 120 BYN, Royal Canin Babycat Milk 105 BYN (300g). Paid foster: Cat 16 BYN/day, Dog 33 BYN/day. Tick drops: 35 BYN/30 days.
+- **Calendar & Seasons:** Starts at random date, advances +1 day per tick.
+  - *Summer (Jun–Aug):* Kitten explosion (adult cat calls -75%, fosters full).
+  - *Autumn (Sep–Nov):* Calls +25%; Oct 15–31 black cat adoption freeze (Halloween safety).
+  - *Winter (Dec–Feb):* Dec 15–31 holiday impulse adoptions; street escape cold damage 2x.
+  - *Spring (Mar–May):* Tick/piroplasmosis season (dogs require tick drops); pregnant cat surge.
+- **6th Player Axis (Social Capital):** `introvert` (0.6x), `average_social` (1.0x), `wide_circle` (1.6x) multiplier on personal donations.
+- **Naming Standard:** Forum convention (`petnames.json`): Given Name + Minsk District/Landmark (e.g., *"Abrikos Rokossovsky"*).
+- **Litter Scaling Formula:**
+  $$E_{reserve} = \lceil E_{base} \cdot (0.4 + 0.6 \cdot \frac{N_{active}}{N_{total}}) \rceil$$
+  Feed consumption scales with $N_{active} / N_{total}$. Drops to `0⚡/day` when all kittens/puppies leave.
+- **7-Day Trial Period & Delayed Strike:**
+  - Foster spot hold: Free (-10⚡, 60% chance; 100% with 15 BYN sweets), Paid (50% weekly rate: 55 BYN cat / 110 BYN dog).
+  - Delayed Red Flags: Never trigger instant defeat. Crisis strikes on day 3–5 or upon manual status check.
+  - Surprise Return Grace Period: "Negotiate 3 days" (-15⚡, 65% chance; 90% with 20 BYN food buffer).
+- **Meta-Progression & Debrief:** Rescued pets persist in `localStorage` ("Rescue Album"). Having >= 1 pet unlocks "Experienced Curator" toggle. Defeat presents an educational debrief on real volunteer errors.
 
 ---
 
-## 4. Карта Модулей JavaScript (`game_modular/js/`)
-
-| Файл | Ответственность и ключевые функции |
-| :--- | :--- |
-| [`data_loader.js`](file:///d:/projects/volontiers/game_modular/js/data_loader.js) | `loadGameDataAsync()`, встроенный `window.GAME_DATA` fallback для `file://`; `getRandomPetname()`, `getSuggestedUniquePetname()`, `generateRandomAnimalScenario()`. |
-| [`state.js`](file:///d:/projects/volontiers/game_modular/js/state.js) | `startNewRun()`, динамический календарь и сезоны, `calculateDailyHouseholdEnergyDrain()` с формулой выводка, `getSavedAlbum()`, `savePetToAlbum()`. |
-| [`engine.js`](file:///d:/projects/volontiers/game_modular/js/engine.js) | `processDayTick()`, цикл 7-дневного испытательного срока, отложенные удары, правило 13 перемотки, сбор по соцкапиталу. |
-| [`events.js`](file:///d:/projects/volontiers/game_modular/js/events.js) | `triggerRedFlagDelayedStrikeModal()`, `triggerTrialSuccessModal()`, `triggerTrialReturnModal()` с 3 днями маневра, `triggerPiroplasmosisCrisisModal()`, `triggerPetNamingModal()`. |
-| [`actions.js`](file:///d:/projects/volontiers/game_modular/js/actions.js) | `actionShareFoodWithOwnCat()`, `actionBuyTickProtection()`, `actionCheckTrialPetStatus()`, `actionRollRandomPetName()`, `actionSetPetName()`. |
-| [`adopters.js`](file:///d:/projects/volontiers/game_modular/js/adopters.js) | `initiateAnimalTransferWithTrial()`, `triggerHoldFosterSpotModal()`, компромисс (95%), отбор ручек и отложенные ловушки. |
-| [`ui.js`](file:///d:/projects/volontiers/game_modular/js/ui.js) | `renderAll()`, `showAlbumModal()`, `closeAlbumModal()`, `toggleExperiencedCurator()`, `getMistakeEducationalText()`, `copyStoryCardToClipboard()`. |
-| [`app.js`](file:///d:/projects/volontiers/game_modular/js/app.js) | Точка входа: `window.onload`, вызов `loadGameDataAsync()` и последующий `startNewRun()`. |
+## 4. Code Quality & Architecture Principles
+- **Concise & Readable:** Write lean, idiomatic modern JavaScript (ES6+). Avoid bloat, boilerplate, and premature over-engineering.
+- **Modular & Decoupled:**
+  - Maintain single responsibility per module (UI rendering in `ui.js`, business rules in `engine.js`, state mutations in `state.js`).
+  - Do not cross-pollinate DOM manipulation inside calculation routines or core state updates.
+- **Deterministic & Testable:**
+  - Separate pure calculation functions (e.g. litter scaling, cost calculations, chance resolutions) from side-effecting UI calls.
+  - Make mechanics easy to isolate and verify through test scripts or assertions.
+- **Defensive & Resilient:**
+  - Always validate data presence (null/undefined checks for scenario lookups, coat patterns, array bounds).
+  - Prevent divide-by-zero errors in ratio calculations (e.g. `N_total > 0 ? N_active / N_total : 0`).
+- **Zero-Build Compatibility:**
+  - Maintain vanilla browser compatibility. Do not introduce npm dependencies, import/export bundler syntax that breaks `file://` execution without testing, or Node-only APIs into runtime code.
 
 ---
 
-## 5. Памятка для ИИ-Агентов при Внесении Изменений
+## 5. Superpowers Skills Integration (Mandatory Workflows)
+When modifying code or implementing features, strictly invoke and follow these Superpowers skills:
+- **`brainstorming`:** Invoke before designing any new feature, mechanic, or major UX change. Explore options and align on solutions first.
+- **`writing-plans` / `executing-plans`:** Create structured implementation plans before touching code on multi-step tasks.
+- **`test-driven-development`:** Apply Red-Green-Refactor when implementing standalone logic, state calculations, or edge cases. Write test harnesses/assertions before implementation.
+- **`systematic-debugging`:** When diagnosing bugs or regressions, systematically verify the problem, hypothesize root causes, and inspect data before altering code.
+- **`verification-before-completion`:** Never mark a task complete without executing verification checks (syntax, runtime sanity, regression assertions).
+- **`requesting-code-review` / `receiving-code-review`:** Critically evaluate logic against edge cases, GDD rules, and performance before closing tasks.
+- **Mandatory Git Commit:** Always create a git commit after each completed task/feature/fix once verifications pass.
 
-1. **Синхронизация JSON и Fallback в `data_loader.js`:**
-   При любых изменениях в `data/*.json` обязательно обновлять встроенный объект `window.GAME_DATA` в `data_loader.js`.
+---
 
-2. **Проверка синтаксиса перед завершением:**
+## 6. Pre-Commit Verification Checklist & Task Completion
+1. **JSON & Fallback Sync:** Every modification to `data/*.json` MUST be immediately mirrored in `window.GAME_DATA` in `js/data_loader.js`.
+2. **Automated Syntax Check:** Run PowerShell syntax validation after any edit:
    ```powershell
-   Get-ChildItem -Path "d:\projects\volontiers\game_modular\js\*.js" | ForEach-Object { node --check $_.FullName }
-   Get-ChildItem -Path "d:\projects\volontiers\game_modular\data\*.json" | ForEach-Object { $null = Get-Content $_.FullName -Raw | ConvertFrom-Json }
+   Get-ChildItem -Path "game_modular/js/*.js" | ForEach-Object { node --check $_.FullName }
+   Get-ChildItem -Path "game_modular/data/*.json" | ForEach-Object { $null = Get-Content $_.FullName -Raw | ConvertFrom-Json }
    ```
-
-3. **Никаких долларов ($):**
-   Все балансы, строки и кнопки строго в **BYN**.
-
-4. **Автопауза обязательна:**
-   Любое новое модальное окно должно вызывать `stopTimer()`, скрывать блок панели действий и предотвращать смену игровых дней.
-
+3. **Currency Invariant:** Verify all text and logs use **BYN** (no `$` or `USD`).
+4. **Timer Guard:** Any modal dialog MUST call `stopTimer()` upon opening and hide active player buttons to prevent time skips during prompts.
+5. **Commit After Completion:** Once all verifications pass, commit changes immediately with a descriptive message (e.g. `feat: ...`, `fix: ...`, `docs: ...`). Never leave finished tasks uncommitted.
