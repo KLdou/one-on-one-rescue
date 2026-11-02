@@ -47,6 +47,15 @@ function updateSpeedButtonsUI() {
     } else {
       btnAcute.classList.add('hidden');
     }
+    if (state.gameOver) {
+      btnAcute.disabled = true;
+      btnAcute.classList.add('cursor-not-allowed', 'opacity-50');
+      btnAcute.title = 'Партия окончена: режим просмотра истории';
+    } else {
+      btnAcute.disabled = false;
+      btnAcute.classList.remove('cursor-not-allowed', 'opacity-50');
+      btnAcute.title = '';
+    }
   }
 
   const speedControls = document.getElementById('speedButtonsGroup');
@@ -69,16 +78,41 @@ function updateSpeedButtonsUI() {
   mapping.forEach(item => {
     const el = document.getElementById(item.id);
     if (!el) return;
-    el.className = currentSpeed === item.s
-      ? 'px-2 py-1 rounded-lg text-xs font-mono font-bold bg-emerald-600 text-white transition shadow-sm'
-      : 'px-2 py-1 rounded-lg text-xs font-mono font-semibold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] transition';
+    if (state.gameOver) {
+      el.disabled = true;
+      el.className = 'px-2 py-1 rounded-lg text-xs font-mono font-semibold bg-[var(--bg-muted)] text-[var(--text-muted)] border border-[var(--border-subtle)] cursor-not-allowed opacity-50';
+      el.title = 'Партия окончена';
+    } else {
+      el.disabled = false;
+      el.title = '';
+      el.className = currentSpeed === item.s
+        ? 'px-2 py-1 rounded-lg text-xs font-mono font-bold bg-emerald-600 text-white transition shadow-sm'
+        : 'px-2 py-1 rounded-lg text-xs font-mono font-semibold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] transition';
+    }
   });
+
+  const btnFastForward = document.getElementById('btnFastForward');
+  if (btnFastForward) {
+    if (state.gameOver) {
+      btnFastForward.disabled = true;
+      btnFastForward.className = 'px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-indigo-950/40 text-indigo-300/40 border border-indigo-900/40 cursor-not-allowed opacity-50';
+      btnFastForward.title = 'Партия окончена';
+    } else {
+      btnFastForward.disabled = false;
+      btnFastForward.className = 'px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-sm';
+      btnFastForward.title = 'Промотать спокойные дни (авто-стоп за 1 день до любого дедлайна)';
+    }
+  }
 
   const dot = document.getElementById('tickIndicator');
   if (dot) {
-    dot.className = currentSpeed === 0
-      ? 'inline-flex items-center justify-center w-2.5 h-2.5 rounded-full bg-amber-400'
-      : 'inline-flex items-center justify-center w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping';
+    if (state.gameOver) {
+      dot.className = 'inline-flex items-center justify-center w-2.5 h-2.5 rounded-full bg-slate-400';
+    } else {
+      dot.className = currentSpeed === 0
+        ? 'inline-flex items-center justify-center w-2.5 h-2.5 rounded-full bg-amber-400'
+        : 'inline-flex items-center justify-center w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping';
+    }
   }
 }
 
@@ -124,6 +158,8 @@ function fastForwardCalmDays() {
       ? `⏩ Промотано ${skipped} дн. Авто-стоп за 1 день до события: ${stopReason}`
       : `⏩ Промотано ${skipped} спокойных дней.`;
     addLog(`День ${state.day}: ${msg}`, 'info');
+  } else if (skipped === 0 && stopReason && document.getElementById('eventOverlayBox').classList.contains('hidden')) {
+    addLog(`День ${state.day}: ⛔ Авто-стоп перемотки: ${stopReason}`, 'warn');
   }
   renderAll();
 }
@@ -201,14 +237,15 @@ function getTomorrowDeadlineWarning() {
     return 'завтра завершается 90-дневный карантин ЕС!';
   }
 
-  // 13. NEW in v2.2: За 1 день до окончания 7-дневного испытательного срока или развязки красных флагов
+  // 13. NEW in v2.2: За 1 день до окончания 14-дневного испытательного срока или развязки красных флагов
   if (state.trialAnimals && state.trialAnimals.length > 0) {
     for (const t of state.trialAnimals) {
       if (t.isRedFlag && t.daysPassed === 3) {
         return `завтра 4-й день у новых хозяев подопечного («${t.petName}»)!`;
       }
-      if (!t.isRedFlag && t.daysPassed === 6) {
-        return `завтра (7-й день) завершается испытательный срок у новых хозяев («${t.petName}»)!`;
+      const totalDays = t.trialDaysTotal || 14;
+      if (!t.isRedFlag && t.daysPassed === totalDays - 1) {
+        return `завтра (${totalDays}-й день) завершается испытательный срок у новых хозяев («${t.petName}»)!`;
       }
     }
   }
@@ -228,7 +265,8 @@ function getTomorrowDeadlineWarning() {
   }
 
   // За 1 день до истечения защиты собаки от клещей (капли на 30 дней)
-  if (a.species === 'dog' && a.tickProtectionDaysLeft === 1) {
+  const isDogConfinedFF = a.traumaOperated || (a.hiddenState && a.hiddenState.hasSevereTrauma) || a.id === 'severe_trauma_sheri_dog' || (a.inStationaryDaysLeft && a.inStationaryDaysLeft > 0);
+  if (a.species === 'dog' && a.tickProtectionDaysLeft === 1 && !isDogConfinedFF) {
     return 'завтра истекает 30-дневная защита собаки от иксодовых клещей (риск пироплазмоза)!';
   }
 
@@ -355,7 +393,8 @@ function processDayTick() {
     if (a.tickProtectionDaysLeft > 0) {
       a.tickProtectionDaysLeft -= 1;
     } else if ((state.currentSeason === 'spring' || state.currentSeason === 'summer') && isAnimalAtPlayerHome()) {
-      if (Math.random() < 0.08 && !state.triggeredEvents.piroplasmosisOutbreak) {
+      const isDogConfined = a.traumaOperated || (a.hiddenState && a.hiddenState.hasSevereTrauma) || a.id === 'severe_trauma_sheri_dog' || (a.inStationaryDaysLeft && a.inStationaryDaysLeft > 0);
+      if (!isDogConfined && Math.random() < 0.08 && !state.triggeredEvents.piroplasmosisOutbreak) {
         state.triggeredEvents.piroplasmosisOutbreak = true;
         triggerPiroplasmosisCrisisModal();
         renderAll();
@@ -372,10 +411,17 @@ function processDayTick() {
       a.pcrTested = true;
       if (a.hiddenState.chronicCarrier) {
         a.knownCarrier = a.hiddenState.chronicCarrier;
-        addLog(`День ${state.day}: 🧬 РЕЗУЛЬТАТ ПЦР ИЗ ЛАБОРАТОРИИ: Обнаружен скрытый ${a.hiddenState.chronicCarrier}+! Пристраивается строго одним котом в семью.`, 'warn');
+        if (a.hiddenState.chronicCarrier === 'FeLV') {
+          addLog(`День ${state.day}: 🧬 РЕЗУЛЬТАТ ПЦР ИЗ ЛАБОРАТОРИИ: Обнаружен вирусный лейкоз кошек (FeLV+)! Сдайте подтверждающий тест на провирус и пройдите консультацию инфекциониста для назначения противовирусной терапии (вкладка «Клиника»). Звонки на пристройство будут идти реже (-60%).`, 'danger');
+        } else {
+          addLog(`День ${state.day}: 🧬 РЕЗУЛЬТАТ ПЦР ИЗ ЛАБОРАТОРИИ: Обнаружен скрытый ${a.hiddenState.chronicCarrier}+! Пристраивается строго одним котом в семью.`, 'warn');
+        }
       } else if (a.hiddenState.deadlyVirus) {
         a.knownVirus = a.hiddenState.deadlyVirus;
         addLog(`День ${state.day}: 🧬 РЕЗУЛЬТАТ ПЦР ИЗ ЛАБОРАТОРИИ: Обнаружен вирус (${a.hiddenState.deadlyVirus})! Требуется терапия в изоляции.`, 'danger');
+      } else if (a.hiddenState.hasChronicGI) {
+        a.knownVirus = 'Трихомоноз (простейшие ЖКТ)';
+        addLog(`День ${state.day}: 🧬 РЕЗУЛЬТАТ ПЦР: Обнаружен трихомоноз кошек (Tritrichomonas foetus)! Требуется курс Ронидазола и гастро-диета (вкладка «Клиника»).`, 'warn');
       } else if (Math.random() < 0.15) {
         a.pcrResultDoubtful = true;
         addLog(`День ${state.day}: ⚠️ РЕЗУЛЬТАТ ПЦР: Сомнительный / пограничный титр (по правилам ветлаборатории рекомендуется пересдать через 14 дней).`, 'warn');
@@ -394,6 +440,14 @@ function processDayTick() {
       a.health = 95;
       state.mental = Math.min(100, state.mental + 25);
       addLog(`День ${state.day}: 🎉 ВЕЛИКАЯ ПОБЕДА НАД ФИП! 84-дневный курс GS-441524 полностью завершен! Животное вышло в стойкую пожизненную ремиссию!`, 'success');
+    }
+  }
+
+  // Поддерживающая противовирусная терапия FeLV (Ралтегравир)
+  if (a.felvAntiviralActive && a.felvAntiviralDaysLeft > 0) {
+    a.felvAntiviralDaysLeft -= 1;
+    if (a.health < 88 && Math.random() < 0.25) {
+      a.health = Math.min(100, a.health + 1);
     }
   }
 
@@ -423,17 +477,21 @@ function processDayTick() {
       );
       return;
     } else {
-      addLog(`День ${state.day}: ⏳ ПОИСК БЕГЛЕЦА: Осталось ${state.escapeQuest.daysRemaining} дн.! Прогресс: ${state.escapeQuest.searchProgress}%. Клейте макеты и прочесывайте подвалы!`, 'warn');
+      addLog(`День ${state.day}: ⏳ ПОИСК БЕГЛЕЦА: Осталось ${state.escapeQuest.daysRemaining} дн.! Прогресс: ${state.escapeQuest.searchProgress}%. Клейте макеты и ведите активный поиск!`, 'warn');
     }
   }
 
-  if (a.ageDays === 45 && a.ageCategory === 'kitten') {
-    addLog(`День ${state.day}: 📌 Котятам исполнилось 1.5 месяца (45 дней)! Вакцинация доступна с 60 дней, но уже можно запустить пиар на РАННЕЕ БРОНИРОВАНИЕ!`, 'info');
+  if (a.ageDays === 45 && (a.ageCategory === 'kitten' || a.ageCategory === 'puppy')) {
+    if (!a.hasMotherCat) {
+      addLog(`День ${state.day}: 📌 Малышам 45 дней! Малышей без мамы уже можно отдавать в семьи по договору куратора (хозяева сделают прививки по возрасту)!`, 'success');
+    } else {
+      addLog(`День ${state.day}: 📌 Котятам исполнилось 1.5 месяца (45 дней)! Вакцинация доступна с 60 дней, но уже можно запустить пиар на РАННЕЕ БРОНИРОВАНИЕ!`, 'info');
+    }
   }
 
   if (a.ageDays === 60 && (a.ageCategory === 'kitten' || a.ageCategory === 'puppy')) {
     addLog(`День ${state.day}: 🎂 Малышам исполнилось 2 месяца (60 дней)! Разблокирована комплексная вакцинация!`, 'success');
-    if (state.pr.earlyBookedAdopterWaiting && a.dewormStage === 2) {
+    if (state.pr.earlyBookedAdopterWaiting && nActive > 0) {
       triggerEarlyBookedTransferModal();
       renderAll();
       return;
@@ -476,13 +534,15 @@ function processDayTick() {
     }
   }
 
-  // 6. Приучение к лотку/выгулу, шприцевое кормление челюсти (18 дн.) и социализация (14 дн.)
+  // 6. Приучение к лотку/пеленкам/выгулу, шприцевое кормление челюсти (18 дн.) и социализация (14 дн.)
   if (!a.litterTrained && nActive > 0) {
     a.litterTrainDaysDone += 1;
     if (isAnimalAtPlayerHome()) state.mental = Math.max(0, state.mental - 3);
     if (a.litterTrainDaysDone >= 8) {
       a.litterTrained = true;
-      addLog(`День ${state.day}: 🚽 Ура! ${g.nom} наконец-то приучен(ы) к ${g.isDog ? 'терпению до выгула' : 'лотку без промахов'}! Бытовая нагрузка снизилась.`, 'success');
+      const isPuppy = a.species === 'dog' && (a.ageCategory === 'puppy' || a.ageDays < 180);
+      const targetPlace = isPuppy ? 'пеленке без промахов' : (g.isDog ? 'терпению до выгула' : 'лотку без промахов');
+      addLog(`День ${state.day}: ${isPuppy ? '🧻' : '🚽'} Ура! ${g.nom} наконец-то приучен(ы) к ${targetPlace}! Бытовая нагрузка снизилась.`, 'success');
     }
   }
 
@@ -490,6 +550,74 @@ function processDayTick() {
     a.hiddenState.syringeDaysLeft -= 1;
     if (a.hiddenState.syringeDaysLeft === 0) {
       addLog(`День ${state.day}: 🥣 18 дней шприцевого кормления позади! Челюсть срослась, кошка снова ест сама!`, 'success');
+    }
+  }
+
+  let justDischargedFromStationary = false;
+  if (a.inStationaryDaysLeft && a.inStationaryDaysLeft > 0) {
+    // Риск гибели в стационаре при критическом состоянии
+    if (a.stationaryReason === 'virus') {
+      const icuDeathChance = a.health < 40 ? 0.16 : 0.08;
+      if (Math.random() < icuDeathChance) {
+        state.fatalMistakeReason = 'icu_virus_fatal';
+        triggerEndGame(
+          false,
+          'ТРАГЕДИЯ В СТАЦИОНАРЕ: Организм не справился с инфекцией...',
+          `Несмотря на круглосуточную инфузионную терапию, противовирусную поддержку и инфузоматы в инфекционном ОРИТ, инфекция нанесла несовместимый с жизнью урон внутренним органам...\n\nУ непривитых малышей смертность от панлейкопении и парвовируса даже в лучших клиниках Минска достигает 20–30%. Врачи боролись за ${g.acc} до последней секунды.\n\nГлавный урок зоозащиты: только своевременная вакцинация способна гарантированно защитить жизнь!`
+        );
+        return;
+      }
+      a.health = Math.min(80, a.health + 12);
+      addLog(`День ${state.day}: 🏥 Инфекционный стационар: ${g.nom} под инфузоматами в ОРИТ. Врачи ведут мониторинг показателей крови (осталось ${a.inStationaryDaysLeft - 1} дн. стационара).`, 'info');
+    } else if (a.stationaryReason === 'trauma') {
+      if (a.health < 25 && Math.random() < 0.12) {
+        state.fatalMistakeReason = 'icu_trauma_fatal';
+        triggerEndGame(
+          false,
+          'ТРАГЕДИЯ В РЕАНИМАЦИИ: Травматический шок...',
+          `Тяжелые множественные переломы и скрытые повреждения внутренних органов привели к полиорганной недостаточности...\n\nВрачи реанимации боролись за ${g.acc}, но последствия автотравмы оказались фатальными.`
+        );
+        return;
+      }
+      a.health = Math.min(85, a.health + 8);
+      addLog(`День ${state.day}: 🏥 Хирургический стационар: ${g.nom} под наблюдением после остеосинтеза. Боль купирована, раны затягиваются (осталось ${a.inStationaryDaysLeft - 1} дн. стационара).`, 'info');
+    }
+
+    a.inStationaryDaysLeft -= 1;
+    if (a.inStationaryDaysLeft === 0) {
+      justDischargedFromStationary = true;
+      if (a.stationaryReason === 'virus') {
+        a.virusRecoveryDaysLeft = 14; // 2 недели восстановления
+        a.knownVirus = 'Выжил (долечивание 14 дн.)';
+        a.hiddenState.deadlyVirus = null;
+        addLog(`День ${state.day}: 🌿 ${g.nom} успешно выписан(а) из инфекционного стационара! Кризис миновал, но впереди 2 недели (14 дней) долечивания, щадящей диеты Gastrointestinal и карантина. Вакцинация и пристройство строго отложены!`, 'success');
+      } else if (a.stationaryReason === 'trauma') {
+        a.traumaRehabDaysLeft = 45; // 1.5 месяца покоя
+        a.visibleState = 'Реабилитация после операции: сращение перелома (45 дн. покоя).';
+        addLog(`День ${state.day}: 🦴 ${g.nom} выписан(а) из хирургического стационара на домашний покой! Операция позади, но для полного сращения костей требуется 1.5 месяца (45 дней) покоя. Пристройство отложено до снятия спиц и ограничений!`, 'success');
+      } else {
+        addLog(`День ${state.day}: 🏥 ${g.nom} успешно выписан(а) из стационара!`, 'success');
+      }
+    }
+  }
+
+  // Ежедневный прогресс восстановления после вируса (14 дней)
+  if (!justDischargedFromStationary && a.virusRecoveryDaysLeft && a.virusRecoveryDaysLeft > 0) {
+    a.virusRecoveryDaysLeft -= 1;
+    if (a.health < 95) a.health = Math.min(95, a.health + 2);
+    if (a.virusRecoveryDaysLeft === 0) {
+      a.knownVirus = 'Полностью здоров (переболел)';
+      addLog(`День ${state.day}: 🎉 2-недельный период восстановления после вируса завершен! Организм окреп, вирус элиминирован — подопечный готов к вакцинации и началу пиара!`, 'success');
+    }
+  }
+
+  // Ежедневный прогресс реабилитации перелома (45 дней)
+  if (!justDischargedFromStationary && a.traumaRehabDaysLeft && a.traumaRehabDaysLeft > 0) {
+    a.traumaRehabDaysLeft -= 1;
+    if (a.health < 98) a.health = Math.min(100, a.health + 1);
+    if (a.traumaRehabDaysLeft === 0) {
+      a.visibleState = 'Перелом полностью сросся, собака здорова!';
+      addLog(`День ${state.day}: 🎉 1.5 месяца реабилитации позади! Контрольный рентген подтвердил полное сращение костей. Ограничения сняты, собака готова к пиару и переезду в любящую семью!`, 'success');
     }
   }
 
@@ -591,8 +719,8 @@ function processDayTick() {
     }
   }
 
-  // 14. Окончание 10-дневного перехвата волонтером (GDD 7.2)
-  if (state.zooshans.locationStatus === 'temp_volunteer_10d' && nActive > 0) {
+  // 14. Окончание 14-дневного перехвата волонтером на карантин (GDD 7.2)
+  if ((state.zooshans.locationStatus === 'temp_volunteer_14d' || state.zooshans.locationStatus === 'temp_volunteer_10d') && nActive > 0) {
     state.zooshans.tempVolunteerDaysLeft -= 1;
     if (state.zooshans.tempVolunteerDaysLeft <= 0) {
       triggerReturnFromTempVolunteerModal();
@@ -644,21 +772,20 @@ function processDayTick() {
         state.zooshans.personalCardCollectedBYN += cardDon;
       }
     }
-    if (state.zooshans.daysSinceLastFinReport === 7) {
-      triggerFinReportAuditModal();
-      renderAll();
-      return;
-    }
+  }
+
+  let pendingFinAudit = false;
+  if (state.zooshans.cardFundraiserActive && state.zooshans.daysSinceLastFinReport === 7) {
+    pendingFinAudit = true;
   }
 
   // 16. Таймер талона «Зоошанса» (30 дней, лимит 1000 BYN)
+  let pendingVoucherWarn = false;
   if (state.zooshans.voucherDebt > 0) {
     state.zooshans.voucherDaysLeft -= 1;
     if (state.zooshans.voucherDaysLeft === 3 && !state.triggeredEvents.voucherWarn) {
       state.triggeredEvents.voucherWarn = true;
-      triggerVoucherDeadlineModal();
-      renderAll();
-      return;
+      pendingVoucherWarn = true;
     }
     if (state.zooshans.voucherDaysLeft <= 0 && !state.zooshans.voucherBlocked) {
       state.zooshans.voucherBlocked = true;
@@ -689,8 +816,9 @@ function processDayTick() {
           return;
         }
       } else {
-        // Обычные ручки: развязка на 7-й день
-        if (item.daysPassed >= 7) {
+        // Обычные ручки: развязка на 14-й день (или trialDaysTotal)
+        const totalTrialDays = item.trialDaysTotal || 14;
+        if (item.daysPassed >= totalTrialDays) {
           state.trialAnimals.splice(i, 1);
 
           // Проверка астмы / аллергии (8% у идеальных)
@@ -719,7 +847,9 @@ function processDayTick() {
               daysSpent: state.day,
               seasonsPassed: [...state.seasonsPassed],
               adopterSummary: item.adopterSummary || 'Любящая семья',
-              dateSaved: formatCalendarDate(state.calendarDate)
+              dateSaved: formatCalendarDate(state.calendarDate),
+              personalSpent: state.personalMoneySpent || 0,
+              prChannel: item?.prChannel || (state.zooshans.hasProPhotos ? 'Профи-пиар Зоошанса' : 'Куфар / Соцсети')
             };
             state.savedTails.push(tailRecord);
             savePetToAlbum(tailRecord);
@@ -790,7 +920,9 @@ function processDayTick() {
           daysSpent: state.day,
           seasonsPassed: [...state.seasonsPassed],
           adopterSummary: 'Вернулся к прежним хозяевам (старый ветпаспорт)',
-          dateSaved: formatCalendarDate(state.calendarDate)
+          dateSaved: formatCalendarDate(state.calendarDate),
+          personalSpent: state.personalMoneySpent || 0,
+          prChannel: 'Поиск потеряшек'
         };
         state.savedTails.push(tailRecord);
         savePetToAlbum(tailRecord);
@@ -820,7 +952,9 @@ function processDayTick() {
         daysSpent: state.day,
         seasonsPassed: [...state.seasonsPassed],
         adopterSummary: 'Пристроен опытной передержкой по договору',
-        dateSaved: formatCalendarDate(state.calendarDate)
+        dateSaved: formatCalendarDate(state.calendarDate),
+        personalSpent: state.personalMoneySpent || 0,
+        prChannel: 'Волонтерская сеть Зоошанса'
       };
       state.savedTails.push(tailRecord);
       savePetToAlbum(tailRecord);
@@ -836,17 +970,22 @@ function processDayTick() {
   // 21. Выставки-пристройства «Зоошанса» (5 раз в год — каждые 72 дня: Дни 25, 97, 169..., GDD 8.2)
   if ((state.day === 25 || (state.day > 25 && (state.day - 25) % 72 === 0)) && !state.triggeredEvents['fest_' + state.day]) {
     state.triggeredEvents['fest_' + state.day] = true;
-    if (a.parasitesAndVaccinated && (a.ageCategory !== 'adult' || a.isSterilized) && a.knownRingworm !== true) {
-      triggerFestivalModal();
-      renderAll();
-      return;
-    } else {
-      addLog(`День ${state.day}: 🎪 Сегодня в Минске проходит выставка «Зоошанса» (бывает 5 раз в год), но ${g.nom} еще не готов(ы) по прививкам/стерилизации. Основа — системный пиар по сайтам!`, 'info');
+    if (nActive > 0) {
+      if (a.parasitesAndVaccinated && (a.ageCategory !== 'adult' || a.isSterilized) && a.knownRingworm !== true) {
+        triggerFestivalModal();
+        renderAll();
+        return;
+      } else {
+        addLog(`День ${state.day}: 🎪 Сегодня в Минске проходит выставка «Зоошанса» (бывает 5 раз в год), но ${g.nom} еще не готов(ы) по прививкам/стерилизации. Основа — системный пиар по сайтам!`, 'info');
+      }
     }
   }
 
   // 22. Системный ПИАР по сайтам (требует поднятия каждые 6 дней! GDD 8.2)
-  if (state.pr.prActive && nActive > 0) {
+  const isMedicallyRestricted = (a.inStationaryDaysLeft && a.inStationaryDaysLeft > 0) ||
+                               (a.virusRecoveryDaysLeft && a.virusRecoveryDaysLeft > 0) ||
+                               (a.traumaRehabDaysLeft && a.traumaRehabDaysLeft > 0);
+  if (state.pr.prActive && nActive > 0 && !isMedicallyRestricted) {
     state.pr.daysInPr += 1;
     state.pr.daysSinceAdRefresh += 1;
 
@@ -873,6 +1012,11 @@ function processDayTick() {
       callChance *= 0.20; // Без обновления звонки падают на 80%
     }
 
+    // Снижение спроса на кошек с вирусным лейкозом (FeLV+)
+    if (a.knownCarrier === 'FeLV') {
+      callChance *= 0.40; // Лейкоз: пристройство строго единственной кошкой в дом (-60% звонков)
+    }
+
     if (Math.random() < callChance) {
       triggerRandomAdopterCall();
       renderAll();
@@ -897,6 +1041,19 @@ function processDayTick() {
       renderAll();
       return;
     }
+  }
+
+  // Информационные напоминания в конце дня (чтобы не сбивать ежедневные счетчики)
+  if (pendingFinAudit) {
+    triggerFinReportAuditModal();
+    renderAll();
+    return;
+  }
+
+  if (pendingVoucherWarn) {
+    triggerVoucherDeadlineModal();
+    renderAll();
+    return;
   }
 
   renderAll();

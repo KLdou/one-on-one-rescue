@@ -2,219 +2,141 @@
 
 function getDynamicScammerCalls(a) {
   const g = getAnimalGrammar(a);
-  return [
-    {
-      id: 'scam_courier_prepay',
-      caller: 'Мужской голос с помехами рации («Дальнобойщик»)',
-      dialogue: `«Здорово, куратор! Я на фуре под Барановичами, это точно наш породистый кот, узнал по пятну! Забрать сам не успеваю — переведите 45 BYN курьеру на страховку доставки, а я вечером верну вам 200 BYN вознаграждения!»`,
-      extraQuestionReply: `На просьбу назвать особые приметы или скинуть фото в Вайбер мужчина начинает кричать: «Вы что, на чужом горе нажиться хотите?! У меня роуминг, переводите курьеру быстрей на номер!»`,
-      isSafe: false,
-      isScam: true,
-      scamLossBYN: 80,
-      consequenceText: `Классический фишинговый развод мошенников! Вы перешли по ссылке «на страховку курьера», с карты списали 80 BYN (-35% Менталки), а номер абонента стал недоступен. Ни курьера, ни хозяина не существовало.`
-    },
-    {
-      id: 'scam_breeder_metro',
-      caller: 'Деловая женщина без эмоций («Перекупщица»)',
-      dialogue: `«Здравствуйте, видела объявление о породистом животном. Это наш, позавчера убежал. Нет, фотографий нет — телефон сброшен до заводских настроек, ветпаспорт утерян. Стерилизацию делать не разрешаю — нечего портить породу! Выносите к метро через 20 минут, заберу без лишних вопросов».`,
-      extraQuestionReply: 'На вопрос об адресе и паспорте раздраженно бросает: «Зачем вам мой домашний адрес? Я спешу, отдавайте животное у турникетов или я найду другого!»',
-      isSafe: false,
-      isScam: true,
-      consequenceText: `Вы отдали нестерилизованное породистое животное перекупщице. Через 2 дня фото появилось на Куфаре за 300 BYN в разделе «Для вязки и разведения». Животное попало в клеточную плодильню.`
-    }
-  ];
+  const isDog = g.isDog;
+  const singleWord = isDog ? (a.ageCategory === 'puppy' ? 'щенка' : 'собаку') : (a.ageCategory !== 'adult' ? 'котенка' : (a.gender === 'female' ? 'кошку' : 'кота'));
+  const petWord = isDog ? 'пес' : (a.gender === 'female' ? 'кошка' : 'кот');
+
+  const rawScam = (window.GAME_DATA && window.GAME_DATA.calls && window.GAME_DATA.calls.scammerCalls) || [];
+
+  if (!rawScam.length) {
+    return [
+      {
+        id: 'scam_courier_prepay',
+        caller: 'Мужской голос с помехами рации («Дальнобойщик»)',
+        dialogue: `«Здорово, куратор! Я на фуре под Барановичами, это точно наш породистый ${petWord}, узнал по пятну! Забрать сам не успеваю — переведите 45 BYN курьеру на страховку доставки, а я вечером верну вам 200 BYN вознаграждения!»`,
+        extraQuestionReply: `На просьбу назвать особые приметы или скинуть фото в Вайбер мужчина начинает кричать: «Вы что, на чужом горе нажиться хотите?! У меня роуминг, переводите курьеру быстрей на номер!»`,
+        isSafe: false,
+        isScam: true,
+        scamLossBYN: 80,
+        consequenceText: `Классический фишинговый развод мошенников! Вы перешли по ссылке «на страховку курьера», с карты списали 80 BYN (-35% Менталки), а номер абонента стал недоступен. Ни курьера, ни хозяина не существовало.`
+      },
+      {
+        id: 'scam_breeder_metro',
+        caller: 'Деловая женщина без эмоций («Перекупщица»)',
+        dialogue: `«Здравствуйте, видела объявление о породистом животном. Это наш, позавчера убежал. Нет, фотографий нет — телефон сброшен до заводских настроек, ветпаспорт утерян. Стерилизацию делать не разрешаю — нечего портить породу! Выносите к метро через 20 минут, заберу без лишних вопросов».`,
+        extraQuestionReply: 'На вопрос об адресе и паспорте раздраженно бросает: «Зачем вам мой домашний адрес? Я спешу, отдавайте животное у турникетов или я найду другого!»',
+        isSafe: false,
+        isScam: true,
+        consequenceText: `Вы отдали нестерилизованное породистое животное перекупщице. Через 2 дня фото появилось на Куфаре за 300 BYN в разделе «Для вязки и разведения». Животное попало в клеточную плодильню.`
+      }
+    ];
+  }
+
+  const pool = [];
+  for (const callTemplate of rawScam) {
+    const item = JSON.parse(JSON.stringify(callTemplate));
+    const interpolate = (txt) => {
+      if (!txt) return txt;
+      return txt
+        .replace(/\$\{singleWord\}/g, singleWord)
+        .replace(/\{singleWord\}/g, singleWord)
+        .replace(/\$\{petWord\}/g, petWord)
+        .replace(/\{petWord\}/g, petWord);
+    };
+    item.dialogue = interpolate(item.dialogue);
+    item.extraQuestionReply = interpolate(item.extraQuestionReply);
+    item.consequenceText = interpolate(item.consequenceText);
+    pool.push(item);
+  }
+  return pool;
 }
 
 function getDynamicAdopterCalls(a) {
   const g = getAnimalGrammar(a);
   const isDog = g.isDog;
   const singleWord = isDog ? (a.ageCategory === 'puppy' ? 'щенка' : 'собаку') : (a.ageCategory !== 'adult' ? 'котенка' : (a.gender === 'female' ? 'кошку' : 'кота'));
+  const petWord = isDog ? 'пес' : (a.gender === 'female' ? 'кошка' : 'кот');
+  const protectionDetail = isDog ? 'Адресник еще не заказали' : 'Сетки-антикошки пока не ставили, пользуемся гребенками';
 
-  const pool = [
-    // 1. Игрушка для ребенка 2 лет
-    {
-      id: 'call_toddler_toy',
-      caller: 'Молодая мама на фоне громкого детского плача',
-      dialogue: `«Здравствуйте! Моему сыночку на 2 годика срочно нужна живая игрушка, он увидел ${singleWord} в мультике и требует! Главное, чтобы питомец терпел, когда малыш тянет за хвост и уши. Если поцарапает — сразу выставим за дверь. И у мужа вроде аллергия была, но надеемся, пронесет!»`,
-      extraQuestionReply: `«Сдавать аллергопробы заранее мы не будем — это дорого, проще взять ${singleWord} и проверить на муже вживую».`,
-      isSafe: false,
-      consequenceText: `Вы отдали ${singleWord} как живую игрушку для двухлетнего ребенка. Через 3 дня малыш больно дернул питомца за хвост, испугался реакции, и родители выставили животное на мороз.`
-    },
+  const rawPool = (window.GAME_DATA && window.GAME_DATA.calls && window.GAME_DATA.calls.adopterCalls) || [];
 
-    // 2. Противники стерилизации
-    {
-      id: 'call_anti_spay_aesthetic',
-      caller: 'Интеллигентная женщина из центра Минска',
-      dialogue: `«Добрый день! Какое чудо на фото! Только скажите, вы ведь против варварских операций по стерилизации? Мы хотим обязательно получить потомство хотя бы пару раз для здоровья, а котят раздадим добрым людям на рынке!»`,
-      extraQuestionReply: '«Кормить планируем тем, что сами едим: супчиком, вареной колбасой и трубчатыми костями. Паспортных данных для договора я давать не буду».',
-      isSafe: false,
-      consequenceText: 'Отказ от стерилизации привел к плодильничеству, пиометре и новым коробкам с брошенными малышами у мусорных баков.'
-    },
+  const calMonth = (window.state && window.state.calendarDate) ? window.state.calendarDate.getMonth() : new Date().getMonth();
+  const calDay = (window.state && window.state.calendarDate) ? window.state.calendarDate.getDate() : new Date().getDate();
 
-    // 3. Съемная комната / подарок сюрпризом (перед Новым годом риск выше!)
-    {
-      id: 'call_gift_girlfriend_surprise',
-      caller: 'Торопящийся парень у метро',
-      dialogue: `«Здорово! Мне срочно нужен ${singleWord} в подарок девушке на годовщину через 2 часа! Она на съемной квартире живет, хозяин вроде не в курсе, но это же сюрприз!»`,
-      extraQuestionReply: '«Девушка не знает, я не спрашивал. Если хозяйка квартиры будет против — вернем вам или отдадим кому-нибудь».',
-      isSafe: false,
-      consequenceText: 'Животные в подарок сюрпризом — главный источник выброшенцев. Хозяйка съемного жилья выставила девушку с коробкой на лестницу.'
-    },
+  const isHalloweenSeason = (calMonth === 9 && calDay >= 15 && calDay <= 31); // 15-31 октября
+  const isNewYearSeason = (calMonth === 11 && calDay >= 15 && calDay <= 31); // 15-31 декабря
 
-    // 4. Студенческое общежитие
-    {
-      id: 'call_dorm_secret',
-      caller: 'Шепчущая студентка 1 курса',
-      dialogue: `«Здравствуйте! Мы с соседкой по комнате в общежитии БГУ решили завести ${singleWord}. Будем прятать его в шкафу во время обхода коменданта и вахтерши!»`,
-      extraQuestionReply: '«Если комендант заметит — выкинет на улицу за 5 минут, но мы будем осторожны!»',
-      isSafe: false,
-      consequenceText: 'Во время внезапной проверки комендант общежития нашла животное в тумбочке и выставила переноску на улицу в дождь.'
-    },
+  const pool = [];
 
-    // 5. Трубчатые кости и свинина
-    {
-      id: 'call_bones_and_pork',
-      caller: 'Мужчина солидного возраста',
-      dialogue: `«День добрый. Мы кормим по старинке натуралкой: жареной свининкой со сковороды, солеными огурцами и вареными трубчатыми костями кур. Прошлый кот до 2.5 лет дожил, потом почему-то от старости умер».`,
-      extraQuestionReply: '«К ветеринарам возить не привыкли, химия все это. Бабушка зверобоем лечила и мы так лечим».',
-      isSafe: false,
-      consequenceText: 'Трубчатые куриные кости разорвали кишечник животного. Экстренная операция в клинике не спасла от перитонита.'
-    },
+  for (const callTemplate of rawPool) {
+    const id = callTemplate.id;
 
-    // 6. СРЕДНИЕ РУЧКИ А: Обычная семья из Малиновки (Компромисс)
-    {
+    // Специфика собаки vs кошки
+    if (id === 'call_dog_chain_village') {
+      if (!isDog) continue;
+    }
+    if (id === 'call_village_mice_outdoor' || id === 'call_window_fall_fatal' || id === 'call_fiv_felv_ignorer') {
+      if (isDog) continue;
+    }
+
+    // FeLV звонок — только для подтвержденных носителей FeLV
+    if (id === 'call_felv_aware_single_pet') {
+      if (isDog || a.knownCarrier !== 'FeLV') continue;
+    }
+
+    // Колор-пойнт / породистая разведенка — только для колор-пойнтов или породистых кошек
+    if (id === 'call_fake_breed_colorpoint') {
+      if (isDog) continue;
+      const isPurebredOrPoint = (a.coatId === 'colorpoint' || a.coatId === 'purebred' || (a.hiddenState && a.hiddenState.isLostOrPurebred));
+      if (!isPurebredOrPoint) continue;
+    }
+
+    // Черный кот на Хэллоуин (15-31 октября)
+    if (id === 'call_halloween_black_cat') {
+      if (isDog || a.coatId !== 'black' || !isHalloweenSeason) continue;
+    }
+
+    // Новогодний ажиотаж (15-31 декабря)
+    if (id === 'call_gift_new_year_rush') {
+      if (!isNewYearSeason) continue;
+    }
+
+    // Глубокое клонирование для защиты от мутации GAME_DATA
+    const item = JSON.parse(JSON.stringify(callTemplate));
+
+    const interpolate = (txt) => {
+      if (!txt) return txt;
+      return txt
+        .replace(/\$\{singleWord\}/g, singleWord)
+        .replace(/\{singleWord\}/g, singleWord)
+        .replace(/\$\{petWord\}/g, petWord)
+        .replace(/\{petWord\}/g, petWord)
+        .replace(/\$\{protectionDetail\}/g, protectionDetail)
+        .replace(/\{protectionDetail\}/g, protectionDetail);
+    };
+
+    item.dialogue = interpolate(item.dialogue);
+    item.extraQuestionReply = interpolate(item.extraQuestionReply);
+    item.consequenceText = interpolate(item.consequenceText);
+
+    // Динамические флаги
+    if (item.id === 'call_ideal_pet_screen_family') {
+      item.canTakePair = (a.activeCount >= 2 && a.species === 'cat');
+    }
+
+    pool.push(item);
+  }
+
+  // Если вдруг пул пуст (например, при экстремальной фильтрации), отдаем безопасный дефолт
+  if (!pool.length) {
+    pool.push({
       id: 'call_compromise_normal_family',
       caller: 'Обычная семья из Малиновки («Средние ручки» — возможен компромисс)',
-      dialogue: `«Здравствуйте! Хотим взять у вас ${singleWord} в двухкомнатную квартиру. Самовыгула не признаем, любить будем всей душой. Кормить планируем обычным Purina One или Brit Care из зоомагазина. ${isDog ? 'Адресник еще не заказали' : 'Сетки-антикошки пока не ставили, пользуемся гребенками'}, но если подскажете — сделаем по вашим советам!»`,
+      dialogue: `«Здравствуйте! Хотим взять у вас ${singleWord} в двухкомнатную квартиру. Самовыгула не признаем, любить будем всей душой. Кормить планируем обычным Purina One или Brit Care из зоомагазина. ${protectionDetail}, но если подскажете — сделаем по вашим советам!»`,
       extraQuestionReply: '«Мы простые рабочие люди, прошлый питомец прожил у нас 14 лет в тепле и заботе, всегда возили к врачу. Договор подпишем с радостью».',
       isSafe: true,
       isCompromise: true,
       consequenceText: `Ваше кураторское сопровождение сработало на 100%! Семья выполнила все рекомендации по безопасности, вы остались на связи и помогли ${singleWord} адаптироваться!`
-    },
-
-    // 8. СРЕДНИЕ РУЧКИ Б: Пенсионерка Анна Ивановна (Компромисс)
-    {
-      id: 'call_compromise_pensioner_grandma',
-      caller: 'Добрая пенсионерка Анна Ивановна (64 года, «Средние ручки»)',
-      dialogue: `«Добрый день, деточка! Живу одна в своей квартире, очень тоскливо без живой души. На дачу не езжу, окна закрыты сеткой. Пенсия скромная, но на корм всегда отложу. Если нужно везти в клинику — взрослая дочка живет рядом и во всем помогает!»`,
-      extraQuestionReply: '«Дочка прямо сейчас рядом, оформит договор на себя и всегда подстрахует машиной и финансами!»',
-      isSafe: true,
-      isCompromise: true,
-      consequenceText: 'Идеальный союз заботливой бабушки и надежной страховки взрослой дочки! Питомец живет в тепле и любви.'
-    },
-
-    // 9. СРЕДНИЕ РУЧКИ В: Коттедж в Колодищах (Компромисс)
-    {
-      id: 'call_compromise_cottage_owners',
-      caller: 'Семья из круглогодичного коттеджа в Колодищах («Средние ручки»)',
-      dialogue: `«Добрый день! У нас свой огороженный дом в Колодищах. Ищем любимца строго для проживания внутри дома. Во дворе высокий глухой забор на фундаменте, тамбур с двойными дверями. Сетки металлические».`,
-      extraQuestionReply: '«Мы готовы купить анатомическую шлейку с адресником для выгула на участке и присылать фото-приветы каждые выходные».',
-      isSafe: true,
-      isCompromise: true,
-      consequenceText: 'Отличный частный дом без самовыгула! Хозяева прислали видео счастливого питомца в просторной гостиной у камина.'
-    },
-
-    // 10. Честный возврат с испытательного срока (астма, 8% у идеальных)
-    {
-      id: 'call_good_trial_allergy_return',
-      caller: 'Адекватная молодая пара (по договору с испытательным сроком)',
-      dialogue: `«Здравствуйте! Очень хотим забрать у вас ${singleWord}. Мы подготовили миски, лежанку, хороший корм супер-премиум и безопасные окна. С договором согласны! Давайте оговорим честный испытательный срок».`,
-      extraQuestionReply: 'Ребята прислали видео квартиры и купленного корма. Всё выглядит очень ответственно.',
-      isSafe: true,
-      isTrialReturn: true,
-      consequenceText: `На 6-й день ребята позвонили в слезах: у мужа началась острая бронхиальная астма (прислали заключение пульмонолога). По договору об испытательном сроке они бережно привезли ${singleWord} обратно, передали мешок корма и 85 BYN на передержку. Это рабочий момент — продолжаем поиск!`
-    },
-
-    // 11. Идеальные ручки мечты (Pet Screen, могут взять пару)
-    {
-      id: 'call_ideal_pet_screen_family',
-      caller: 'Осознанная молодая семья программистов',
-      dialogue: `«Добрый день! Мы давно следим за деятельностью «Зоошанса». У нас своя квартира, на всех окнах установлены профессиональные металлические сетки «Антикошка» (Pet Screen). Кормим суперпремиумом, договор куратора подпишем и чипируем!»`,
-      extraQuestionReply: '«Мы сдали аллергопанель заранее, отложили подушку безопасности на клинику. Если у вас выводок — мы с радостью возьмем сразу парочку котят, чтобы им не было скучно!»',
-      isSafe: true,
-      isTrialReturn: false,
-      canTakePair: a.activeCount >= 2 && a.species === 'cat',
-      consequenceText: 'Идеальные хозяева мечты! У питомца свой мягкий домик, когтеточка до потолка, регулярные чекапы и бесконечная любовь.'
-    }
-  ];
-
-  // Специфические для собак звонки
-  if (isDog) {
-    pool.push({
-      id: 'call_dog_chain_village',
-      caller: 'Грубоватый голос из райцентра',
-      dialogue: '«Собаку заберу во двор в деревню под Молодечно. Посадим на глухую двухметровую цепь у будки охранять забор. Кормим помоями со школьной столовой».',
-      extraQuestionReply: '«От клещей капли за 30 рублей капать не будем, дегтярным мылом помоем и хватит с нее».',
-      isSafe: false,
-      consequenceText: 'Цепное содержание без обработок привело к заражению пироплазмозом от иксодовых клещей первой же весной. Собака сгорела за 3 дня без лечения.'
-    });
-  } else {
-    // Специфические для кошек звонки
-    pool.push(
-      {
-        id: 'call_village_mice_outdoor',
-        caller: 'Мужчина с шумом трактора на заднем плане',
-        dialogue: `«Алло, заберу в деревню под Слуцк ловить мышей! Спать будет на сеновале, кормим кашей с ливеркой. Прошлый кот весной куда-то ушел и не вернулся, вот нового ищем».`,
-        extraQuestionReply: '«Какая еще стерилизация и прививки в деревне? Кто за это деньги платит? Заболеет — естественный отбор!»',
-        isSafe: false,
-        consequenceText: `Самовыгул в деревне без прививок закончился предсказуемо: через 3 месяца питомец погиб под колесами трактора или от зубов диких лис.`
-      },
-      {
-        id: 'call_window_fall_fatal',
-        caller: 'Молодой человек, 9 этаж в новостройке',
-        dialogue: `«Привет! Заберу кота. Живу один на 9 этаже. Окна летом открываю настежь, свежий воздух нужен! Прошлый кот упал за птицей, но этот же будет умнее, правда?»`,
-        extraQuestionReply: '«Сетки-антикошки ставить не собираюсь, это развод маркетологов, животные чувствуют опасность».',
-        isSafe: false,
-        consequenceText: 'Через 4 дня открытое окно на 9 этаже унесло жизнь. Падение с высоты, разрыв внутренних органов, летальный исход.'
-      },
-      {
-        id: 'call_fiv_felv_ignorer',
-        caller: 'Хозяйка нескольких непривитых котов',
-        dialogue: `«Ой, какой красавец! Возьмем вторым котиком к нашему Ваське. Васька не привит, на улице дрался, но они подружатся, я уверена!»`,
-        extraQuestionReply: '«Анализы на ВИК/ВЛК мне не интересны, у нас все коты общие миски облизывают».',
-        isSafe: false,
-        consequenceText: 'Совместное содержание с непривитыми котами привело к драке и фатальному заражению хозяйского питомца ретровирусом.'
-      }
-    );
-
-    // Колор-пойнт / породистая разведенка (только для фенотипов пойнтов и породистых)
-    if (a.coatId === 'colorpoint' || a.coatId === 'purebred') {
-      pool.push({
-        id: 'call_fake_breed_colorpoint',
-        caller: 'Любительница халявной породы',
-        dialogue: '«Ой, какой тайский красавец! Мы всегда мечтали о породистом котике бесплатно! Будем вязать с кошечкой подруги, а кормить свежей сырой речной рыбкой с рынка».',
-        extraQuestionReply: '«Зачем кастрировать? Природа требует! И форточку на 1 этаже мы не закрываем, пусть гуляет».',
-        isSafe: false,
-        consequenceText: 'Бесконтрольные вязки, гельминтозы от сырой рыбы и гибель на самовыгуле через форточку первого этажа.'
-      });
-    }
-
-    // С 15 по 31 октября для чисто черных котов — триггер сектантов/Хэллоуина (GDD 2.2, 8.4)
-    const calMonth = state.calendarDate.getMonth();
-    const calDay = state.calendarDate.getDate();
-    if (a.coatId === 'black' && calMonth === 9 && calDay >= 15 && calDay <= 31) {
-      pool.push({
-        id: 'call_halloween_black_cat',
-        caller: 'Мутный парень поздно ночью 30 октября',
-        dialogue: '«Слышь, мне чисто черного кота надо прямо сейчас, ночью 30 октября. Для фотосессии и ритуала с друзьями. Паспортных данных не дам».',
-        extraQuestionReply: '«Какая разница, что мы ночью делать будем? Деньги плачу, отдавай кота!»',
-        isSafe: false,
-        consequenceText: 'Черные коты перед Хэллоуином находятся под строжайшим мораторием волонтеров из-за высокого риска живодерства и ритуальных издевательств.'
-      });
-    }
-  }
-
-  // С 15 по 31 декабря — всплеск импульсивных звонков к Новому году (GDD 2.2)
-  const cMonth = state.calendarDate.getMonth();
-  const cDay = state.calendarDate.getDate();
-  if (cMonth === 11 && cDay >= 15 && cDay <= 31) {
-    pool.push({
-      id: 'call_gift_girlfriend_surprise',
-      caller: 'Торопящийся парень у елочного базара (Новогодний ажиотаж!)',
-      dialogue: `«Здорово! Срочно нужен ${singleWord} под новогоднюю елку девушке/детям в подарок! До боя курантов пару дней, все раскупили, выручайте!»`,
-      extraQuestionReply: '«Мы еще не решили, кто будет гулять и убирать, главное — подарок под елочку положить!»',
-      isSafe: false,
-      consequenceText: 'Животные в подарок «под елочку» — лидеры январских выбросов на мороз, когда праздники заканчиваются.'
     });
   }
 
@@ -227,128 +149,356 @@ function triggerRandomAdopterCall() {
   triggerIncomingCallModal(picked, false);
 }
 
-function triggerIncomingCallModal(callData, isOldOwnerSearch = false) {
-  stopTimer();
-  const overlay = document.getElementById('eventOverlayBox');
-  const dash = document.getElementById('actionsDashboard');
-  const extraBox = document.getElementById('extraQuestionBox');
+function ensureCandidateCallSlots(call, a) {
+  const g = getAnimalGrammar(a);
+  const isDog = g.isDog;
+  const singleWord = isDog ? (a.ageCategory === 'puppy' ? 'щенка' : 'собаку') : (a.ageCategory !== 'adult' ? 'котенка' : (a.gender === 'female' ? 'кошку' : 'кота'));
 
-  overlay.classList.remove('hidden');
-  overlay.classList.add('flex');
-  dash.classList.add('hidden');
-  extraBox.classList.add('hidden');
+  if (!call.candidateName) {
+    if (call.id === 'call_window_fall_fatal') call.candidateName = 'Артем, 24 года';
+    else if (call.id === 'call_village_mice_outdoor') call.candidateName = 'Василий, 48 лет';
+    else if (call.id === 'call_toddler_toy') call.candidateName = 'Ольга, 27 лет';
+    else if (call.id === 'call_anti_spay_aesthetic') call.candidateName = 'Валентина, 52 года';
+    else if (call.id === 'call_dorm_secret') call.candidateName = 'Алина, 18 лет (студентка)';
+    else if (call.id === 'call_bones_and_pork') call.candidateName = 'Геннадий, 56 лет';
+    else if (call.id === 'call_dog_chain_village') call.candidateName = 'Николай, 44 года';
+    else if (call.id === 'call_fiv_felv_ignorer') call.candidateName = 'Екатерина, 35 лет';
+    else if (call.id === 'call_fake_breed_colorpoint') call.candidateName = 'Светлана, 33 года';
+    else if (call.id === 'call_halloween_black_cat') call.candidateName = 'Неизвестный абонент';
+    else if (call.id === 'call_compromise_normal_family') call.candidateName = 'Сергей и Елена (Ивановы)';
+    else if (call.id === 'call_compromise_pensioner_grandma') call.candidateName = 'Анна Ивановна, 67 лет';
+    else if (call.id === 'call_compromise_cottage_owners') call.candidateName = 'Максим и Татьяна';
+    else if (call.id === 'call_ideal_pet_screen_family') call.candidateName = 'Дмитрий и Алина (IT-специалисты)';
+    else if (call.id === 'call_good_trial_allergy_return') call.candidateName = 'Павел и Виктория, 26 лет';
+    else if (call.id === 'call_felv_aware_single_pet') call.candidateName = 'Наталья, 29 лет';
+    else if (call.id === 'call_gift_new_year_rush') call.candidateName = 'Кирилл, 21 год (срочно к празднику)';
+    else if (call.id === 'call_gift_girlfriend_surprise') call.candidateName = 'Влад, 20 лет';
+    else if (call.id === 'scam_courier_prepay') call.candidateName = 'Абонент с трассы («Дальнобойщик»)';
+    else if (call.id === 'scam_breeder_metro') call.candidateName = 'Женщина без адреса («Перекупщица»)';
+    else call.candidateName = call.caller || 'Кандидат';
+  }
 
-  document.getElementById('eventBadge').textContent = isOldOwnerSearch ? '📞 ЗВОНОК ПО ОБЪЯВЛЕНИЮ О НАХОДКЕ' : '📞 ВХОДЯЩИЙ ЗВОНОК «РУЧЕК»';
-  document.getElementById('eventBadge').className = isOldOwnerSearch ? 'craft-badge text-xs font-mono uppercase font-bold bg-sky-600 text-white' : 'craft-badge text-xs font-mono uppercase font-bold bg-emerald-600 text-white';
-  document.getElementById('eventTitle').textContent = callData.caller;
-  document.getElementById('eventBody').textContent = callData.dialogue;
+  if (!call.housing) {
+    if (call.id === 'call_window_fall_fatal') call.housing = '9 этаж, новостройка (Каменная Горка)';
+    else if (call.id === 'call_village_mice_outdoor') call.housing = 'Частный сектор (под Слуцком)';
+    else if (call.id === 'call_dorm_secret') call.housing = 'Общежитие БГУ (комната на 4 чел.)';
+    else if (call.id === 'call_dog_chain_village') call.housing = 'Двор с цепью (Молодечненский р-н)';
+    else if (call.id === 'call_compromise_cottage_owners') call.housing = 'Коттедж с огороженным периметром (Колодищи)';
+    else if (call.id === 'call_compromise_pensioner_grandma') call.housing = 'Своя 1-комн. кв. (Чижовка)';
+    else if (call.id === 'call_ideal_pet_screen_family') call.housing = 'Своя кв. с сетками «Антикошка» (Новая Боровая)';
+    else if (call.id === 'call_gift_girlfriend_surprise' || call.id === 'call_gift_new_year_rush') call.housing = 'Съемная квартира (без ведома хозяина)';
+    else if (call.id === 'scam_courier_prepay') call.housing = 'Кабина фуры (трасса М1)';
+    else if (call.id === 'scam_breeder_metro') call.housing = 'Скрывает домашний адрес (встреча у турникетов)';
+    else call.housing = 'Своя квартира (Минск)';
+  }
 
-  const choicesDiv = document.getElementById('eventChoicesContainer');
-  choicesDiv.innerHTML = '';
+  if (!call.source) {
+    if (call.id.includes('ideal') || call.id.includes('felv')) call.source = 'zooshans.by';
+    else if (call.id.includes('dorm') || call.id.includes('halloween') || call.id.includes('allergy')) call.source = 'Соцсети';
+    else call.source = 'Куфар';
+  }
 
-  // 1. Кнопка «Задать уточняющие вопросы (-5⚡)»
-  const btnAsk = document.createElement('button');
-  btnAsk.className = 'px-3.5 py-2.5 rounded-lg text-xs sm:text-sm bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] transition text-left font-semibold';
-  btnAsk.textContent = '🔍 Задать уточняющие вопросы (-5⚡)';
-  btnAsk.onclick = () => {
-    if (!spendEnergy(5)) return;
-    extraBox.classList.remove('hidden');
-    extraBox.innerHTML = `<strong>Ответ абонента на уточнения:</strong><br>${callData.extraQuestionReply}`;
-    btnAsk.disabled = true;
-    btnAsk.classList.add('opacity-50', 'cursor-not-allowed');
-  };
-  choicesDiv.appendChild(btnAsk);
+  if (!call.slot1) {
+    if (call.id === 'call_window_fall_fatal') {
+      call.slot1 = { title: 'Безопасность и окна', text: 'Окна на 9 этаже открываются нараспашку. «Сетки-антикошки ставить не буду, это развод маркетологов. Прошлый кот сорвался за птицей».', flag: 'red' };
+    } else if (call.id === 'call_village_mice_outdoor') {
+      call.slot1 = { title: 'Безопасность и окна', text: 'Полный самовыгул в деревне. Спит на сеновале или в сарае. Забора нет.', flag: 'red' };
+    } else if (call.id === 'call_fake_breed_colorpoint') {
+      call.slot1 = { title: 'Безопасность и окна', text: 'Форточка на 1 этаже всегда открыта: «Пусть гуляет по палисаднику».', flag: 'red' };
+    } else if (call.id === 'call_ideal_pet_screen_family') {
+      call.slot1 = { title: 'Безопасность и окна', text: 'На всех окнах профессиональные стальные сетки «Антикошка» (Pet Screen). Самовыгул исключен.', flag: 'green' };
+    } else if (call.id === 'call_felv_aware_single_pet') {
+      call.slot1 = { title: 'Безопасность и окна', text: 'Сетки на всех окнах, своя квартира, строгий квартирный режим без контакта с улицей.', flag: 'green' };
+    } else if (call.id === 'call_compromise_cottage_owners') {
+      call.slot1 = { title: 'Безопасность и окна', text: 'Двойной тамбур на входе, глухой высокий забор на участке, металлические сетки. Выгул на закрытой территории.', flag: 'green' };
+    } else if (call.id.includes('compromise')) {
+      call.slot1 = { title: 'Безопасность и окна', text: 'Обычные москитные сетки на окнах. «Если подскажете проверенных мастеров — с радостью закажем решетку-антикошку!»', flag: 'yellow' };
+    } else if (call.isSafe) {
+      call.slot1 = { title: 'Безопасность и окна', text: 'Безопасные окна, сетки установлены, полное понимание опасности падений и побегов.', flag: 'green' };
+    } else {
+      call.slot1 = { title: 'Безопасность и окна', text: 'Слабые москитные сетки, щелевое проветривание без ограничителей или риск самовыгула.', flag: 'red' };
+    }
+  }
 
-  // 2. Кнопка «Отказать (Красный флаг / Подозрительно)»
-  const btnRefuse = document.createElement('button');
-  btnRefuse.className = 'px-3.5 py-2.5 rounded-lg text-xs sm:text-sm bg-rose-50 hover:bg-rose-100 text-rose-900 border border-rose-300 transition text-left font-bold';
-  btnRefuse.textContent = '❌ Отказать (Красный флаг / Подозрительно)';
-  btnRefuse.onclick = () => {
-    state.filteredBadCalls += 1;
-    state.mental = Math.min(100, state.mental + 2);
-    addLog(`День ${state.day}: 🚫 Вы вежливо отказали подозрительному абоненту («${callData.caller}»). Интуиция куратора не подвела (+2% Менталки)!`, 'info');
-    closeEventModal();
-  };
-  choicesDiv.appendChild(btnRefuse);
+  if (!call.slot2) {
+    if (call.id === 'call_bones_and_pork') {
+      call.slot2 = { title: 'Кормление и бюджет на ветеринара', text: '«Кормим жареной свининкой и вареными трубчатыми костями кур. К врачам не возим — химия».', flag: 'red' };
+    } else if (call.id === 'call_dog_chain_village') {
+      call.slot2 = { title: 'Кормление и бюджет на ветеринара', text: '«Кормим помоями со школьной столовой. Капли от клещей за 35 рублей капать не будем».', flag: 'red' };
+    } else if (call.id === 'call_toddler_toy') {
+      call.slot2 = { title: 'Кормление и бюджет на ветеринара', text: '«Сдавать аллергопробы заранее не будем — это дорого, проверим на муже вживую».', flag: 'red' };
+    } else if (call.id === 'call_ideal_pet_screen_family') {
+      call.slot2 = { title: 'Кормление и бюджет на ветеринара', text: 'Корм класса холистик (Grandorf, Farmina). Отложена финансовая подушка безопасности на ветклинику.', flag: 'green' };
+    } else if (call.id === 'call_felv_aware_single_pet') {
+      call.slot2 = { title: 'Кормление и бюджет на ветеринара', text: 'Знает протокол терапии FeLV, готова закупать супер-премиум корм и Ралтегравир при обострении, наблюдаться у врача.', flag: 'green' };
+    } else if (call.id === 'call_compromise_pensioner_grandma') {
+      call.slot2 = { title: 'Кормление и бюджет на ветеринара', text: 'Пенсия скромная, но взрослая дочка живет в соседнем подъезде и берет на себя премиум-корм и ветеринарные чекапы.', flag: 'green' };
+    } else if (call.isCompromise) {
+      call.slot2 = { title: 'Кормление и бюджет на ветеринара', text: 'Качественный корм из зоомагазина (Brit Care / Purina One), прошлый питомец прожил 14 лет при регулярных чекапах.', flag: 'green' };
+    } else if (call.isSafe) {
+      call.slot2 = { title: 'Кормление и бюджет на ветеринара', text: 'Готовы покупать специализированный корм и оплачивать необходимые ветпроцедуры.', flag: 'green' };
+    } else {
+      call.slot2 = { title: 'Кормление и бюджет на ветеринара', text: 'Эконом-корма с красителями, остатки со стола, категорический отказ оплачивать ветеринара.', flag: 'red' };
+    }
+  }
 
-  // 3. Варианты согласия
-  if (callData.isScam) {
-    const btnScam = document.createElement('button');
-    btnScam.className = 'px-3.5 py-2.5 rounded-lg text-xs sm:text-sm bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold transition text-left col-span-1 sm:col-span-2';
-    btnScam.textContent = '✅ Согласиться и выполнить требование абонента';
-    btnScam.onclick = () => {
-      state.cash = Math.max(0, +(state.cash - (callData.scamLossBYN || 80)).toFixed(1));
-      state.mental = Math.max(0, state.mental - 35);
-      showEventModal('ФИШИНГОВЫЙ РАЗВОД МОШЕННИКОВ', callData.consequenceText, [
-        { label: 'Горький урок (Продолжить партию)', style: 'danger', action: () => closeEventModal() }
-      ]);
-    };
-    choicesDiv.appendChild(btnScam);
-
-  } else if (callData.isCompromise) {
-    // Механика Компромисса (GDD 8.4)
-    const btnCompromise = document.createElement('button');
-    btnCompromise.className = 'px-3.5 py-2.5 rounded-lg text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold transition text-left col-span-1 sm:col-span-2 shadow-sm';
-    btnCompromise.textContent = '🤝 Пойти на компромисс + Кураторское сопровождение (-15⚡, 95% успеха)';
-    btnCompromise.onclick = () => {
-      if (!spendEnergy(15)) return;
-      initiateAnimalTransferWithTrial(false, callData, { isCompromise: true, withSupport: true, successChance: 0.95 });
-    };
-    choicesDiv.appendChild(btnCompromise);
-
-    const btnDirectGive = document.createElement('button');
-    btnDirectGive.className = 'px-3.5 py-2.5 rounded-lg text-xs sm:text-sm bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold transition text-left';
-    btnDirectGive.textContent = 'Отдать без сопровождения (Риск возврата 35%)';
-    btnDirectGive.onclick = () => {
-      initiateAnimalTransferWithTrial(false, callData, { isCompromise: true, withSupport: false, successChance: 0.65 });
-    };
-    choicesDiv.appendChild(btnDirectGive);
-
-  } else if (callData.canTakePair) {
-    // Идеальные ручки могут забрать парочку (22% шанс, GDD 8.4)
-    const btnPair = document.createElement('button');
-    btnPair.className = 'px-3.5 py-2.5 rounded-lg text-xs sm:text-sm bg-purple-700 hover:bg-purple-600 text-white font-extrabold transition text-left';
-    btnPair.textContent = '😻 Отдать сразу парочку котят вместе (2 хвостика в один дом!)';
-    btnPair.onclick = () => {
-      initiateAnimalTransferWithTrial(true, callData, { successChance: 0.92 });
-    };
-    choicesDiv.appendChild(btnPair);
-
-    const btnSingle = document.createElement('button');
-    btnSingle.className = 'px-3.5 py-2.5 rounded-lg text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold transition text-left';
-    btnSingle.textContent = '✅ Отдать одного котенка по договору куратора';
-    btnSingle.onclick = () => {
-      initiateAnimalTransferWithTrial(false, callData, { successChance: 0.92 });
-    };
-    choicesDiv.appendChild(btnSingle);
-
-  } else {
-    // Обычное согласие (для надежных или красных флагов)
-    const btnGive = document.createElement('button');
-    btnGive.className = 'px-3.5 py-2.5 rounded-lg text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold transition text-left col-span-1 sm:col-span-2 shadow-sm';
-    btnGive.textContent = '✅ Согласиться и передать животное';
-    btnGive.onclick = () => {
-      if (!callData.isSafe) {
-        // Красный флаг: отложенный удар через 4 дня тишины (GDD 8.4)
-        initiateAnimalTransferWithTrial(false, callData, { isRedFlag: true });
-      } else if (callData.isTrialReturn) {
-        // Честный сценарий с аллергией
-        initiateAnimalTransferWithTrial(false, callData, { isAsthmaReturn: true });
-      } else {
-        initiateAnimalTransferWithTrial(false, callData, { successChance: 0.92 });
-      }
-    };
-    choicesDiv.appendChild(btnGive);
+  if (!call.slot3) {
+    if (call.id === 'call_anti_spay_aesthetic') {
+      call.slot3 = { title: 'Мотивация и договор', text: '«Категорически против стерилизации! Хотим получить потомство для здоровья, а котят раздадим на рынке. Договор не подпишем».', flag: 'red' };
+    } else if (call.id === 'call_halloween_black_cat') {
+      call.slot3 = { title: 'Мотивация и договор', text: '«Нужен чисто черный кот ночью 30 октября для съемки и ночного ритуала с друзьями. Паспортных данных не дам».', flag: 'red' };
+    } else if (call.id === 'call_gift_girlfriend_surprise') {
+      call.slot3 = { title: 'Мотивация и договор', text: '«Подарок-сюрприз девушке на съемную квартиру, хозяйка жилья не в курсе. Если будет против — вернем».', flag: 'red' };
+    } else if (call.id === 'call_dorm_secret') {
+      call.slot3 = { title: 'Мотивация и договор', text: '«Будем прятать животное в тумбочке общежития от коменданта. Если найдут — выбросят».', flag: 'red' };
+    } else if (call.id === 'call_ideal_pet_screen_family') {
+      call.slot3 = { title: 'Мотивация и договор', text: 'Осознанное решение всей семьи. Сдали аллерготесты заранее. Готовы подписать договор Зоошанса с паспортом и взять сразу парочку!', flag: 'green' };
+    } else if (call.id === 'call_good_trial_allergy_return') {
+      call.slot3 = { title: 'Мотивация и договор', text: 'Очень хотят помочь бездомышу, подготовили лежанку и ветпаспорт, но честно просят испытательный срок из-за риска аллергии.', flag: 'green' };
+    } else if (call.isCompromise) {
+      call.slot3 = { title: 'Мотивация и договор', text: 'Ищут верного друга для души. Согласны на официальный договор куратора с паспортными данными и фото-приветы.', flag: 'green' };
+    } else if (call.isSafe) {
+      call.slot3 = { title: 'Мотивация и договор', text: 'Подписание договора куратора «Зоошанса», согласие на чипирование и ненавязчивое отслеживание судьбы.', flag: 'green' };
+    } else {
+      call.slot3 = { title: 'Мотивация и договор', text: 'Отказ от кураторского договора, нежелание показывать паспорт, импульсивное решение без подготовки.', flag: 'red' };
+    }
   }
 }
 
+function triggerIncomingCallModal(callData, isOldOwnerSearch = false) {
+  stopTimer();
+  ensureCandidateCallSlots(callData, state.animal);
+  window.currentCandidateCall = callData;
+  callData.slot2Inspected = false;
+  callData.slot3Inspected = false;
+
+  const modal = document.getElementById('candidateInterviewModal');
+  if (!modal) return;
+
+  // Шапка
+  const badgeEl = document.getElementById('candidateBadge');
+  if (badgeEl) {
+    badgeEl.textContent = isOldOwnerSearch ? '📞 ЗВОНОК ПО ОБЪЯВЛЕНИЮ О НАХОДКЕ' : '📞 ВХОДЯЩИЙ ЗВОНОК «РУЧЕК»';
+    badgeEl.className = isOldOwnerSearch
+      ? 'craft-badge text-[10px] font-mono uppercase font-bold bg-sky-600 text-white'
+      : 'craft-badge text-[10px] font-mono uppercase font-bold bg-emerald-600 text-white';
+  }
+
+  const srcEl = document.getElementById('candidateSourceTag');
+  if (srcEl) srcEl.textContent = callData.source || 'Куфар';
+
+  const nameHousingEl = document.getElementById('candidateNameHousing');
+  if (nameHousingEl) nameHousingEl.textContent = `${callData.candidateName} • ${callData.housing}`;
+
+  // Цитата / диалог
+  const dialogueEl = document.getElementById('candidateDialogueText');
+  if (dialogueEl) dialogueEl.textContent = callData.dialogue;
+
+  // Слот 1: Безопасность и окна (открыт сразу)
+  const slot1Box = document.getElementById('candidateSlot1Box');
+  const slot1Text = document.getElementById('candidateSlot1Text');
+  const slot1Flag = document.getElementById('candidateSlot1Flag');
+  if (slot1Text) slot1Text.textContent = callData.slot1.text;
+  if (slot1Flag) {
+    const f = callData.slot1.flag;
+    slot1Flag.className = `craft-badge text-[10px] font-bold flag--${f}`;
+    slot1Flag.textContent = f === 'green' ? '✓ Надежно (+0%)' : (f === 'yellow' ? '⚠️ Компромисс (+15%)' : '🚨 Красный флаг (+75%)');
+  }
+  if (slot1Box) {
+    slot1Box.className = `p-3 rounded-xl border transition flag--${callData.slot1.flag}`;
+  }
+
+  // Слот 2: Кормление и бюджет (скрыт по умолчанию)
+  const s2Closed = document.getElementById('slot2ClosedView');
+  const s2Open = document.getElementById('slot2OpenView');
+  const s2Box = document.getElementById('candidateSlot2Box');
+  const s2Text = document.getElementById('candidateSlot2Text');
+  const s2Flag = document.getElementById('candidateSlot2Flag');
+  if (s2Closed) s2Closed.classList.remove('hidden');
+  if (s2Open) s2Open.classList.add('hidden');
+  if (s2Box) s2Box.className = 'p-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] transition';
+  if (s2Text) s2Text.textContent = callData.slot2.text;
+  if (s2Flag) {
+    const f = callData.slot2.flag;
+    s2Flag.className = `craft-badge text-[10px] font-bold flag--${f}`;
+    s2Flag.textContent = f === 'green' ? '✓ Надежно (+0%)' : (f === 'yellow' ? '⚠️ Компромисс (+15%)' : '🚨 Красный флаг (+75%)');
+  }
+
+  // Слот 3: Мотивация и договор (скрыт по умолчанию)
+  const s3Closed = document.getElementById('slot3ClosedView');
+  const s3Open = document.getElementById('slot3OpenView');
+  const s3Box = document.getElementById('candidateSlot3Box');
+  const s3Text = document.getElementById('candidateSlot3Text');
+  const s3Flag = document.getElementById('candidateSlot3Flag');
+  if (s3Closed) s3Closed.classList.remove('hidden');
+  if (s3Open) s3Open.classList.add('hidden');
+  if (s3Box) s3Box.className = 'p-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] transition';
+  if (s3Text) s3Text.textContent = callData.slot3.text;
+  if (s3Flag) {
+    const f = callData.slot3.flag;
+    s3Flag.className = `craft-badge text-[10px] font-bold flag--${f}`;
+    s3Flag.textContent = f === 'green' ? '✓ Надежно (+0%)' : (f === 'yellow' ? '⚠️ Компромисс (+15%)' : '🚨 Красный флаг (+75%)');
+  }
+
+  // Действия в подвале окна
+  renderCandidateActionButtons(callData);
+
+  modal.classList.remove('hidden');
+}
+
+function renderCandidateActionButtons(callData) {
+  const container = document.getElementById('candidateActionButtons');
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (callData.isScam) {
+    const btn = document.createElement('button');
+    btn.className = 'px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition cursor-pointer shadow-sm';
+    btn.textContent = '✅ Выполнить требование абонента';
+    btn.onclick = () => actionAcceptCandidate(false);
+    container.appendChild(btn);
+  } else if (callData.isCompromise) {
+    const btnCompromise = document.createElement('button');
+    btnCompromise.className = 'px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs transition cursor-pointer shadow-sm';
+    btnCompromise.textContent = '🤝 Компромисс + Сопровождение (-15⚡, 95% успеха)';
+    btnCompromise.onclick = () => {
+      if (!spendEnergy(15)) return;
+      actionAcceptCandidate(false, { isCompromise: true, withSupport: true, successChance: 0.95 });
+    };
+    container.appendChild(btnCompromise);
+
+    const btnDirect = document.createElement('button');
+    btnDirect.className = 'px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-semibold text-xs transition cursor-pointer';
+    btnDirect.textContent = 'Отдать без поддержки (Риск возврата 35%)';
+    btnDirect.onclick = () => {
+      actionAcceptCandidate(false, { isCompromise: true, withSupport: false, successChance: 0.65 });
+    };
+    container.appendChild(btnDirect);
+  } else if (callData.canTakePair) {
+    const btnPair = document.createElement('button');
+    btnPair.className = 'px-3.5 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 text-white font-extrabold text-xs transition cursor-pointer shadow-sm';
+    btnPair.textContent = '😻 Отдать сразу парочку котят на испытательный (14 дн.)';
+    btnPair.onclick = () => actionAcceptCandidate(true, { successChance: 0.92 });
+    container.appendChild(btnPair);
+
+    const btnSingle = document.createElement('button');
+    btnSingle.className = 'px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition cursor-pointer';
+    btnSingle.textContent = '✅ Отдать одного на испытательный (14 дн.)';
+    btnSingle.onclick = () => actionAcceptCandidate(false, { successChance: 0.92 });
+    container.appendChild(btnSingle);
+  } else {
+    const btnGive = document.createElement('button');
+    btnGive.className = 'px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs transition cursor-pointer shadow-sm';
+    btnGive.textContent = '🏠 Отдать на испытательный (14 дн.)';
+    btnGive.onclick = () => {
+      if (!callData.isSafe) {
+        actionAcceptCandidate(false, { isRedFlag: true });
+      } else if (callData.isTrialReturn) {
+        actionAcceptCandidate(false, { isAsthmaReturn: true });
+      } else {
+        actionAcceptCandidate(false, { successChance: 0.92 });
+      }
+    };
+    container.appendChild(btnGive);
+  }
+}
+
+function actionInspectCandidateSlot(slotIndex) {
+  if (state.gameOver) return;
+  const call = window.currentCandidateCall;
+  if (!call) return;
+  if (!spendEnergy(2)) {
+    addLog(`День ${state.day}: Не хватает 2⚡ для уточнения вопросов у кандидата!`, 'warn');
+    return;
+  }
+
+  if (slotIndex === 2) {
+    call.slot2Inspected = true;
+    const closed = document.getElementById('slot2ClosedView');
+    const open = document.getElementById('slot2OpenView');
+    const box = document.getElementById('candidateSlot2Box');
+    if (closed) closed.classList.add('hidden');
+    if (open) open.classList.remove('hidden');
+    if (box) box.className = `p-3 rounded-xl border transition flag--${call.slot2.flag}`;
+    addLog(`День ${state.day}: 🔍 Собеседование (-2⚡): уточнены вопросы кормления и ветклиники.`, 'info');
+  } else if (slotIndex === 3) {
+    call.slot3Inspected = true;
+    const closed = document.getElementById('slot3ClosedView');
+    const open = document.getElementById('slot3OpenView');
+    const box = document.getElementById('candidateSlot3Box');
+    if (closed) closed.classList.add('hidden');
+    if (open) open.classList.remove('hidden');
+    if (box) box.className = `p-3 rounded-xl border transition flag--${call.slot3.flag}`;
+    addLog(`День ${state.day}: 🔍 Собеседование (-2⚡): уточнены мотивы и согласие на договор «Зоошанса».`, 'info');
+  }
+  renderAll();
+}
+
+function actionRefuseCandidate() {
+  if (state.gameOver) return;
+  const call = window.currentCandidateCall;
+  closeCandidateModal();
+  if (!call) return;
+
+  const hasRevealedRedFlag =
+    (call.slot1 && call.slot1.flag === 'red') ||
+    (call.slot2Inspected && call.slot2 && call.slot2.flag === 'red') ||
+    (call.slot3Inspected && call.slot3 && call.slot3.flag === 'red');
+
+  if (hasRevealedRedFlag) {
+    state.filteredBadCalls = (state.filteredBadCalls || 0) + 1;
+    state.mental = Math.min(100, state.mental + 3);
+    addLog(`День ${state.day}: 🛡️ Бдительность куратора спасла жизнь подопечного: вы вовремя распознали опасный красный флаг и отказали ненадежным ручкам (+3% 🧠)!`, 'success');
+  } else {
+    state.mental = Math.min(100, state.mental + 1);
+    addLog(`День ${state.day}: 🚫 Вы отказали кандидату («${call.candidateName || call.caller}») и решили продолжить поиск более надежной семьи (+1% 🧠).`, 'info');
+  }
+  renderAll();
+}
+
+function actionAcceptCandidate(isPair, options = {}) {
+  if (state.gameOver) return;
+  const call = window.currentCandidateCall;
+  closeCandidateModal();
+  if (!call) return;
+
+  if (call.isScam) {
+    state.cash = Math.max(0, +(state.cash - (call.scamLossBYN || 80)).toFixed(1));
+    state.mental = Math.max(0, state.mental - 35);
+    showEventModal('ФИШИНГОВЫЙ РАЗВОД МОШЕННИКОВ', call.consequenceText, [
+      { label: 'Горький урок (Продолжить партию)', style: 'danger', action: () => closeEventModal() }
+    ]);
+    renderAll();
+    return;
+  }
+
+  initiateAnimalTransferWithTrial(isPair, call, options);
+}
+
+function closeCandidateModal() {
+  const modal = document.getElementById('candidateInterviewModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+window.actionInspectCandidateSlot = actionInspectCandidateSlot;
+window.actionRefuseCandidate = actionRefuseCandidate;
+window.closeCandidateModal = closeCandidateModal;
+window.actionAcceptCandidate = actionAcceptCandidate;
+
+
 // 7-ДНЕВНЫЙ ИСПЫТАТЕЛЬНЫЙ СРОК: Передача животного и бронь места на передержке (GDD 8.4, 8.5)
 function initiateAnimalTransferWithTrial(isPair, callData, options = {}) {
+  if (state.gameOver) return;
   const a = state.animal;
+  if (a.inStationaryDaysLeft > 0 || (a.virusRecoveryDaysLeft && a.virusRecoveryDaysLeft > 0) || (a.traumaRehabDaysLeft && a.traumaRehabDaysLeft > 0)) {
+    addLog(`День ${state.day}: ⚠️ Животное находится в стационаре или на этапе долечивания/реабилитации перелома! Передача в семью строго отложена до выздоровления.`, 'warn');
+    return;
+  }
   const countToGive = (isPair && a.activeCount >= 2) ? 2 : 1;
 
   // Если животное на передержке — предлагаем выбор брони места на время испытательного срока
-  if (!isAnimalAtPlayerHome() && (state.zooshans.locationStatus === 'paid_foster' || state.zooshans.locationStatus.includes('foster') || state.zooshans.locationStatus.includes('volunteer'))) {
+  const loc = state.zooshans?.locationStatus || '';
+  if (!isAnimalAtPlayerHome() && (loc === 'paid_foster' || loc.includes('foster') || loc.includes('volunteer'))) {
     triggerHoldFosterSpotModal(countToGive, callData, options);
   } else {
     finishTransferToTrial(countToGive, callData, options, false);
@@ -362,7 +512,7 @@ function triggerHoldFosterSpotModal(countToGive, callData, options) {
   const isDog = a.species === 'dog';
   const weeklyPaidFee = isDog ? 110 : 55;
 
-  let desc = `Подопечный уезжает на 7-дневный испытательный срок. В реальности передержка не держит пустое место просто так: если питомца вернут, бокс уже займет следующее животное!\n\nЧто делаем с местом на передержке?`;
+  let desc = `Подопечный уезжает на 14-дневный испытательный срок. В реальности передержка не держит пустое место просто так: если питомца вернут, бокс уже займет следующее животное!\n\nЧто делаем с местом на передержке?`;
 
   const choices = [];
 
@@ -378,7 +528,7 @@ function triggerHoldFosterSpotModal(countToGive, callData, options) {
         }
         state.cash = +(state.cash - weeklyPaidFee).toFixed(1);
         state.personalMoneySpent = +(state.personalMoneySpent + weeklyPaidFee).toFixed(1);
-        addLog(`День ${state.day}: 🤝 Оплачена бронь места на платной передержке на 7 дней (-${weeklyPaidFee} BYN). Гарантия возврата сохранена!`, 'info');
+        addLog(`День ${state.day}: 🤝 Оплачена бронь места на платной передержке на время испытательного срока (-${weeklyPaidFee} BYN). Гарантия возврата сохранена!`, 'info');
         finishTransferToTrial(countToGive, callData, options, true);
       }
     });
@@ -393,7 +543,7 @@ function triggerHoldFosterSpotModal(countToGive, callData, options) {
         }
         state.cash = +(state.cash - 15).toFixed(1);
         state.personalMoneySpent = +(state.personalMoneySpent + 15).toFixed(1);
-        addLog(`День ${state.day}: 🍫 Передержка тронута заботой и согласилась придержать бокс на 7 дней (100% бронь)!`, 'success');
+        addLog(`День ${state.day}: 🍫 Передержка тронута заботой и согласилась придержать бокс на время испытательного срока (100% бронь)!`, 'success');
         finishTransferToTrial(countToGive, callData, options, true);
       }
     });
@@ -404,7 +554,7 @@ function triggerHoldFosterSpotModal(countToGive, callData, options) {
       action: () => {
         if (!spendEnergy(10)) return;
         if (Math.random() < 0.60) {
-          addLog(`День ${state.day}: 🤝 Передержка пошла навстречу и согласилась придержать бокс на 7 дней бесплатно!`, 'success');
+          addLog(`День ${state.day}: 🤝 Передержка пошла навстречу и согласилась придержать бокс на время испытательного срока бесплатно!`, 'success');
           finishTransferToTrial(countToGive, callData, options, true);
         } else {
           addLog(`День ${state.day}: ⚠️ У передержки очередь — держать пустое место отказались. Место отпущено.`, 'warn');
@@ -423,7 +573,7 @@ function triggerHoldFosterSpotModal(countToGive, callData, options) {
     }
   });
 
-  showEventModal('БРОНЬ МЕСТА НА ПЕРЕДЕРЖКЕ НА 7 ДНЕЙ ИСПЫТАТЕЛЬНОГО СРОКА', desc, choices);
+  showEventModal('БРОНЬ МЕСТА НА ПЕРЕДЕРЖКЕ НА ВРЕМЯ ИСПЫТАТЕЛЬНОГО СРОКА (14 ДНЕЙ)', desc, choices);
 }
 
 function finishTransferToTrial(countToGive, callData, options, fosterSpotHeld) {
@@ -432,25 +582,38 @@ function finishTransferToTrial(countToGive, callData, options, fosterSpotHeld) {
   a.count = a.activeCount;
   a.trialCount = (a.trialCount || 0) + countToGive;
 
+  let assignedPetName = a.petName;
+  if (!assignedPetName) {
+    assignedPetName = getRandomPetname();
+    addLog(`День ${state.day}: 🏷️ Уезжающему в семью малышу присвоена индивидуальная кличка из картотеки «Зоошанса»: «${assignedPetName}»!`, 'info');
+  }
+
   const trialItem = {
     id: Date.now() + Math.random(),
-    petName: a.petName,
+    petName: assignedPetName,
     species: a.species,
     count: countToGive,
     daysPassed: 0,
-    targetDays: options.isRedFlag ? 4 : 7,
+    trialDaysTotal: 14,
+    targetDays: options.isRedFlag ? 4 : 14,
     isRedFlag: !!options.isRedFlag,
+    reliabilityFlag: options.isRedFlag ? 'red' : (callData.isCompromise ? 'yellow' : 'green'),
+    reliabilityLabel: options.isRedFlag ? '🚨 Высокий риск возврата' : (callData.isCompromise ? '⚠️ Кураторское сопровождение' : '✓ Надежная семья'),
+    avatarSvg: typeof buildPetSVG === 'function' ? buildPetSVG(a) : null,
     callData: callData,
-    adopterSummary: callData.caller,
+    adopterSummary: callData.candidateName ? `${callData.candidateName} (${callData.housing || 'Минск'})` : callData.caller,
+    prChannel: callData.source || 'Куфар',
     successChance: options.successChance !== undefined ? options.successChance : 0.92,
     isAsthmaReturn: !!options.isAsthmaReturn,
     fosterSpotHeld: !!fosterSpotHeld,
-    fosterLocation: state.zooshans.locationStatus
+    fosterLocation: state.zooshans.locationStatus,
+    dateStarted: typeof formatCalendarDate === 'function' ? formatCalendarDate(state.calendarDate) : 'Минск'
   };
 
   state.trialAnimals.push(trialItem);
 
-  addLog(`День ${state.day}: 🚚 «${a.petName}» (${countToGive > 1 ? 'парочка котят' : 'подопечный'}) отправлен(ы) в новый дом на 7-дневный испытательный срок! Быт временно снят.`, 'success');
+  const displayTarget = assignedPetName ? `«${assignedPetName}»` : (countToGive > 1 ? 'парочка котят' : 'малыш');
+  addLog(`День ${state.day}: 🚚 ${displayTarget} (${countToGive > 1 ? 'парочка котят' : 'подопечный'}) отправлен(ы) в новый дом на 14-дневный испытательный срок! Бытовой расход корма и энергии снят.`, 'success');
 
   closeEventModal();
   renderAll();
@@ -464,9 +627,11 @@ function completeOneOrPairAdoption(isPair, successStoryText) {
   a.count = a.activeCount;
   a.savedCount = (a.savedCount || 0) + countSaved;
 
+  const savedPetName = a.petName || getRandomPetname();
+
   const tailRecord = {
     id: Date.now() + Math.random(),
-    petName: a.petName,
+    petName: savedPetName,
     species: a.species,
     archetypeId: a.id,
     archetypeTitle: a.title,
@@ -475,19 +640,27 @@ function completeOneOrPairAdoption(isPair, successStoryText) {
     daysSpent: state.day,
     seasonsPassed: [...state.seasonsPassed],
     adopterSummary: 'Оставлен себе / близким друзьям',
-    dateSaved: formatCalendarDate(state.calendarDate)
+    dateSaved: formatCalendarDate(state.calendarDate),
+    personalSpent: state.personalMoneySpent || 0,
+    prChannel: 'Личные контакты'
   };
   state.savedTails.push(tailRecord);
   savePetToAlbum(tailRecord);
 
   if (a.savedCount >= (a.totalCount || a.initialCount || 1)) {
-    triggerEndGame(
-      true,
-      'ПОБЕДА: Подопечный обрел любящий дом навсегда!',
-      `${successStoryText}\n\nВы прошли весь путь от растерянного человека с улицы до опытного куратора!`
-    );
+    if (a.hasMotherCat && !a.motherSterilized) {
+      addLog(`День ${state.day}: ℹ️ Все котята благополучно обрели дом! Но мама-кошка еще не стерилизована — проведите операцию во вкладке «Клиника» для завершения кураторства!`, 'info');
+      closeEventModal();
+      renderAll();
+    } else {
+      triggerEndGame(
+        true,
+        'ПОБЕДА: Подопечный обрел любящий дом навсегда!',
+        `${successStoryText}\n\nВы прошли весь путь от растерянного человека с улицы до опытного куратора!`
+      );
+    }
   } else {
-    addLog(`День ${state.day}: 🏠 Подопечный («${a.petName}») обрел постоянный дом! На руках осталось: ${a.activeCount}.`, 'success');
+    addLog(`День ${state.day}: 🏠 Подопечный («${savedPetName}») обрел постоянный дом! На руках осталось: ${a.activeCount}.`, 'success');
     closeEventModal();
     renderAll();
   }

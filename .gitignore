@@ -23,3 +23,5 @@ node_modules/
 dist/
 tmp/
 temp/
+
+*.zip

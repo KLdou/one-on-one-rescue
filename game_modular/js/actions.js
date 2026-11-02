@@ -65,53 +65,90 @@ function actionDumpBoxTrap() {
 
 // 2. ВЕТЕРИНАРНЫЕ РАСЧЕТЫ И ЛОГИСТИКА В BYN (GDD 3.5, 5.1)
 
-function payVetBill(baseCostBYN, voucherEligible, serviceTitle, isExpensiveProcedure = false) {
-  // Без авто — 35% шанс отказа таксиста и поиск попутки в чатах (GDD 3.5)
-  if (state.player.mobility.id === 'no_car' && isAnimalAtPlayerHome() && Math.random() < 0.35 && !state.triggeredEvents['taxi_' + state.day]) {
-    state.triggeredEvents['taxi_' + state.day] = true;
-    if (Math.random() < 0.5) {
-      addLog(`День ${state.day}: 🚗 Таксист отказался сажать с переноской/клеткой! Вы кинули клич в районный чат — выручил сосед и подвез бесплатно!`, 'info');
-    } else {
-      state.cash = Math.max(0, +(state.cash - 20).toFixed(1));
-      state.personalMoneySpent = +(state.personalMoneySpent + 20).toFixed(1);
-      state.mental = Math.max(0, state.mental - 8);
-      addLog(`День ${state.day}: 🚌 Знакомые заняты, таксист отказал — пришлось трястись в переполненном троллейбусе и доплачивать зоотакси (-20 BYN, -8% Менталки).`, 'warn');
+function canAffordVetBill(baseCostBYN, voucherEligible, isExpensiveProcedure = false) {
+  if (state.gameOver) return false;
+  const hasDiscount = state.zooshans.applicationSubmitted && voucherEligible;
+  const discounted = hasDiscount ? Math.round(baseCostBYN * 0.8) : baseCostBYN;
+
+  if (hasDiscount) {
+    if (state.zooshans.clinicMode === 'partner_cash' && !isExpensiveProcedure) {
+      return state.cash >= discounted;
     }
+    if (state.zooshans.clinicMode === 'major_voucher' || isExpensiveProcedure) {
+      return !state.zooshans.voucherBlocked && (state.zooshans.voucherDebt + discounted <= 1000);
+    }
+  }
+  return state.cash >= baseCostBYN;
+}
+
+function payVetBill(baseCostBYN, voucherEligible, serviceTitle, isExpensiveProcedure = false, energyCost = 0) {
+  if (state.gameOver) return false;
+
+  // 1. Проверка энергии
+  if (energyCost > 0 && state.energy < energyCost) {
+    addLog(`День ${state.day}: ❌ Недостаточно энергии для визита в клинику (требуется ${energyCost}⚡, осталось ${state.energy}⚡)!`, 'warn');
+    return false;
   }
 
   const hasDiscount = state.zooshans.applicationSubmitted && voucherEligible;
   const discounted = hasDiscount ? Math.round(baseCostBYN * 0.8) : baseCostBYN;
 
-  // Если заявление в Зоошанс подано, применяем скидку 20%
+  // 2. Проверка платежеспособности ДО списаний
   if (hasDiscount) {
-    // Вариант А: Партнерская клиника — оплата сразу со скидкой 20% без долга (GDD 5.1)
     if (state.zooshans.clinicMode === 'partner_cash' && !isExpensiveProcedure) {
       if (state.cash < discounted) {
-        addLog(`День ${state.day}: ❌ Не хватает личных средств (${state.cash} BYN из требуемых ${discounted} BYN)! Переключитесь на Ветцентр Б (талон в долг) или откройте сбор на карту.`, 'danger');
+        addLog(`День ${state.day}: ❌ Не хватает средств на оплату процедуры (${state.cash} BYN из требуемых ${discounted} BYN со скидкой 20%)! Переключитесь на Ветцентр Б (талон в долг) или откройте сбор на карту.`, 'danger');
         return false;
       }
+    } else if (state.zooshans.clinicMode === 'major_voucher' || isExpensiveProcedure) {
+      if (state.zooshans.voucherBlocked || (state.zooshans.voucherDebt + discounted > 1000)) {
+        addLog(`День ${state.day}: ⚠️ Превышен лимит долга 1000 BYN перед «Зоошансом» (доступно ${Math.max(0, 1000 - state.zooshans.voucherDebt)} BYN из ${discounted} BYN) или талоны заблокированы!`, 'warn');
+        return false;
+      }
+    }
+  } else {
+    if (state.cash < baseCostBYN) {
+      addLog(`День ${state.day}: ❌ Не хватает средств на оплату процедуры (${state.cash} BYN из требуемых ${baseCostBYN} BYN)! Откройте сбор на карту во вкладке «Зоошанс».`, 'danger');
+      return false;
+    }
+  }
+
+  // 3. Списание энергии только после успешной верификации платежа
+  if (energyCost > 0) {
+    if (!spendEnergy(energyCost)) return false;
+  }
+
+  // 4. Логистика: Без авто — 35% шанс отказа таксиста и поиск попутки в чатах (GDD 3.5)
+  if (state.player.mobility.id === 'no_car' && isAnimalAtPlayerHome() && Math.random() < 0.35 && !state.triggeredEvents['taxi_' + state.day]) {
+    state.triggeredEvents['taxi_' + state.day] = true;
+    if (Math.random() < 0.5) {
+      addLog(`День ${state.day}: 🚗 Таксист отказался сажать с переноской/клеткой! Вы кинули клич в районный чат — выручил сосед и подвез бесплатно!`, 'info');
+    } else {
+      const taxiFee = Math.min(state.cash, 20);
+      state.cash = Math.max(0, +(state.cash - taxiFee).toFixed(1));
+      state.personalMoneySpent = +(state.personalMoneySpent + taxiFee).toFixed(1);
+      state.mental = Math.max(0, state.mental - 8);
+      addLog(`День ${state.day}: 🚌 Знакомые заняты, таксист отказал — пришлось трястись в переполненном троллейбусе и доплачивать зоотакси (-${taxiFee} BYN, -8% Менталки).`, 'warn');
+    }
+  }
+
+  // 5. Проведение оплаты
+  if (hasDiscount) {
+    if (state.zooshans.clinicMode === 'partner_cash' && !isExpensiveProcedure) {
       state.cash = +(state.cash - discounted).toFixed(1);
       state.personalMoneySpent = +(state.personalMoneySpent + discounted).toFixed(1);
       addLog(`День ${state.day}: 🏥 ${serviceTitle} — партнерская клиника А подтвердила скидку 20%. Оплачено на месте сразу -${discounted} BYN (без накопления долга).`, 'success');
       return true;
     }
 
-    // Вариант Б: Крупный ветцентр — разовый талон на 30 дней в долг (лимит 1000 BYN, GDD 5.1)
-    if (!state.zooshans.voucherBlocked && (state.zooshans.voucherDebt + discounted <= 1000)) {
+    if (state.zooshans.clinicMode === 'major_voucher' || isExpensiveProcedure) {
       state.zooshans.voucherDebt = +(state.zooshans.voucherDebt + discounted).toFixed(1);
       addLog(`День ${state.day}: 🎫 ${serviceTitle} — выписан гарантийный талон ветцентра (-20%, +${discounted} BYN в долг на 30 дней. Общий долг: ${state.zooshans.voucherDebt}/1000 BYN).`, 'info');
       return true;
-    } else {
-      addLog(`День ${state.day}: ⚠️ Превышен лимит долга 1000 BYN перед «Зоошансом» или талоны заблокированы! Требуется оплата из личных средств.`, 'warn');
     }
   }
 
-  // Оплата по полному прайсу (без скидки или при исчерпании талонов)
-  if (state.cash < baseCostBYN) {
-    addLog(`День ${state.day}: ❌ Не хватает средств на оплату процедуры (${state.cash} BYN из требуемых ${baseCostBYN} BYN)! Откройте сбор на карту во вкладке «Зоошанс».`, 'danger');
-    return false;
-  }
-
+  // Оплата по полному прайсу (без скидки)
   state.cash = +(state.cash - baseCostBYN).toFixed(1);
   state.personalMoneySpent = +(state.personalMoneySpent + baseCostBYN).toFixed(1);
   addLog(`День ${state.day}: 🏥 ${serviceTitle} — оплачено по полному прайсу (-${baseCostBYN} BYN). Подайте заявление в «Зоошанс» для скидки 20%!`, 'info');
@@ -164,18 +201,18 @@ function actionAskZooshansTakeover() {
       ]
     );
   } else if (roll < 0.95) {
-    // 20% (или 60% при предохранителе баланса) — перехват на 10 дней стабилизации
-    state.zooshans.locationStatus = 'temp_volunteer_10d';
-    state.zooshans.tempVolunteerDaysLeft = 10;
+    // 20% (или 60% при предохранителе баланса) — перехват на 14 дней карантина и стабилизации
+    state.zooshans.locationStatus = 'temp_volunteer_14d';
+    state.zooshans.tempVolunteerDaysLeft = 14;
     showEventModal(
-      'ВРЕМЕННЫЙ ПЕРЕХВАТ НА 10 ДНЕЙ: Опытный волонтер берет на стабилизацию!',
-      `Координатор Колл-центра нашла окно: опытная волонтер Таня согласилась выручить вас на первые 10 дней:\n\n«Я заберу ${g.acc} к себе на 10 дней: сниму острое состояние, выкормлю и сделаю уколы. Но ты отвечаешь за покупку корма/смеси и через 10 дней ОБЯЗАН(А) забрать ${g.acc} обратно до пристройства!»` + milkBonusText,
+      'ВРЕМЕННЫЙ ПЕРЕХВАТ НА 14 ДНЕЙ: Опытный волонтер берет на карантин и стабилизацию!',
+      `Координатор Колл-центра нашла окно: опытная волонтер Таня согласилась выручить вас на первые 14 дней (стандартный срок карантина):\n\n«Я заберу ${g.acc} к себе на 14 дней: выдержу карантин, сниму острое состояние, выкормлю и сделаю уколы. Но ты отвечаешь за покупку корма/смеси и через 14 дней ОБЯЗАН(А) забрать ${g.acc} обратно до пристройства!»` + milkBonusText,
       [
         {
-          label: `Передать ${g.acc} на 10 дней (Быт снят с вас, следите за расходниками!)`,
+          label: `Передать ${g.acc} на 14 дней (Быт и карантин сняты с вас, следите за расходниками!)`,
           style: 'primary',
           action: () => {
-            addLog(`День ${state.day}: ⏳ Волонтер забрала ${g.acc} на 10 дней стабилизации с возвратом! Ежедневный быт полностью снят с вас.`, 'success');
+            addLog(`День ${state.day}: ⏳ Волонтер забрала ${g.acc} на 14 дней карантина и стабилизации с возвратом! Ежедневный быт полностью снят с вас.`, 'success');
             closeEventModal();
           }
         }
@@ -299,6 +336,7 @@ function actionWriteStorytellingPost() {
   if (!spendEnergy(10)) return;
   state.pr.storytellingBoost = +(state.pr.storytellingBoost + 0.06).toFixed(2);
   state.pr.storytellingCallBonus = +(state.pr.storytellingCallBonus + 5);
+  state.pr.lastStorytellingDay = state.day;
   addLog(`День ${state.day}: 📱 Живой мимими-пост опубликован! Пиар-охват гарантированно вырос (+0.06x к популярности, +5% к шансу звонка).`, 'info');
 
   const roll = Math.random();
@@ -308,6 +346,9 @@ function actionWriteStorytellingPost() {
     state.pr.earlyBookedAdopterWaiting = true;
     state.mental = Math.min(100, state.mental + 15);
     addLog(`День ${state.day}: 💖 ЧУДО СТОРИТЕЛЛИНГА: Подписчица влюбилась в хвостика по вашим сторис! Она перевела 85 BYN помощи и забронировала питомца себе домой!`, 'success');
+    renderAll();
+    triggerEarlyBookedTransferModal();
+    return;
   } else if (roll < 0.47) {
     // 35% шанс: вещественная «посылка добра»
     const gRoll = Math.random();
@@ -377,15 +418,24 @@ function actionAskFriendsPhotos() {
 
 function escapeSearchAction(actionType) {
   if (state.gameOver || !state.escapeQuest || !state.escapeQuest.active) return;
+  const a = state.animal;
+  const isPuppy = a.species === 'dog' && (a.ageCategory === 'puppy' || a.ageDays < 180 || (a.count && a.count > 1));
+  const isDog = a.species === 'dog';
+  const g = getAnimalGrammar(a);
+
   if (actionType === 'posters') {
     if (!spendEnergy(15)) return;
     state.escapeQuest.searchProgress = Math.min(100, state.escapeQuest.searchProgress + 35);
-    addLog(`День ${state.day}: 📋 Вы расклеили 50 макетов с цветным фото и опросили дворников и собачников (+35% к поиску, всего ${state.escapeQuest.searchProgress}%).`, 'info');
+    const audience = isDog ? 'дворников и собачников' : 'дворников и жителей окрестных домов';
+    addLog(`День ${state.day}: 📋 Вы расклеили 50 макетов с цветным фото и опросили ${audience} (+35% к поиску, всего ${state.escapeQuest.searchProgress}%).`, 'info');
   } else if (actionType === 'night') {
     if (!spendEnergy(20)) return;
     state.escapeQuest.searchProgress = Math.min(100, state.escapeQuest.searchProgress + 45);
     state.mental = Math.max(0, state.mental - 5);
-    addLog(`День ${state.day}: 🔦 Ночной прочес подвалов и теплотрасс в 4 утра с фонариком (+45% к поиску, всего ${state.escapeQuest.searchProgress}%).`, 'info');
+    const searchArea = isPuppy
+      ? 'дворов, приямков и пространства под машинами'
+      : (isDog ? 'дворов, гаражных кооперативов и теплотрасс' : 'подвалов и теплотрасс');
+    addLog(`День ${state.day}: 🔦 Ночной и утренний прочес ${searchArea} в 4 утра с фонариком (+45% к поиску, всего ${state.escapeQuest.searchProgress}%).`, 'info');
   } else if (actionType === 'social') {
     if (!spendEnergy(10)) return;
     state.escapeQuest.searchProgress = Math.min(100, state.escapeQuest.searchProgress + 25);
@@ -396,9 +446,19 @@ function escapeSearchAction(actionType) {
     state.escapeQuest.active = false;
     state.animal.hasAntiEscapeHarness = true;
     state.mental = Math.min(100, state.mental + 20);
+
+    let foundDesc = '';
+    if (isPuppy) {
+      foundDesc = `Вы нашли испуганного щенка, забившегося под припаркованную машину в соседнем дворе! Малыш жив, согрет и накормлен.\n\nПередержка получила строжайший наказ всегда запирать вторую дверь в тамбуре и контролировать щенков.`;
+    } else if (isDog) {
+      foundDesc = `Вы нашли беглеца испуганным в гаражном кооперативе! Собака жива, согрета и накормлена.\n\nТеперь выгул будет производиться строго в трехремневой шлейке-антипобег!`;
+    } else {
+      foundDesc = `Вы нашли беглеца испуганным, забившимся под балкон на первом этаже! Питомец жив, накормлен и возвращен в безопасность.\n\nНа окна передержки установлены прочные сетки Pet Screen!`;
+    }
+
     showEventModal(
       '🎉 ПИТОМЕЦ НАЙДЕН И СПАСЕН!',
-      `Вы нашли беглеца испуганным, забившимся под балкон на первом этаже! Питомец жив, накормлен и возвращен в безопасность.\n\nТеперь собака будет выгуливаться строго в трехремневой шлейке-антипобег, а окна защищены сетками!`,
+      foundDesc,
       [{ label: 'Какое облегчение! (Продолжить спасение)', style: 'primary', action: () => closeEventModal() }]
     );
   }
@@ -408,6 +468,7 @@ function escapeSearchAction(actionType) {
 // 8. СЛЕПЫШИ: КОРМЛЕНИЕ И ЛОВУШКА КОРОВЬЕГО МОЛОКА (GDD 7.1, 9.1)
 
 function feedCowMilkTrap() {
+  if (state.gameOver) return;
   state.fatalMistakeReason = 'cow_milk_blind_kittens';
   triggerEndGame(
     false,
@@ -417,18 +478,21 @@ function feedCowMilkTrap() {
 }
 
 function buyBabycatFormula() {
+  if (state.gameOver) return;
   if (state.cash < 105) {
     addLog(`День ${state.day}: Не хватает средств на банку спецсмеси Royal Canin Babycat Milk (105 BYN)!`, 'danger');
     return;
   }
   state.cash = +(state.cash - 105).toFixed(1);
   state.personalMoneySpent = +(state.personalMoneySpent + 105).toFixed(1);
-  state.newborn.milkDaysLeft += 7;
-  addLog(`День ${state.day}: 🍼 Куплена банка специализированной смеси для слепышей (-105 BYN, +7 дней выкорма).`, 'success');
+  state.newborn.milkDaysLeft = (state.newborn.milkDaysLeft || 0) + 7;
+  state.newborn.knowsAboutFormula = true;
+  addLog(`День ${state.day}: 🍼 Куплена банка специализированной смеси/питания для котят Royal Canin Babycat Milk (-105 BYN, +7 дней рациона).`, 'success');
   renderAll();
 }
 
 function feedNewbornKittens() {
+  if (state.gameOver) return;
   if (state.newborn.fedToday) return;
   if (!state.newborn.knowsAboutFormula) {
     showEventModal(
@@ -471,6 +535,7 @@ function feedNewbornKittens() {
 // 9. ОСТАВИТЬ СЕБЕ ИЛИ ДРУЗЬЯМ (ЧЕСТНЫЕ ОГРАНИЧЕНИЯ, GDD 8.4)
 
 function actionKeepPetForSelf() {
+  if (state.gameOver) return;
   const a = state.animal;
   const p = state.player;
 
@@ -512,9 +577,14 @@ function actionKeepPetForSelf() {
 
 // 10. ВЫРУЧКА ОТ СВОЕГО КОТА В БЕЗДЕНЕЖЬЕ (GDD 3.4, 9.5)
 function actionShareFoodWithOwnCat() {
+  if (state.gameOver) return;
   const p = state.player;
-  if (p.ownPets.id !== 'vaccinated_cat' && p.ownPets.id !== 'unvaccinated_cat') {
+  if (!p.ownPets || (p.ownPets.id !== 'vaccinated_cat' && p.ownPets.id !== 'unvaccinated_cat')) {
     addLog(`День ${state.day}: У вас нет своего домашнего кота, не у кого просить корм!`, 'warn');
+    return;
+  }
+  if (state.animal.species !== 'cat') {
+    addLog(`День ${state.day}: ⚠️ Кошачий корм не подходит для собак из-за избытка белка и риска панкреатита! Занять корм у домашнего кота можно только для кошек.`, 'warn');
     return;
   }
   if (state.supplies.daysLeft > 2 || state.cash >= 65) {
@@ -536,6 +606,7 @@ function actionShareFoodWithOwnCat() {
 
 // 11. ЗАЩИТА ОТ КЛЕЩЕЙ ДЛЯ СОБАК (GDD 2.2, 6.3)
 function actionBuyTickProtection() {
+  if (state.gameOver) return;
   if (state.animal.species !== 'dog') {
     addLog(`День ${state.day}: Капли от клещей требуются только собакам перед прогулками!`, 'info');
     return;
@@ -553,6 +624,7 @@ function actionBuyTickProtection() {
 
 // 12. ПРОВЕРКА ПОДОПЕЧНОГО НА ИСПЫТАТЕЛЬНОМ СРОКЕ («Написать хозяевам: как дела?», GDD 8.4)
 function actionCheckTrialPetStatus() {
+  if (state.gameOver) return;
   if (!state.trialAnimals || state.trialAnimals.length === 0) {
     addLog(`День ${state.day}: Сейчас ни один из подопечных не проходит испытательный срок.`, 'info');
     return;
@@ -564,27 +636,74 @@ function actionCheckTrialPetStatus() {
     triggerRedFlagDelayedStrikeModal(item);
   } else {
     state.mental = Math.min(100, state.mental + 5);
-    addLog(`День ${state.day}: 📱 Вы написали хозяевам «${item.petName}». Прислали фото-привет: хвостик сладко спит на диване, аппетит отличный! Испытательный срок: день ${item.daysPassed}/7 (+5% Менталки).`, 'success');
+    addLog(`День ${state.day}: 📱 Вы написали хозяевам «${item.petName}». Прислали фото-привет: хвостик сладко спит на диване, аппетит отличный! Испытательный срок: день ${item.daysPassed}/${item.trialDaysTotal || 14} (+5% Менталки).`, 'success');
   }
   renderAll();
 }
 
-// 13. ИМЕНОВАНИЕ ПИТОМЦА ИЗ КАРТОТЕКИ (GDD 4.1)
+// 13. ПЕРЕКЛЮЧЕНИЕ НА ПЛАТНУЮ ПЕРЕДЕРЖКУ И ОБРАТНО (v2.2)
+function actionTogglePaidFoster() {
+  if (state.gameOver) return;
+  const a = state.animal;
+  const g = getAnimalGrammar(a);
+  const costDaily = g.isDog ? 33 : 16;
+
+  if (state.zooshans.locationStatus === 'paid_foster') {
+    state.zooshans.locationStatus = state.zooshans.hasCage ? 'home_cage' : 'home_floor';
+    addLog(`День ${state.day}: 🏠 Подопечный вернулся с платной передержки домой (${state.zooshans.hasCage ? 'в клетку' : 'на пол'}). Быт снова дома.`, 'info');
+    renderAll();
+    return;
+  }
+
+  if (!a.examinedWood || a.dewormStage < 1) {
+    addLog(`День ${state.day}: ⚠️ На платную передержку не берут с улицы вслепую! Сначала проведите первичный осмотр Вуда и 1-ю обработку от паразитов (вкладка 1).`, 'warn');
+    return;
+  }
+
+  state.zooshans.locationStatus = 'paid_foster';
+  if (state.maneuver) state.maneuver.active = false;
+  addLog(`День ${state.day}: 🏡 Подопечный переехал на платную передержку (${costDaily} BYN/сут). Домашний быт снят, но не забывайте закупать корм!`, 'info');
+  renderAll();
+}
+
+// 14. ИМЕНОВАНИЕ ПИТОМЦА ИЗ КАРТОТЕКИ С ДЕДУПЛИКАЦИЕЙ (GDD 4.1)
+function logPetNameChange(text) {
+  const fullText = `День ${state.day}: ${text}`;
+  // Если в этот же игровой день уже была смена клички — обновляем последнюю запись, чтобы не спамить лог
+  const existingIndex = state.logs.findIndex(item => item.isPetRename && item.day === state.day);
+  if (existingIndex !== -1) {
+    state.logs[existingIndex].text = fullText;
+    state.logs[existingIndex].type = 'success';
+  } else {
+    state.logs.unshift({ text: fullText, type: 'success', isPetRename: true, day: state.day });
+  }
+  renderLog();
+}
+
 function actionRollRandomPetName() {
+  if (state.gameOver) return;
   state.animal.petName = getRandomPetname();
-  addLog(`День ${state.day}: 🏷️ Подопечному присвоена кличка из картотеки «Зоошанса»: «${state.animal.petName}».`, 'info');
+  logPetNameChange(`🏷️ Подопечному присвоена кличка из картотеки «Зоошанса»: «${state.animal.petName}».`);
   renderAll();
 }
 
 function actionSetPetName(customName) {
+  if (state.gameOver) return;
   if (!customName || !customName.trim()) return;
   let clean = customName.trim();
   const parts = clean.split(/\s+/);
+  let districtAdded = false;
   if (parts.length === 1) {
     clean = getSuggestedUniquePetname(clean);
-    addLog(`День ${state.day}: 💡 По правилам картотеки Зоошанса к имени добавлен район: «${clean}».`, 'info');
+    districtAdded = true;
   }
   state.animal.petName = clean;
-  addLog(`День ${state.day}: 🏷️ Кличка подопечного обновлена: «${clean}».`, 'success');
+  const msg = districtAdded
+    ? `🏷️ Подопечному присвоена кличка: «${clean}» (к имени добавлен район по правилам картотеки).`
+    : `🏷️ Кличка подопечного обновлена: «${clean}».`;
+  logPetNameChange(msg);
   renderAll();
 }
+
+window.canAffordVetBill = canAffordVetBill;
+window.payVetBill = payVetBill;

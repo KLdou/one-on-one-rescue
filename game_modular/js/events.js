@@ -28,10 +28,11 @@ function checkMedicalAndCrisisTriggers() {
           label: 'Свозить к офтальмологу, купить капли Флоксал/Корнерегель и капать по будильнику (-70 BYN)',
           style: 'primary',
           action: () => {
-            payVetBill(70, true, 'Прием офтальмолога и схема спасения зрения', false);
+            if (!payVetBill(70, true, 'Прием офтальмолога и схема спасения зрения', false)) return;
             a.eyeDropsDaysDone = 1;
             addLog(`День ${state.day}: 👁️ Начат 10-дневный интенсивный курс капель по схеме офтальмолога.`, 'success');
             closeEventModal();
+            renderAll();
           }
         },
         {
@@ -56,14 +57,14 @@ function checkMedicalAndCrisisTriggers() {
   if ((h.deadlyVirus === 'panleukopenia' || h.deadlyVirus === 'parvovirus_enteritis') && state.day >= (h.virusIncubationDays || 4) && !state.triggeredEvents.virusOutbreak) {
     state.triggeredEvents.virusOutbreak = true;
     a.knownVirus = h.deadlyVirus === 'parvovirus_enteritis' ? 'Парвовирусный энтерит' : 'Панлейкопения';
-    a.health -= 32;
+    a.health = Math.max(25, a.health - 45); // Критическое падение здоровья
     state.mental = Math.max(0, state.mental - 25);
     checkMentalHealth();
 
     const vTitle = h.deadlyVirus === 'parvovirus_enteritis'
       ? 'ЖИЗНЕУГРОЖАЮЩЕЕ СОСТОЯНИЕ: Парвовирусный энтерит у щенков!'
       : 'ЖИЗНЕУГРОЖАЮЩЕЕ СОСТОЯНИЕ: Панлейкопения (чумка котят)!';
-    let vDesc = `Инкубационный период закончился! У ${g.gen} неукротимая рвота, отказ от еды и стремительное обезвоживание. Это прямое показание для круглосуточного инфекционного стационара и инфузоматов (140 BYN/сут | 112 BYN по талону)!`;
+    let vDesc = `Инкубационный период закончился! У ${g.gen} неукротимая рвота, профузный понос с кровью, отказ от еды и стремительное обезвоживание. Это смертельно опасное состояние, требующее круглосуточного инфекционного стационара и инфузоматов (140 BYN/сут | 112 BYN по талону)!\n\nДаже в ОРИТ есть риск гибели, а после стабилизации потребуется не менее 2 недель (14 дней) долечивания и диеты — пристройство будет отложено.`;
 
     // Заражение непривитого домашнего кота при нарушении карантина (GDD 3.4)
     if (!g.isDog && state.player.ownPets.id === 'unvaccinated_cat' && state.zooshans.locationStatus === 'home_floor') {
@@ -75,15 +76,18 @@ function checkMedicalAndCrisisTriggers() {
 
     showEventModal(vTitle, vDesc, [
       {
-        label: 'Согласовать с Колл-центром и поместить в инфекционный стационар на 2 суток (280 BYN / 224 BYN по талону)',
+        label: 'Согласовать с Колл-центром и поместить в инфекционный ОРИТ на 3 суток (336 BYN по талону)',
         style: 'primary',
         action: () => {
+          if (!payVetBill(336, true, '3 суток реанимации в инфекционном ОРИТ', true)) return;
           state.zooshans.expensiveApproved = true;
-          payVetBill(280, true, '2 суток реанимации в инфекционном стационаре', true);
-          a.health = Math.min(100, a.health + 45);
-          h.deadlyVirus = null;
-          a.knownVirus = 'Выжил после стационара';
+          a.inStationaryDaysLeft = 3;
+          a.stationaryReason = 'virus';
+          a.health = 45; // В ОРИТ, тяжелое но под контролем врачей
+          a.knownVirus = 'В инфекционном ОРИТ (капельницы)';
+          addLog(`День ${state.day}: 🏥 ${g.nom} экстренно госпитализирован(а) в инфекционный ОРИТ под инфузоматы. Врачи борются за жизнь!`, 'warn');
           closeEventModal();
+          renderAll();
         }
       },
       {
@@ -138,6 +142,10 @@ function checkMedicalAndCrisisTriggers() {
   // Д) Острая гемолитическая анемия при скрытом ВЛК на 10-й день (healthy_look_felv_cat, GDD 4.2)
   if (h.chronicCarrier === 'FeLV' && state.day >= 10 && !state.triggeredEvents.felvCrisis) {
     state.triggeredEvents.felvCrisis = true;
+    if (a.felvAntiviralActive || a.felvInfectiousConsultDone) {
+      addLog(`День ${state.day}: 🛡️ Благодаря назначенной инфекционистом противовирусной терапии (Ралтегравир) кошка благополучно миновала критический 10-й день без анемического криза! Вирусная нагрузка под контролем.`, 'success');
+      return false;
+    }
     if (Math.random() < 0.35) {
       a.health -= 35;
       state.mental = Math.max(0, state.mental - 20);
@@ -150,11 +158,12 @@ function checkMedicalAndCrisisTriggers() {
             label: 'Экстренно везти в круглосуточный ветцентр на переливание (280 BYN / 224 BYN по талону)',
             style: 'primary',
             action: () => {
+              if (!payVetBill(280, true, 'Реанимация и переливание эритроцитарной массы при ВЛК', true)) return;
               state.zooshans.expensiveApproved = true;
-              payVetBill(280, true, 'Реанимация и переливание эритроцитарной массы при ВЛК', true);
               a.health = 80;
               addLog(`День ${state.day}: 🩸 Переливание крови стабилизировало кошку при ВЛК-кризисе!`, 'success');
               closeEventModal();
+              renderAll();
             }
           },
           {
@@ -205,49 +214,80 @@ function checkMedicalAndCrisisTriggers() {
   }
 
   // Ж) Срыв взрослой собаки на прогулке на 4-й день (если нет шлейки-антипобег, GDD 7.3)
+  const isDogConfined = a.traumaOperated || h.hasSevereTrauma || a.id === 'severe_trauma_sheri_dog' || (a.inStationaryDaysLeft && a.inStationaryDaysLeft > 0);
   if (a.species === 'dog' && a.ageCategory === 'adult' && !a.hasAntiEscapeHarness && state.day === 4 && isAnimalAtPlayerHome() && !state.triggeredEvents.dogEscape) {
-    state.triggeredEvents.dogEscape = true;
-    state.escapeQuest.active = true;
-    state.escapeQuest.daysRemaining = 4;
-    state.escapeQuest.searchProgress = 0;
-    state.escapeQuest.reason = 'Срыв с ошейника от рева мотоцикла';
-    state.mental = Math.max(0, state.mental - 25);
-    checkMentalHealth();
-    showEventModal(
-      '🚨 ПОБЕГ СОБАКИ! Срыв с обычного ошейника на прогулке!',
-      `Во время вечерней прогулки рядом с ревом пронесся мотоцикл. Собака в панике вывернулась из обычного ошейника и умчалась в темные дворы!\n\nЗапущен 4-ДНЕВНЫЙ ЭКСТРЕННЫЙ КВЕСТ ПОИСКА: нужно расклеивать макеты (-15⚡), прочесывать теплотрассы и подвалы в 4 утра с фонариком (-20⚡) и опрашивать районные чаты (-10⚡), чтобы довести шкалу поиска до 100% за 4 дня!\n\nВолонтеры «Зоошанса» всегда предупреждают: собакам с улицы жизненно необходима анатомическая трехремневая шлейка-антипобег с адресником (60 BYN в магазине или бесплатно б/у в чате)!`,
-      [
-        {
-          label: 'Срочно бежать искать собаку!',
-          style: 'danger',
-          action: () => {
-            addLog(`День ${state.day}: 🚨 ЭКСТРЕННО: Собака сбежала! До окончания 4 дней доведите шкалу поиска до 100%!`, 'danger');
-            closeEventModal();
+    if (isDogConfined) {
+      if (!state.triggeredEvents.dogEscapeLogged) {
+        state.triggeredEvents.dogEscapeLogged = true;
+        addLog(`День ${state.day}: 🏥 Собака восстанавливается после операции (стационар/покой). Прогулки на поводке исключены — риск срыва и побега отсутствует.`, 'info');
+      }
+    } else {
+      state.triggeredEvents.dogEscape = true;
+      state.escapeQuest.active = true;
+      state.escapeQuest.daysRemaining = 4;
+      state.escapeQuest.searchProgress = 0;
+      state.escapeQuest.reason = 'Срыв с ошейника от рева мотоцикла';
+      state.mental = Math.max(0, state.mental - 25);
+      checkMentalHealth();
+      showEventModal(
+        '🚨 ПОБЕГ СОБАКИ! Срыв с обычного ошейника на прогулке!',
+        `Во время вечерней прогулки рядом с ревом пронесся мотоцикл. Собака в панике вывернулась из обычного ошейника и умчалась в темные дворы!\n\nЗапущен 4-ДНЕВНЫЙ ЭКСТРЕННЫЙ КВЕСТ ПОИСКА: нужно расклеивать макеты (-15⚡), прочесывать теплотрассы и подвалы в 4 утра с фонариком (-20⚡) и опрашивать районные чаты (-10⚡), чтобы довести шкалу поиска до 100% за 4 дня!\n\nВолонтеры «Зоошанса» всегда предупреждают: собакам с улицы жизненно необходима анатомическая трехремневая шлейка-антипобег с адресником (60 BYN в магазине или бесплатно б/у в чате)!`,
+        [
+          {
+            label: 'Срочно бежать искать собаку!',
+            style: 'danger',
+            action: () => {
+              addLog(`День ${state.day}: 🚨 ЭКСТРЕННО: Собака сбежала! До окончания 4 дней доведите шкалу поиска до 100%!`, 'danger');
+              closeEventModal();
+            }
           }
-        }
-      ]
-    );
-    return true;
+        ]
+      );
+      return true;
+    }
   }
 
-  // З) Открытое окно на недобросовестной передержке у новичка на 7-й день (GDD 7.3)
+  // З) Побег на недобросовестной передержке у новичка на 7-й день (GDD 7.3)
   if (state.zooshans.locationStatus === 'social_foster_novice' && state.zooshans.socialFosterDaysElapsed === 7 && !state.triggeredEvents.windowEscape) {
     state.triggeredEvents.windowEscape = true;
     state.escapeQuest.active = true;
     state.escapeQuest.daysRemaining = 4;
     state.escapeQuest.searchProgress = 0;
-    state.escapeQuest.reason = 'Побег из открытого окна на передержке';
     state.mental = Math.max(0, state.mental - 25);
     checkMentalHealth();
+
+    const isPuppy = a.species === 'dog' && (a.ageCategory === 'puppy' || a.ageDays < 180 || (a.count && a.count > 1));
+    const isDog = a.species === 'dog';
+    let escTitle = '';
+    let escDesc = '';
+    let escLog = '';
+
+    if (isPuppy) {
+      escTitle = '🚨 ЧП НА ПЕРЕДЕРЖКЕ: Щенок выскочил через незапертую дверь на улицу!';
+      escDesc = `Девушка с бесплатной передержки в слезах звонит вам: «Я открыла дверь вынести мусор, не заметила, как один щенок проскользнул в подъезд, а дверь на улицу была распахнута настежь! Он выбежал во двор и спрятался под машинами, я не смогла его догнать!»\n\nЗапущен 4-ДНЕВНЫЙ ЭКСТРЕННЫЙ КВЕСТ ПОИСКА! Срочно бросайте силы на расклейку макетов и опрос местных жителей во дворах!`;
+      state.escapeQuest.reason = 'Побег щенка через незапертую дверь';
+      escLog = `День ${state.day}: 🚨 ЭКСТРЕННО: Щенок потерян передержкой через незапертую дверь подъезда! Ищите беглеца во дворах и под машинами!`;
+    } else if (isDog) {
+      escTitle = '🚨 ЧП НА ПЕРЕДЕРЖКЕ: Собака сорвалась с ошейника на прогулке!';
+      escDesc = `Девушка с бесплатной передержки в слезах звонит вам: «Мы вышли на прогулку, резко засигналила машина — собака рванула от испуга, вывернулась из обычного ошейника и убежала во дворы! Я бегала, звала, но не нашла!»\n\nЗапущен 4-ДНЕВНЫЙ ЭКСТРЕННЫЙ КВЕСТ ПОИСКА! Срочно бросайте силы на расклейку макетов и опрос собачников!`;
+      state.escapeQuest.reason = 'Срыв собаки с ошейника на передержке';
+      escLog = `День ${state.day}: 🚨 ЭКСТРЕННО: Собака сорвалась с ошейника на передержке! Ищите беглеца во дворах и гаражах!`;
+    } else {
+      escTitle = '🚨 ЧП НА ПЕРЕДЕРЖКЕ: Кот выпрыгнул в открытое окно без сетки!';
+      escDesc = `Девушка с бесплатной передержки в слезах звонит вам: «Я открыла окно проветрить, он увидел воробья и выпрыгнул со 2 этажа в кусты! Я его не нашла!»\n\nЗапущен 4-ДНЕВНЫЙ ЭКСТРЕННЫЙ КВЕСТ ПОИСКА! Бросайте силы на расклейку макетов и ночной прочес подвалов!`;
+      state.escapeQuest.reason = 'Побег из открытого окна на передержке';
+      escLog = `День ${state.day}: 🚨 ЭКСТРЕННО: Кот потерян передержкой через окно без сеток! Ищите беглеца в подвалах!`;
+    }
+
     showEventModal(
-      '🚨 ЧП НА ПЕРЕДЕРЖКЕ: Кот выпрыгнул в открытое окно без сетки!',
-      `Девушка с бесплатной передержки в слезах звонит вам: «Я открыла окно проветрить, он увидел воробья и выпрыгнул со 2 этажа в кусты! Я его не нашла!»\n\nЗапущен 4-ДНЕВНЫЙ ЭКСТРЕННЫЙ КВЕСТ ПОИСКА! Бросайте силы на расклейку макетов и ночной прочес подвалов!`,
+      escTitle,
+      escDesc,
       [
         {
           label: 'Мчаться на место и начать поисковую операцию!',
           style: 'danger',
           action: () => {
-            addLog(`День ${state.day}: 🚨 ЭКСТРЕННО: Кот потерян передержкой через окно без сеток! Ищите беглеца в подвалах!`, 'danger');
+            addLog(escLog, 'danger');
             closeEventModal();
           }
         }
@@ -256,38 +296,43 @@ function checkMedicalAndCrisisTriggers() {
     return true;
   }
 
-  // И) Подозрение на ФИП на 14-й день (апатия, жидкость в брюшной полости)
+  // И) Подозрение на ФИП на 14-й день (апатия, жидкость в брюшной полости) — 40% шанс при здоровье < 65%
   if (state.day >= 14 && a.health < 65 && !a.fipTreatment && !a.fipCured && !state.triggeredEvents.fipAlert && a.species === 'cat') {
     state.triggeredEvents.fipAlert = true;
-    showEventModal(
-      'ПОДОЗРЕНИЕ НА ФИП (Инфекционный перитонит кошек): Жидкость в брюшной полости!',
-      `У кота волнообразная температура, апатия и округлившийся живот (выпот в брюшную полость). До появления препарата GS-441524 это был 100% смертный приговор.\n\nСегодня ФИП успешно лечится протоколом GS-441524 (84 дня ежедневных уколов или таблеток). Стоимость стартового флакона — 215 BYN (или сбор в чате волонтеров).`,
-      [
-        {
-          label: 'Начать 84-дневный протокол GS-441524 (-215 BYN со старта)',
-          style: 'primary',
-          action: () => {
-            payVetBill(215, false, 'Старт протокола GS-441524 против ФИП', true);
-            a.fipTreatment = true;
-            a.fipDaysLeft = 84;
-            a.health = 75;
-            addLog(`День ${state.day}: 💉 Начат 84-дневный курс GS-441524. Каждый день шансы на ремиссию растут!`, 'success');
-            closeEventModal();
+    if (Math.random() < 0.40) {
+      showEventModal(
+        'ПОДОЗРЕНИЕ НА ФИП (Инфекционный перитонит кошек): Жидкость в брюшной полости!',
+        `У кота волнообразная температура, апатия и округлившийся живот (выпот в брюшную полость). До появления препарата GS-441524 это был 100% смертный приговор.\n\nСегодня ФИП успешно лечится протоколом GS-441524 (84 дня ежедневных уколов или таблеток). Стоимость стартового флакона — 215 BYN (или сбор в чате волонтеров).`,
+        [
+          {
+            label: 'Начать 84-дневный протокол GS-441524 (-215 BYN со старта)',
+            style: 'primary',
+            action: () => {
+              if (!payVetBill(215, false, 'Старт протокола GS-441524 против ФИП', true)) return;
+              a.fipTreatment = true;
+              a.fipDaysLeft = 84;
+              a.health = 75;
+              addLog(`День ${state.day}: 💉 Начат 84-дневный курс GS-441524. Каждый день шансы на ремиссию растут!`, 'success');
+              closeEventModal();
+              renderAll();
+            }
+          },
+          {
+            label: 'Отказаться от терапии GS-441524 (фатальный исход)',
+            style: 'danger',
+            action: () => {
+              a.health -= 50;
+              state.fatalMistakeReason = 'fip_no_treatment';
+              closeEventModal();
+              checkAnimalHealth();
+            }
           }
-        },
-        {
-          label: 'Отказаться от терапии GS-441524 (фатальный исход)',
-          style: 'danger',
-          action: () => {
-            a.health -= 50;
-            state.fatalMistakeReason = 'fip_no_treatment';
-            closeEventModal();
-            checkAnimalHealth();
-          }
-        }
-      ]
-    );
-    return true;
+        ]
+      );
+      return true;
+    } else {
+      addLog(`День ${state.day}: 🩺 Контроль состояния (14-й день): несмотря на сниженный иммунитет (${a.health}%), выпота в брюшную полость нет — подозрение на ФИП не подтвердилось (кризис миновал)!`, 'info');
+    }
   }
 
   return false;
@@ -434,15 +479,15 @@ function triggerReturnFromTempVolunteerModal() {
   const a = state.animal;
   const g = getAnimalGrammar(a);
   showEventModal(
-    'ВОЗВРАТ СО СТАБИЛИЗАЦИИ: 10 дней перехвата волонтером истекли!',
-    `Опытная волонтер Таня звонит вам:\n\n«Привет! 10 дней прошло, я сняла острый кризис, стабилизировала ${g.acc} и выкормила соской. Но сегодня вечером мне привозят нового тяжелого сбитыша. Как мы и договаривались, забирай ${g.acc} обратно до пристройства!»`,
+    'ВОЗВРАТ С КАРАНТИНА И СТАБИЛИЗАЦИИ: 14 дней перехвата волонтером истекли!',
+    `Опытная волонтер Таня звонит вам:\n\n«Привет! 14 дней карантина и стабилизации прошло, я сняла острый кризис, стабилизировала ${g.acc} и выкормила соской. Но сегодня вечером мне привозят нового тяжелого сбитыша. Как мы и договаривались, забирай ${g.acc} обратно до пристройства!»`,
     [
       {
         label: `Забрать ${g.acc} домой (Бытовая нагрузка возвращается к вам)`,
         style: 'primary',
         action: () => {
           state.zooshans.locationStatus = state.zooshans.hasCage ? 'home_cage' : 'home_floor';
-          addLog(`День ${state.day}: 🏠 10 дней стабилизации подошли к концу — ${g.nom} вернулся(лась) к вам домой здоровым(ой) и окрепшим(ей)!`, 'info');
+          addLog(`День ${state.day}: 🏠 14 дней карантина и стабилизации подошли к концу — ${g.nom} вернулся(лась) к вам домой здоровым(ой) и окрепшим(ей)!`, 'info');
           closeEventModal();
         }
       }
@@ -595,13 +640,26 @@ function triggerBurnoutModal() {
 function triggerDay1IntroModal() {
   stopTimer();
   const choices = [];
-  if (getSavedAlbum().length > 0) {
+  const isExperienced = getSavedAlbum().length > 0;
+
+  if (isExperienced) {
     choices.push({
-      label: '🎓 Я уже опытный куратор: открыть контакты «Зоошанса» (0⚡)',
+      label: '🎓 Я уже опытный куратор: пропустить памятку и начать спасение (0⚡)',
       style: 'primary',
       action: () => {
         closeEventModal();
-        toggleExperiencedCurator(true);
+        state.onboarding.googleDone = true;
+        addLog(`День ${state.day}: 🎓 Опытный куратор: вы уже знаете правила зоозащиты! Переходим к осмотру подопечного.`, 'success');
+        switchTab('vet');
+      }
+    });
+  } else {
+    choices.push({
+      label: '🏥 Сразу заняться спасением: перейти к осмотру в клинике (0⚡)',
+      style: 'primary',
+      action: () => {
+        closeEventModal();
+        switchTab('vet');
       }
     });
   }
@@ -609,7 +667,7 @@ function triggerDay1IntroModal() {
   choices.push(
     {
       label: '🔍 Погуглить: «Нашел животное в Минске, что делать?» (-5⚡)',
-      style: getSavedAlbum().length > 0 ? 'info' : 'primary',
+      style: 'info',
       action: () => {
         closeEventModal();
         actionGoogleSearch();
@@ -635,7 +693,7 @@ function triggerDay1IntroModal() {
 
   showEventModal(
     'ОДИН НА ОДИН: ВЫ НАШЛИ БЕЗДОМНОЕ ЖИВОТНОЕ!',
-    `Вы — обычный минчанин, который шел по своим делам и наткнулся на беду. Вы не волонтер с 10-летним стажем, у вас нет подвала с клетками и волшебного номера приюта.\n\nПЕРВЫЕ 3 ДНЯ («Острая фаза») проходят в ПОШАГОВОМ режиме: автоматический таймер отключен, чтобы вы спокойно разобрались в ситуации, узнали правду о зоозащите и наметили план.\n\nЧто будете делать в первый же час?`,
+    `Вы обыкновенный человек, который просто не смог пройти мимо нуждающегося животного. Нет оборудования и понимания что делать.\n\nПЕРВЫЕ 3 ДНЯ («Острая фаза») проходят в ПОШАГОВОМ режиме: автоматический таймер отключен, чтобы вы спокойно разобрались в ситуации, узнали правду о зоозащите и наметили план.\n\nЧто будете делать в первый же час?`,
     choices
   );
 }
@@ -662,23 +720,46 @@ function triggerRedFlagDelayedStrikeModal(trialItem) {
 
 function triggerEarlyBookedTransferModal() {
   stopTimer();
-  state.pr.earlyBookedAdopterWaiting = false;
   const a = state.animal;
+  const isBeforeVaccine = !a.parasitesAndVaccinated;
+  const ageDays = a.ageDays || 45;
+
+  const desc = isBeforeVaccine
+    ? `Семья, забронировавшая малыша («${a.petName || a.title}»), готова принять его в свой дом прямо сейчас (возраст: ${ageDays} дн., до вакцинации)!\n\nОни подписывают официальный кураторский договор «Зоошанса» с обязательством сделать первую комплексную прививку по достижении 60 дней и стерилизацию по возрасту.`
+    : `Подопечный («${a.petName || a.title}») готов к переезду в забронировавшую его семью!\n\nСемья приехала с переноской и подписывает официальный договор куратора.`;
+
   showEventModal(
-    '🎉 РАННЯЯ БРОНЬ: Малыш отправляется в новый дом!',
-    `Подопечному «${a.petName || a.title}» исполнилось 2 месяца (60 дней)! Все первичные обработки и вакцинация успешно пройдены.\n\nСемья, забронировавшая малыша еще в 1.5 месяца, приехала с переноской и подписала официальный договор куратора с обязательством стерилизации по возрасту!`,
+    '🎉 РАННЯЯ БРОНЬ: Передача малыша в семью!',
+    desc,
     [
       {
-        label: 'Передать по договору на 7-дневный испытательный срок',
+        label: '🏠 Передать по договору на 14-дневный испытательный срок',
         style: 'primary',
         action: () => {
           closeEventModal();
+          state.pr.earlyBookedAdopterWaiting = false;
           initiateAnimalTransferWithTrial(false, {
             id: 'call_early_booked_adopter',
             caller: 'Семья по ранней брони',
-            dialogue: 'Мы так ждали, пока малышу исполнится 2 месяца и будут сделаны все прививки!',
-            isSafe: true
+            candidateName: 'Семья по ранней брони',
+            housing: 'Своя квартира (Минск)',
+            source: 'Соцсети (Сторителлинг)',
+            dialogue: isBeforeVaccine
+              ? '«Мы так полюбили малыша по вашим фото! Заберем домой прямо сейчас, окружим теплом, а прививки в 2 месяца сделаем сами в ветклинике по договору!»'
+              : '«Мы так ждали встречи с малышом! Все готово к его приезду».',
+            isSafe: true,
+            slot1: { title: 'Безопасность и окна', text: 'Сетки-антикошки установлены, квартира полностью подготовлена к малышу.', flag: 'green' },
+            slot2: { title: 'Кормление и бюджет на ветеринара', text: 'Закуплен суперпремиум корм, бюджет на клинику отложен.', flag: 'green' },
+            slot3: { title: 'Мотивация и договор', text: 'Подписание договора куратора с обязательством вакцинации в 60 дней и стерилизации.', flag: 'green' }
           }, { successChance: 0.95 });
+        }
+      },
+      {
+        label: '⏳ Подождать (оставить пока у себя)',
+        style: 'info',
+        action: () => {
+          closeEventModal();
+          addLog(`День ${state.day}: 📝 Малыш остается на брони у семьи. Вы можете передать его в любой день во вкладке «Быт и Пиар» (до вакцинации по договору).`, 'info');
         }
       }
     ]
@@ -689,7 +770,7 @@ function triggerTrialSuccessModal(trialItem) {
   stopTimer();
   showEventModal(
     '🎉 ИСПЫТАТЕЛЬНЫЙ СРОК УСПЕШНО ПРОЙДЕН!',
-    `Семья («${trialItem.adopterSummary}») прислала долгожданный фото-привет с дивана:\n\n«${trialItem.petName}» полностью освоился, спит на мягких подушках, мурчит на руках и радует всю семью! Испытательный срок 7 дней завершен (+15% Менталки)!\n\nХвостик официально занесен в ваш личный «Альбом спасенных хвостиков»!`,
+    `Семья («${trialItem.adopterSummary}») прислала долгожданный фото-привет с дивана:\n\n«${trialItem.petName}» полностью освоился, спит на мягких подушках, мурчит на руках и радует всю семью! 14-дневный испытательный срок успешно завершен (+15% Менталки)!\n\nХвостик официально занесен в ваш личный «Альбом спасенных хвостиков»!`,
     [
       {
         label: 'Какое счастье! (Продолжить партию)',
@@ -830,11 +911,12 @@ function triggerPiroplasmosisCrisisModal() {
         label: 'Экстренно в ветклинику: капельницы и Пиро-стоп (-80 BYN)',
         style: 'primary',
         action: () => {
-          payVetBill(80, true, 'Экстренная терапия пироплазмоза (Пиро-стоп + инфузия)', false);
+          if (!payVetBill(80, true, 'Экстренная терапия пироплазмоза (Пиро-стоп + инфузия)', false)) return;
           state.animal.health = Math.min(100, state.animal.health + 30);
           state.animal.tickProtectionDaysLeft = 30;
           addLog(`День ${state.day}: 💉 Собаку спасли от пироплазмоза! Введены антидот и капельницы, сделана защита от клещей на 30 дней.`, 'success');
           closeEventModal();
+          renderAll();
         }
       }
     ]
@@ -842,12 +924,37 @@ function triggerPiroplasmosisCrisisModal() {
 }
 
 function triggerPetNamingModal() {
+  if (state.gameOver) return;
   stopTimer();
   const a = state.animal;
-  const defName = a.petName || getRandomPetname();
+  const isLitter = (a.count > 1 || a.initialCount > 1);
+  const defName = a.petName || (isLitter ? 'Без клички' : getRandomPetname());
+  const animModal = document.getElementById('animalModal');
+  const isModalOpen = animModal && !animModal.classList.contains('hidden');
+
+  if (isModalOpen) {
+    const custom = prompt(isLitter
+      ? `Введите общее имя для выводка из ${a.activeCount || a.count} малышей (или оставьте пустым):`
+      : 'Введите имя подопечного (например, «Барсик» — по правилам картотеки Зоошанса будет добавлен район Минска):',
+      a.petName || ''
+    );
+    if (custom && custom.trim()) {
+      actionSetPetName(custom);
+    }
+    return;
+  }
+
+  const currentNameText = a.petName
+    ? `Текущая кличка: «${a.petName}»`
+    : (isLitter ? `Выводок из ${a.activeCount || a.count} малышей (без индивидуальной клички)` : 'Пока без клички');
+
+  const promptIntro = isLitter
+    ? `У вас на руках выводок из ${a.activeCount || a.count} малышей. Малышам индивидуальные клички дают будущие хозяева при усыновлении. Но вы можете дать общее имя всему выводку (например, «Малыши Рокоссовские»):\n\n${currentNameText}`
+    : `По традиции «Зоошанса», кличка подопечного должна быть уникальной, чтобы в ветклиниках не путали талоны и анализы. К обычному имени добавляется минский район или топоним находки (например, «Абрикос Рокоссовский», «Агата Ждановичская»).\n\n${currentNameText}\n\nВы можете изменить кличку или сгенерировать новую из реальной картотеки форума:`;
+
   showEventModal(
     'КАРТОТЕКА КЛИЧЕК «ЗООШАНСА» (forum.zooshans.by/app.php/petnames)',
-    `По традиции «Зоошанса», кличка подопечного должна быть уникальной, чтобы в ветклиниках не путали талоны и анализы. К обычному имени добавляется минский район или топоним находки (например, «Абрикос Рокоссовский», «Агата Ждановичская»).\n\nТекущая кличка: ${a.petName}\n\nВы можете изменить кличку или сгенерировать новую из реальной картотеки форума:`,
+    promptIntro,
     [
       {
         label: '✏️ Ввести свое имя (кличка + район Минска)',
@@ -864,14 +971,12 @@ function triggerPetNamingModal() {
         label: '🎲 Сгенерировать случайную из картотеки Зоошанса',
         style: 'info',
         action: () => {
-          a.petName = getRandomPetname();
-          addLog(`День ${state.day}: 🏷️ Подопечному присвоена уникальная кличка из картотеки: «${a.petName}».`, 'info');
+          actionRollRandomPetName();
           closeEventModal();
-          renderAll();
         }
       },
       {
-        label: `Оставить кличку «${defName}»`,
+        label: a.petName ? `Оставить кличку «${a.petName}»` : (isLitter ? 'Оставить без клички (выводок)' : 'Оставить без клички'),
         style: 'info',
         action: () => {
           closeEventModal();
