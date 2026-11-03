@@ -141,20 +141,28 @@
         </div>
 
         <!-- Шкала: Годовой лимит сбора на карту (6500 BYN) -->
-        <div class="mt-1">
+        <div id="widget-card-limit" class="resource-widget mt-1 cursor-pointer" onclick="toggleResourceTooltip('tooltip-card-limit')" title="Нажмите или наведите для справки о сборах">
           <div class="flex justify-between text-[11px] font-mono mb-1">
-            <span class="text-[var(--text-secondary)]">Сбор на карту</span>
+            <span class="text-[var(--text-secondary)] flex items-center gap-1">
+              <span>Сбор на карту</span>
+              <span class="text-[9px] opacity-70">ℹ️</span>
+            </span>
             <span id="cardLimitBadge" class="font-bold text-emerald-700">0 / 6500 BYN</span>
           </div>
           <div class="stat-progress-track">
             <div id="cardLimitBar" class="h-full bg-emerald-600 transition-all duration-300" style="width: 0%"></div>
           </div>
+          <!-- Всплывающий тултип сбора на карту -->
+          <div id="tooltip-card-limit" class="resource-tooltip"></div>
         </div>
 
         <!-- Шкала: Лимит талона Зоошанса (1000 BYN) -->
-        <div>
+        <div id="widget-voucher" class="resource-widget mt-2 cursor-pointer" onclick="toggleResourceTooltip('tooltip-voucher')" title="Нажмите или наведите для условий талона">
           <div class="flex justify-between text-[11px] font-mono mb-1">
-            <span class="text-[var(--text-secondary)]">Талон «Зоошанса»</span>
+            <span class="text-[var(--text-secondary)] flex items-center gap-1">
+              <span>Талон «Зоошанса»</span>
+              <span class="text-[9px] opacity-70">ℹ️</span>
+            </span>
             <span id="voucherDebtText" class="font-bold text-amber-700">0 / 1000 BYN</span>
           </div>
           <div class="stat-progress-track">
@@ -163,13 +171,18 @@
           <div class="flex justify-between text-[10px] font-mono text-[var(--text-muted)] mt-0.5">
             <span id="voucherTimerText">Срок: 30 дней</span>
           </div>
+          <!-- Всплывающий тултип талона Зоошанса -->
+          <div id="tooltip-voucher" class="resource-tooltip"></div>
         </div>
       </div>
 
       <!-- Карточка: Инвентарь и снабжение -->
-      <div class="pt-3 border-t border-[var(--border-subtle)] flex flex-col gap-2">
+      <div id="widget-supply" class="resource-widget pt-3 border-t border-[var(--border-subtle)] flex flex-col gap-2 cursor-pointer" onclick="toggleResourceTooltip('tooltip-supply')" title="Нажмите или наведите для справки о запасах и расходах">
         <div class="flex items-center justify-between">
-          <span class="text-xs font-mono uppercase font-bold text-[var(--text-secondary)]">🛒 Снабжение и быт</span>
+          <span class="text-xs font-mono uppercase font-bold text-[var(--text-secondary)] flex items-center gap-1">
+            <span>🛒 Снабжение и быт</span>
+            <span class="text-[10px] opacity-70">ℹ️</span>
+          </span>
           <span id="supplyDaysBadge" class="craft-badge text-[11px] font-bold text-emerald-800 bg-emerald-50 border-emerald-300">
             Корм: 4 дн.
           </span>
@@ -188,6 +201,8 @@
           <span id="dailyExpenseLabel" class="text-rose-700 font-semibold">Быт: -10⚡/д</span>
           <span id="salaryCountdown" class="text-amber-700 font-bold">ЗП через 30 дн.</span>
         </div>
+        <!-- Всплывающий тултип снабжения -->
+        <div id="tooltip-supply" class="resource-tooltip"></div>
 
         <!-- Переключение на платную передержку (v2.2) -->
         <div class="flex items-center justify-between font-mono text-xs pt-1 border-t border-[var(--border-subtle)]/50">
@@ -257,33 +272,46 @@
       <section class="grid grid-cols-2 lg:grid-cols-4 gap-2">
         
         <!-- Бюджет (BYN) -->
-        <div class="craft-card p-2.5 flex flex-col justify-between">
-          <div class="text-[10px] font-mono uppercase text-[var(--text-secondary)]">💰 Бюджет (BYN)</div>
+        <div id="widget-cash" class="craft-card resource-widget p-2.5 flex flex-col justify-between" onclick="toggleResourceTooltip('tooltip-cash')" title="Нажмите или наведите для подсказки о восполнении бюджета">
+          <div class="flex justify-between items-center text-[10px] font-mono">
+            <span class="uppercase text-[var(--text-secondary)] font-bold">💰 Бюджет (BYN)</span>
+            <span class="text-[10px] text-emerald-600 opacity-70">ℹ️</span>
+          </div>
           <div class="flex items-baseline gap-1 mt-1">
             <span id="cashValue" class="font-mono font-extrabold text-base sm:text-lg text-emerald-700">280 BYN</span>
           </div>
           <div class="text-[10px] font-mono text-[var(--text-muted)] mt-0.5">Личные средства</div>
+          <!-- Всплывающий тултип Бюджета -->
+          <div id="tooltip-cash" class="resource-tooltip"></div>
         </div>
 
         <!-- Менталка % -->
-        <div class="craft-card p-2.5 flex flex-col justify-between">
+        <div id="widget-mental" class="craft-card resource-widget p-2.5 flex flex-col justify-between" onclick="toggleResourceTooltip('tooltip-mental')" title="Нажмите или наведите для подсказки о менталке">
           <div class="flex justify-between items-center text-[10px] font-mono">
-            <span class="uppercase text-[var(--text-secondary)]">🧠 Менталка</span>
-            <span id="mentalValue" class="font-bold text-purple-700">100%</span>
+            <span class="uppercase text-[var(--text-secondary)] font-bold">🧠 Менталка</span>
+            <div class="flex items-center gap-1">
+              <span id="mentalValue" class="font-bold text-purple-700">100%</span>
+              <span class="text-[10px] text-purple-600 opacity-70">ℹ️</span>
+            </div>
           </div>
           <div class="stat-progress-track mt-1.5">
             <div id="mentalBar" class="bar-mental" style="width: 100%"></div>
           </div>
           <div class="text-[10px] font-mono text-[var(--text-muted)] mt-0.5">Ресурс куратора</div>
+          <!-- Всплывающий тултип Менталки -->
+          <div id="tooltip-mental" class="resource-tooltip"></div>
         </div>
 
         <!-- Энергия ⚡ (двухсегментный бар: доступно + полосатый резерв быта) -->
-        <div class="craft-card p-2.5 flex flex-col justify-between relative group cursor-pointer" id="energy-widget" onclick="toggleEnergyTooltip()" title="Нажмите для расшифровки быта">
+        <div class="craft-card resource-widget p-2.5 flex flex-col justify-between" id="energy-widget" onclick="toggleResourceTooltip('energy-tooltip')" title="Нажмите или наведите для расшифровки быта и энергии">
           <div class="flex justify-between items-center text-[10px] font-mono">
             <span class="uppercase text-[var(--text-secondary)] font-bold">⚡ Энергия</span>
-            <span class="font-bold text-amber-700 shrink-0">
-              <span id="energy-free-val">90⚡</span><span class="text-slate-400 font-normal"> / </span><span id="energy-lock-val" class="text-amber-800">10🔒</span>
-            </span>
+            <div class="flex items-center gap-1">
+              <span class="font-bold text-amber-700 shrink-0">
+                <span id="energy-free-val">90⚡</span><span class="text-slate-400 font-normal"> / </span><span id="energy-lock-val" class="text-amber-800">10🔒</span>
+              </span>
+              <span class="text-[10px] text-amber-600 opacity-70">ℹ️</span>
+            </div>
             <span id="energyValue" class="hidden font-bold text-amber-700">100⚡</span>
           </div>
           <div class="dual-progress-track mt-1.5">
@@ -294,23 +322,25 @@
             <span>Свободно / Быт</span>
             <span id="energyReserveLabel" class="text-amber-800 font-semibold">-10⚡/д</span>
           </div>
-          <!-- Всплывающий тултип с разбивкой быта (GDD 4.1) -->
-          <div id="energy-tooltip" class="hidden absolute top-full left-0 right-0 mt-1 z-20 bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-lg p-2 shadow-lg text-[10px] font-mono text-[var(--text-primary)]">
-            <div class="font-bold text-amber-800" id="energyTooltipTitle">🔒 Резерв на быт дома</div>
-            <p id="energy-breakdown-text" class="text-[var(--text-secondary)] mt-0.5 leading-snug"></p>
-          </div>
+          <!-- Всплывающий тултип энергии -->
+          <div id="energy-tooltip" class="resource-tooltip"></div>
         </div>
 
         <!-- Жизнь подопечного % -->
-        <div class="craft-card p-2.5 flex flex-col justify-between">
+        <div id="widget-health" class="craft-card resource-widget p-2.5 flex flex-col justify-between" onclick="toggleResourceTooltip('tooltip-health')" title="Нажмите или наведите для подсказки о здоровье и лечении">
           <div class="flex justify-between items-center text-[10px] font-mono">
             <span class="uppercase text-[var(--text-secondary)] font-bold">❤️ Здоровье питомца</span>
-            <span id="animalHealthValue" class="font-bold text-rose-700 shrink-0">88%</span>
+            <div class="flex items-center gap-1">
+              <span id="animalHealthValue" class="font-bold text-rose-700 shrink-0">88%</span>
+              <span class="text-[10px] text-rose-600 opacity-70">ℹ️</span>
+            </div>
           </div>
           <div class="stat-progress-track mt-1.5">
             <div id="healthBar" class="bar-health" style="width: 88%"></div>
           </div>
           <div class="text-[10px] font-mono text-[var(--text-muted)] mt-0.5">Жизненный ресурс</div>
+          <!-- Всплывающий тултип Здоровья -->
+          <div id="tooltip-health" class="resource-tooltip align-right"></div>
         </div>
 
       </section>

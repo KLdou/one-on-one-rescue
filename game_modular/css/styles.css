@@ -920,3 +920,135 @@ body {
   }
 }
 
+/* ================= ИНТЕРАКТИВНЫЕ ПОДСКАЗКИ РЕСУРСОВ (HUD И СНАБЖЕНИЕ) ================= */
+.resource-widget {
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.resource-widget:hover {
+  border-color: var(--season-accent, #10b981);
+}
+
+.resource-tooltip {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 50;
+  width: 290px;
+  max-width: min(320px, calc(100vw - 28px));
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: 0.75rem;
+  box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.18), 0 6px 12px -2px rgba(0, 0, 0, 0.08);
+  padding: 10px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-primary);
+  pointer-events: auto;
+  text-align: left;
+  animation: tooltipFadeIn 0.18s ease-out;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Выравнивание по правому краю для правых карточек */
+.resource-tooltip.align-right {
+  left: auto;
+  right: 0;
+}
+
+@media (max-width: 1024px) {
+  /* В 2-колоночной сетке HUD на мобильных правые виджеты ровняем вправо */
+  .grid-cols-2 > .resource-widget:nth-child(even) .resource-tooltip {
+    left: auto;
+    right: 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  /* В 4-колоночной сетке HUD на десктопе 3 и 4 колонки выравниваем по правому краю */
+  .lg\:grid-cols-4 > .resource-widget:nth-child(3) .resource-tooltip,
+  .lg\:grid-cols-4 > .resource-widget:nth-child(4) .resource-tooltip {
+    left: auto;
+    right: 0;
+  }
+}
+
+/* Показ по hover на десктопах */
+@media (hover: hover) and (pointer: fine) {
+  .resource-widget:hover > .resource-tooltip {
+    display: block;
+  }
+}
+
+/* Принудительный показ по клику/тапу (для тач-устройств и десктопа) */
+.resource-tooltip.show {
+  display: block !important;
+}
+
+/* Стилизация внутренних секций тултипа */
+.resource-tooltip-header {
+  font-weight: 800;
+  font-size: 12px;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.resource-tooltip-section {
+  margin-top: 6px;
+  padding-top: 5px;
+  border-top: 1px dashed var(--border-subtle);
+}
+
+.resource-tooltip-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.resource-tooltip-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-size: 10.5px;
+  margin-top: 2px;
+}
+
+.resource-tooltip-item .bullet {
+  flex-shrink: 0;
+  font-weight: 700;
+}
+
+.resource-tooltip-badge {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 9.5px;
+  font-weight: 700;
+}
+
+
