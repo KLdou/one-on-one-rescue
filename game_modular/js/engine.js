@@ -92,6 +92,9 @@ function stopTimer() {
     tickTimer = null;
   }
   updateSpeedButtonsUI();
+  if (typeof closeAllResourceTooltips === 'function') {
+    closeAllResourceTooltips();
+  }
 }
 
 function advanceAcuteDay() {

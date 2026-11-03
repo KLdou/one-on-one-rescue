@@ -147,6 +147,9 @@ function buildPetSVG(a, showCage = true) {
 
 function switchTab(tabName) {
   activeTab = tabName;
+  if (typeof closeAllResourceTooltips === 'function') {
+    closeAllResourceTooltips();
+  }
   ['vet', 'zooshans', 'care'].forEach(t => {
     const content = document.getElementById('tabContent_' + t);
     const btn = document.getElementById('tabBtn_' + t);
@@ -168,6 +171,7 @@ function renderAll() {
   renderDeadlines();
   renderLog();
   updateHeaderMentorCounter();
+  updateResourceTooltips();
 }
 
 function renderTopBar() {
@@ -3187,12 +3191,389 @@ window.closeScenarioPickerModal = closeScenarioPickerModal;
 window.filterScenarioPicker = filterScenarioPicker;
 window.selectScenarioAndStart = selectScenarioAndStart;
 
-function toggleEnergyTooltip() {
-  const tt = document.getElementById('energy-tooltip');
-  if (tt) {
-    tt.classList.toggle('hidden');
+// ================= ИНТЕРАКТИВНЫЕ ПОДСКАЗКИ РЕСУРСОВ (HUD И СНАБЖЕНИЕ) =================
+
+function getResourceTooltipData(st = window.state) {
+  if (!st) return null;
+  const a = st.animal || {};
+  const p = st.player || {};
+  const z = st.zooshans || {};
+  const f = st.fundraising || {};
+  const isHome = typeof isAnimalAtPlayerHome === 'function' ? isAnimalAtPlayerHome() : true;
+  const nActive = a.activeCount !== undefined ? a.activeCount : (a.count || 1);
+  const nTotal = a.totalCount || a.count || 1;
+
+  // 1. БЮДЖЕТ (BYN)
+  const currentCash = +(st.cash || 0).toFixed(1);
+  const monthlySalary = p.income?.monthlyFreeCash || 400;
+  const daysInCycle = st.day ? (st.day % 30) : 1;
+  const isSalaryToday = st.day ? (st.day % 30 === 0) : false;
+  const daysUntilSalary = isSalaryToday ? 0 : (30 - daysInCycle);
+  const cardRaised = f.personalCardRaisedYear || 0;
+  const cardLimit = 6500;
+  const cardPercent = Math.min(100, Math.round((cardRaised / cardLimit) * 100));
+  const socialMultiplier = p.socialCapital?.multiplier || 1.0;
+  const socialLabel = p.socialCapital?.label || 'Обычный круг';
+  const taxiExtra = p.mobility?.extraTaxiCost || 0;
+
+  // 2. МЕНТАЛКА (%)
+  const currentMental = Math.round(st.mental || 0);
+  const familyMentalBonus = p.family?.mentalBonus || 0;
+  const familyLabel = p.family?.label || 'Семья';
+  const housingDrain = (isHome && nActive > 0) ? (p.housing?.dailyMentalDrain || 0) : 0;
+  const housingLabel = p.housing?.label || 'Свое жилье';
+  const litterDrain = (isHome && nActive > 0 && !a.litterTrained) ? 3 : 0;
+  const netDailyMental = familyMentalBonus - (housingDrain + litterDrain);
+
+  // 3. ЭНЕРГИЯ (⚡)
+  const totalEnergy = Math.round(st.energy || 0);
+  const householdDrain = (typeof calculateDailyHouseholdEnergyDrain === 'function') ? calculateDailyHouseholdEnergyDrain() : 0;
+  const lockedEnergy = isHome ? householdDrain : 0;
+  const freeEnergy = Math.max(0, totalEnergy - lockedEnergy);
+  const morningEnergyBonus = p.family?.energyBonus || 32;
+  const netMorningEnergy = morningEnergyBonus - householdDrain;
+
+  const householdItems = [];
+  if (isHome && nActive > 0) {
+    if (st.newborn && st.newborn.active) {
+      householdItems.push('Выкармливание слепышей каждые 2 ч (-30⚡)');
+    } else if (nTotal > 1) {
+      householdItems.push(`Выводок (${nActive}/${nTotal} шт.)`);
+    } else {
+      householdItems.push(a.species === 'dog' ? 'Выгул и уход за собакой (-16..25⚡)' : 'Лоток и кормление кота (-10⚡)');
+    }
+    if (!a.litterTrained) householdItems.push('Уборка луж до приучения (-12⚡)');
+    if (a.knownRingworm === true) householdItems.push('Обработки очагов лишая (-12⚡)');
+    if (a.hiddenState?.isJawFracture && a.hiddenState.syringeDaysLeft > 0) householdItems.push('Шприцевой докорм челюсти (-20⚡)');
+    if (!a.eyeDropsCompleted) householdItems.push('Капли в глаза каждые 2 ч (-15⚡)');
+    if (!a.giProtocolCompleted) householdItems.push('Лечение диареи/ЖКТ (-12⚡)');
+    if (st.pr && st.pr.lostSearchActive) householdItems.push('Поиск беглеца (-10⚡)');
+  }
+
+  // 4. ЗДОРОВЬЕ ПИТОМЦА (%)
+  const currentHealth = Math.round(a.health || 0);
+  const inStationary = (a.inStationaryDaysLeft || 0) > 0;
+  const stationaryDaysLeft = a.inStationaryDaysLeft || 0;
+  const stationaryRecoveryRate = a.stationaryReason === 'virus' ? 12 : 8;
+  const foodDaysLeft = a.foodDaysLeft !== undefined ? a.foodDaysLeft : 4;
+  const isStarving = foodDaysLeft <= 0 && nActive > 0;
+
+  // 5. ЛИМИТ СБОРА НА КАРТУ
+  const cardRemaining = Math.max(0, cardLimit - cardRaised);
+
+  // 6. ТАЛОН ЗООШАНСА
+  const voucherDebt = +(z.debt || 0).toFixed(1);
+  const voucherLimit = 1000;
+  const voucherPercent = Math.min(100, Math.round((voucherDebt / voucherLimit) * 100));
+  const voucherDaysLeft = z.voucherDaysLeft !== undefined ? z.voucherDaysLeft : 30;
+  const isSubmitted = !!z.applicationSubmitted;
+  const hasDiscount = z.clinicMode === 'partner_cash';
+
+  // 7. СНАБЖЕНИЕ
+  const milkDaysLeft = st.newborn?.milkDaysLeft || 0;
+  const isNewborn = !!(st.newborn && st.newborn.active);
+  const locationStatus = z.locationStatus || 'home_floor';
+  const isPaidFoster = locationStatus === 'paid_foster';
+  const paidFosterDailyCost = isPaidFoster ? (a.species === 'dog' ? 33 : 16) : 0;
+
+  return {
+    cash: {
+      current: currentCash,
+      monthlySalary,
+      daysUntilSalary,
+      isSalaryToday,
+      cardRaisedYear: cardRaised,
+      cardLimit,
+      cardPercent,
+      socialMultiplier,
+      socialLabel,
+      taxiExtra
+    },
+    mental: {
+      current: currentMental,
+      familyBonus: familyMentalBonus,
+      familyLabel,
+      housingDrain,
+      housingLabel,
+      litterDrain,
+      netDailyChange: netDailyMental
+    },
+    energy: {
+      total: totalEnergy,
+      free: freeEnergy,
+      locked: lockedEnergy,
+      morningBonus: morningEnergyBonus,
+      householdDrain,
+      householdItems,
+      netMorningChange: netMorningEnergy
+    },
+    health: {
+      current: currentHealth,
+      species: a.species || 'cat',
+      title: a.title || 'Найденыш',
+      inStationary,
+      stationaryDaysLeft,
+      stationaryRecoveryRate,
+      foodDaysLeft,
+      isStarving,
+      hasTrauma: !!(a.hiddenState?.hasSevereTrauma && !a.traumaOperated),
+      hasRingworm: a.knownRingworm === true
+    },
+    cardLimit: {
+      raised: cardRaised,
+      limit: cardLimit,
+      percent: cardPercent,
+      remaining: cardRemaining,
+      socialMultiplier,
+      socialLabel
+    },
+    voucher: {
+      debt: voucherDebt,
+      limit: voucherLimit,
+      percent: voucherPercent,
+      daysLeft: voucherDaysLeft,
+      isSubmitted,
+      hasDiscount
+    },
+    supply: {
+      foodDaysLeft,
+      milkDaysLeft,
+      isNewborn,
+      locationStatus,
+      isPaidFoster,
+      dailyCost: paidFosterDailyCost
+    }
+  };
+}
+
+function updateResourceTooltips() {
+  if (typeof document === 'undefined') return;
+  const data = getResourceTooltipData(window.state);
+  if (!data) return;
+
+  // 1. Тултип Бюджета (#tooltip-cash)
+  const elCash = document.getElementById('tooltip-cash');
+  if (elCash) {
+    elCash.innerHTML = `
+      <div class="resource-tooltip-header">
+        <span class="text-emerald-700 font-extrabold">💰 Бюджет: ${data.cash.current} BYN</span>
+        <span class="resource-tooltip-badge ${data.cash.isSalaryToday ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-50 text-emerald-800 border border-emerald-300'}">
+          ${data.cash.isSalaryToday ? 'ЗП сегодня!' : `ЗП через ${data.cash.daysUntilSalary} дн.`}
+        </span>
+      </div>
+      <div>
+        <div class="resource-tooltip-title text-emerald-700">🟢 Как пополняется:</div>
+        <div class="resource-tooltip-item"><span class="bullet text-emerald-600">+</span><span>Зарплата раз в 30 дн.: <b>+${data.cash.monthlySalary} BYN</b></span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-emerald-600">+</span><span>Сборы на карту: вкладка 3 («Пиар», до 6500 BYN)</span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-emerald-600">+</span><span>Посылки добра и помощь подписчиков</span></div>
+      </div>
+      <div class="resource-tooltip-section">
+        <div class="resource-tooltip-title text-rose-700">🔴 Основные траты:</div>
+        <div class="resource-tooltip-item"><span class="bullet text-rose-600">-</span><span>Ветклиника: приемы, анализы, операции, вакцины</span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-rose-600">-</span><span>Корм: 65 BYN (кот) / 120 BYN (собака) на 14 дн.</span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-rose-600">-</span><span>Платная передержка: 16/33 BYN в сутки</span></div>
+        ${data.cash.taxiExtra > 0 ? `<div class="resource-tooltip-item"><span class="bullet text-amber-600">🚕</span><span>Такси без авто: <b>+${data.cash.taxiExtra} BYN</b> к поездкам</span></div>` : ''}
+      </div>
+    `;
+  }
+
+  // 2. Тултип Менталки (#tooltip-mental)
+  const elMental = document.getElementById('tooltip-mental');
+  if (elMental) {
+    elMental.innerHTML = `
+      <div class="resource-tooltip-header">
+        <span class="text-purple-700 font-extrabold">🧠 Менталка: ${data.mental.current}%</span>
+        <span class="resource-tooltip-badge ${data.mental.netDailyChange >= 0 ? 'bg-emerald-50 text-emerald-800 border border-emerald-300' : 'bg-rose-50 text-rose-800 border border-rose-300'}">
+          Сутки: ${data.mental.netDailyChange >= 0 ? `+${data.mental.netDailyChange}` : data.mental.netDailyChange}%/д
+        </span>
+      </div>
+      <div>
+        <div class="resource-tooltip-title text-emerald-700">🟢 Как восполнять:</div>
+        <div class="resource-tooltip-item"><span class="bullet text-emerald-600">+</span><span>Семья: <b>${data.mental.familyBonus >= 0 ? `+${data.mental.familyBonus}` : data.mental.familyBonus}%/д</b> (${data.mental.familyLabel})</span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-emerald-600">+</span><span>Отдых: чай с котом (+8%), фотосессии (+5%)</span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-emerald-600">+</span><span>Успехи: лоток (+10%), выздоровление (+15%), пристройство (+25%)</span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-emerald-600">+</span><span>Передержка: переезд снимает бытовой стресс дома</span></div>
+      </div>
+      <div class="resource-tooltip-section">
+        <div class="resource-tooltip-title text-rose-700">🔴 От чего падает:</div>
+        ${data.mental.litterDrain > 0 ? `<div class="resource-tooltip-item"><span class="bullet text-rose-600">-</span><span>Лужи и промахи лотка: <b>-${data.mental.litterDrain}%/день</b></span></div>` : '<div class="resource-tooltip-item"><span class="bullet text-emerald-600">✓</span><span>Питомец приучен к лотку (стресса нет)</span></div>'}
+        ${data.mental.housingDrain > 0 ? `<div class="resource-tooltip-item"><span class="bullet text-rose-600">-</span><span>Давление жилья: <b>-${data.mental.housingDrain}%/день</b> (${data.mental.housingLabel})</span></div>` : '<div class="resource-tooltip-item"><span class="bullet text-emerald-600">✓</span><span>Свое жилье: претензий хозяев нет</span></div>'}
+        <div class="resource-tooltip-item"><span class="bullet text-rose-600">-</span><span>Кризисы: возврат с испытательного, долги, ЧП</span></div>
+      </div>
+    `;
+  }
+
+  // 3. Тултип Энергии (#energy-tooltip)
+  const elEnergy = document.getElementById('energy-tooltip');
+  if (elEnergy) {
+    elEnergy.innerHTML = `
+      <div class="resource-tooltip-header">
+        <span class="text-amber-700 font-extrabold">⚡ Энергия: ${data.energy.free}⚡ / ${data.energy.locked}🔒</span>
+        <span class="resource-tooltip-badge bg-amber-50 text-amber-900 border border-amber-300">
+          Сон: +${data.energy.morningBonus}⚡/д
+        </span>
+      </div>
+      <div>
+        <div class="resource-tooltip-title text-emerald-700">🟢 Как восстанавливается:</div>
+        <div class="resource-tooltip-item"><span class="bullet text-emerald-600">+</span><span>Сон в начале дня: базовое от семьи <b>+${data.energy.morningBonus}⚡/д</b></span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-emerald-600">+</span><span>Передержка/стационар: быт дома = <b>0⚡</b></span></div>
+      </div>
+      <div class="resource-tooltip-section">
+        <div class="resource-tooltip-title text-amber-800">🔒 Резерв быта дома: -${data.energy.locked}⚡/день</div>
+        ${data.energy.householdItems.length > 0 
+          ? data.energy.householdItems.map(item => `<div class="resource-tooltip-item"><span class="bullet text-amber-700">•</span><span>${item}</span></div>`).join('') 
+          : '<div class="resource-tooltip-item"><span class="bullet text-emerald-600">✓</span><span>Бытовой резерв дома: 0⚡</span></div>'}
+      </div>
+      <div class="resource-tooltip-section">
+        <div class="resource-tooltip-title text-slate-700">⚡ Расход на действия куратора:</div>
+        <div class="resource-tooltip-item"><span class="bullet text-slate-600">-</span><span>Клиника: -5..20⚡ (зависит от авто/такси)</span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-slate-600">-</span><span>Посты и пиар: -5..10⚡</span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-slate-600">-</span><span>Выкорм слепышей: -15⚡ из соски</span></div>
+      </div>
+    `;
+  }
+
+  // 4. Тултип Здоровья (#tooltip-health)
+  const elHealth = document.getElementById('tooltip-health');
+  if (elHealth) {
+    elHealth.innerHTML = `
+      <div class="resource-tooltip-header">
+        <span class="text-rose-700 font-extrabold">❤️ Здоровье питомца: ${data.health.current}%</span>
+        <span class="resource-tooltip-badge ${data.health.current > 70 ? 'bg-emerald-50 text-emerald-800 border border-emerald-300' : 'bg-rose-50 text-rose-800 border border-rose-300'}">
+          ${data.health.inStationary ? `ОРИТ +${data.health.stationaryRecoveryRate}%/д` : (data.health.current > 70 ? 'Стабильно' : (data.health.current > 40 ? 'Средняя тяжесть' : 'Критическое'))}
+        </span>
+      </div>
+      <div>
+        <div class="resource-tooltip-title text-emerald-700">🟢 Как восстанавливать:</div>
+        <div class="resource-tooltip-item"><span class="bullet text-emerald-600">+</span><span>Ветклиника: первичный осмотр, противошоковая терапия</span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-emerald-600">+</span><span>Стационар ОРИТ: капельницы и инфузоматы (+8..12%/сутки)</span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-emerald-600">+</span><span>Лечение дома: капли для глаз (2 ч), ЖКТ-протокол, антибиотики</span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-emerald-600">+</span><span>Питание: качественный корм, спецсмесь Babycat</span></div>
+      </div>
+      <div class="resource-tooltip-section">
+        <div class="resource-tooltip-title text-rose-700">🔴 Опасности и риски:</div>
+        <div class="resource-tooltip-item"><span class="bullet text-rose-600">⚠️</span><span>${data.health.isStarving ? '<b class="text-rose-700">ГОЛОД! Корм закончился (урон здоровью)!</b>' : `Запас корма: ${data.health.foodDaysLeft} дн. (при 0 дн. — голодание)`}</span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-rose-600">-</span><span>Клещи весной/осенью: смертельный пироплазмоз без капель</span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-rose-600">-</span><span>Побег на улицу (зимой урон от мороза x2)</span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-rose-600">-</span><span>Коровье молоко: диарея и гибель подсосных котят</span></div>
+      </div>
+    `;
+  }
+
+  // 5. Тултип Лимита карты (#tooltip-card-limit)
+  const elCard = document.getElementById('tooltip-card-limit');
+  if (elCard) {
+    elCard.innerHTML = `
+      <div class="resource-tooltip-header">
+        <span class="text-emerald-700 font-extrabold">💳 Сбор на карту физлица</span>
+        <span class="resource-tooltip-badge bg-emerald-50 text-emerald-800 border border-emerald-300">
+          ${data.cardLimit.raised} / 6500 BYN
+        </span>
+      </div>
+      <div>
+        <div class="resource-tooltip-title text-slate-700">ℹ️ Закон РБ о дарении (ст. 208 НК РБ):</div>
+        <div class="resource-tooltip-item"><span class="bullet text-slate-600">•</span><span>Безналоговый лимит на личную карту: <b>6500 BYN в год</b>.</span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-slate-600">•</span><span>Остаток лимита в этом году: <b>${data.cardLimit.remaining} BYN</b> (${data.cardLimit.percent}% исчерпано).</span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-slate-600">•</span><span>Посты со сбором запускаются во вкладке 3 («Быт и Пиар»).</span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-slate-600">•</span><span>Множитель соцкапитала: <b>${data.cardLimit.socialMultiplier}x</b> (${data.cardLimit.socialLabel}).</span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-amber-700">⚠️</span><span>При исчерпании лимита сборы переводятся на счета «Зоошанса».</span></div>
+      </div>
+    `;
+  }
+
+  // 6. Тултип Талона Зоошанса (#tooltip-voucher)
+  const elVoucher = document.getElementById('tooltip-voucher');
+  if (elVoucher) {
+    elVoucher.innerHTML = `
+      <div class="resource-tooltip-header">
+        <span class="text-amber-800 font-extrabold">🏥 Талон «Зоошанса»</span>
+        <span class="resource-tooltip-badge bg-amber-50 text-amber-900 border border-amber-300">
+          Долг: ${data.voucher.debt} / 1000 BYN
+        </span>
+      </div>
+      <div>
+        <div class="resource-tooltip-title text-slate-700">ℹ️ Программа поддержки кураторов:</div>
+        <div class="resource-tooltip-item"><span class="bullet text-emerald-600">✓</span><span><b>Скидка 20%</b> на базовые услуги в клинике-партнере («Клиника А»).</span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-slate-600">•</span><span>Лимит лечения в долг: <b>до 1000 BYN</b> на срок до <b>30 дней</b>.</span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-slate-600">•</span><span>Оставшийся срок действия: <b>${data.voucher.daysLeft} дн.</b></span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-slate-600">•</span><span>Активируется регистрацией заявления во вкладке 2 («Зоошанс»).</span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-rose-600">⚠️</span><span>Долг необходимо погасить до истечения 30 дней.</span></div>
+      </div>
+    `;
+  }
+
+  // 7. Тултип Снабжения (#tooltip-supply)
+  const elSupply = document.getElementById('tooltip-supply');
+  if (elSupply) {
+    elSupply.innerHTML = `
+      <div class="resource-tooltip-header">
+        <span class="text-sky-800 font-extrabold">🛒 Снабжение и передержка</span>
+        <span class="resource-tooltip-badge bg-sky-50 text-sky-800 border border-sky-300">
+          Корм: ${data.supply.foodDaysLeft} дн.
+        </span>
+      </div>
+      <div>
+        <div class="resource-tooltip-title text-slate-700">ℹ️ Правила снабжения:</div>
+        <div class="resource-tooltip-item"><span class="bullet text-slate-600">•</span><span>1 пачка корма рассчитана ровно на <b>14 дней</b> ухода.</span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-slate-600">•</span><span>Покупка корма: <b>65 BYN</b> (кот) / <b>120 BYN</b> (собака) во вкладке 3.</span></div>
+        ${data.supply.isNewborn ? `<div class="resource-tooltip-item"><span class="bullet text-amber-600">🍼</span><span>Запас спецсмеси Babycat: <b>${data.supply.milkDaysLeft} дн.</b> (105 BYN/банка)</span></div>` : ''}
+        <div class="resource-tooltip-item"><span class="bullet text-slate-600">•</span><span>${data.supply.isPaidFoster ? `Платная передержка: <b>${data.supply.dailyCost} BYN/сутки</b> (быт дома = 0⚡).` : 'Питомец дома: требует ежедневного расхода энергии на уход.'}</span></div>
+        <div class="resource-tooltip-item"><span class="bullet text-rose-600">⚠️</span><span>При 0 дней корма питомец голодает и ежедневно теряет здоровье!</span></div>
+      </div>
+    `;
   }
 }
+
+function toggleResourceTooltip(tooltipId) {
+  if (typeof document === 'undefined') return;
+  const target = document.getElementById(tooltipId);
+  if (!target) return;
+  const isShown = target.classList.contains('show');
+  closeAllResourceTooltips();
+  if (!isShown) {
+    target.classList.add('show');
+  }
+}
+
+function closeAllResourceTooltips() {
+  if (typeof document === 'undefined') return;
+  const list = document.querySelectorAll('.resource-tooltip.show');
+  if (list && list.forEach) {
+    list.forEach(el => el.classList.remove('show'));
+  }
+}
+
+function toggleEnergyTooltip() {
+  toggleResourceTooltip('energy-tooltip');
+}
+
+function setupResourceTooltipsEvents() {
+  if (typeof window !== 'undefined' && window._resourceTooltipsEventsInitialized) return;
+  if (typeof window !== 'undefined') window._resourceTooltipsEventsInitialized = true;
+
+  if (typeof document === 'undefined') return;
+
+  // Автозакрытие при клике вне виджета
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest || !e.target.closest('.resource-widget')) {
+      closeAllResourceTooltips();
+    }
+  });
+
+  // Автозакрытие по нажатию Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeAllResourceTooltips();
+    }
+  });
+}
+
+window.getResourceTooltipData = getResourceTooltipData;
+window.updateResourceTooltips = updateResourceTooltips;
+window.toggleResourceTooltip = toggleResourceTooltip;
+window.closeAllResourceTooltips = closeAllResourceTooltips;
+window.toggleEnergyTooltip = toggleEnergyTooltip;
+window.setupResourceTooltipsEvents = setupResourceTooltipsEvents;
 
 // 7. МОДАЛЬНОЕ ОКНО ПОДСКАЗКИ НАСТАВНИКА (#mentorModal) И ОЧЕРЕДЬ
 let isMentorModalOpen = false;
