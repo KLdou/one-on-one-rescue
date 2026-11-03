@@ -55,6 +55,48 @@ function savePetToAlbum(record) {
   }
 }
 
+const MENTOR_STORAGE_KEY = 'zooshans_unlocked_mentor_hints';
+
+function getUnlockedMentorHints() {
+  try {
+    const raw = localStorage.getItem(MENTOR_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function unlockMentorHint(id) {
+  if (!id) return false;
+  try {
+    const hints = getUnlockedMentorHints();
+    if (hints.includes(id)) {
+      return false;
+    }
+    hints.push(id);
+    localStorage.setItem(MENTOR_STORAGE_KEY, JSON.stringify(hints));
+    return true;
+  } catch (e) {
+    console.error('Failed to unlock mentor hint:', e);
+    return false;
+  }
+}
+
+function isMentorHintUnlocked(id) {
+  if (!id) return false;
+  const hints = getUnlockedMentorHints();
+  return hints.includes(id);
+}
+
+function resetMentorProgress() {
+  try {
+    localStorage.removeItem(MENTOR_STORAGE_KEY);
+  } catch (e) {
+    console.error('Failed to reset mentor progress:', e);
+  }
+}
+
 function startNewRun(experiencedCurator = false, forcedScenario = null) {
   stopTimer();
   document.getElementById('endGameModal').classList.add('hidden');
@@ -173,6 +215,9 @@ function startNewRun(experiencedCurator = false, forcedScenario = null) {
       daysSinceDeworm1: 0,
       daysSinceDeworm2: 0,
       volunteerHandlesDeworming: false, // Опытный волонтер сам контролирует дачи таблеток
+
+      daysSinceVaccine1: 0,
+      vaccineDewormLapse: false,
 
       tickProtectionDaysLeft: 0, // Защита от клещей для собак весной/летом (35 BYN / 30 дн.)
       parasitesAndVaccinated: false,
