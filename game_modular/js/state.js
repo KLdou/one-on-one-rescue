@@ -163,6 +163,12 @@ function ensureStateBackwardCompatibility(st = window.state) {
     }
   }
 
+  if (st.onboarding) {
+    if (typeof st.onboarding.day1ChoiceMade !== 'boolean') {
+      st.onboarding.day1ChoiceMade = true;
+    }
+  }
+
   return st;
 }
 window.ensureStateBackwardCompatibility = ensureStateBackwardCompatibility;
@@ -184,7 +190,7 @@ function startNewRun(experiencedCurator = false, forcedScenario = null) {
   if (typeof closeMentorModal === 'function') closeMentorModal();
   if (typeof closeMentorArchiveModal === 'function') closeMentorArchiveModal();
   document.getElementById('eventOverlayBox').classList.add('hidden');
-  document.getElementById('actionsDashboard').classList.remove('hidden');
+  document.getElementById('actionsDashboard').classList.add('hidden');
 
   const inc = randomItem(window.GAME_DATA.playerAxes.incomes);
   let hous = randomItem(window.GAME_DATA.playerAxes.housing);
@@ -253,6 +259,7 @@ function startNewRun(experiencedCurator = false, forcedScenario = null) {
     // Онбординг новичка и Острая фаза (Дни 1-3)
     onboarding: {
       acutePhase: true,       // Первые 3 дня — пошаговый режим без таймера (кнопка «Завершить день»)
+      day1ChoiceMade: false,  // Выбор на экране «ОДИН НА ОДИН: ВЫ НАШЛИ БЕЗДОМНОЕ ЖИВОТНОЕ!»
       googleDone: true,       // Доступ ко всем вкладкам открыт сразу (без тумана войны)
       gurskogoCalled: false,
       dumpBoxAttempted: false
@@ -437,7 +444,6 @@ function startNewRun(experiencedCurator = false, forcedScenario = null) {
   ensureStateBackwardCompatibility(state);
   renderAll();
   triggerDay1IntroModal();
-  showAnimalModal();
 }
 
 function isAnimalAtPlayerHome() {

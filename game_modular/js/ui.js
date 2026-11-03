@@ -796,8 +796,16 @@ function escapeHtml(str) {
 }
 
 function renderActionTabs() {
+  const dash = document.getElementById('actionsDashboard');
+  const isIntroActive = Boolean(state.onboarding && state.onboarding.day1ChoiceMade === false);
+
+  if (isIntroActive) {
+    if (dash) dash.classList.add('hidden');
+  }
+
   const btnTabZoo = document.getElementById('tabBtn_zooshans');
   const btnTabCare = document.getElementById('tabBtn_care');
+  const mBtnVet = document.getElementById('mobileTabBtn_vet');
   const mBtnZoo = document.getElementById('mobileTabBtn_zooshans');
   const mBtnCare = document.getElementById('mobileTabBtn_care');
   const mIconZoo = document.getElementById('mobileTabIcon_zooshans');
@@ -811,13 +819,20 @@ function renderActionTabs() {
     btnTabCare.textContent = '📸 3. Быт и Пиар';
     btnTabCare.classList.remove('opacity-40');
   }
-  if (mBtnZoo) {
-    mBtnZoo.classList.remove('opacity-40', 'pointer-events-none');
-    if (mIconZoo) mIconZoo.textContent = '🤝';
-  }
-  if (mBtnCare) {
-    mBtnCare.classList.remove('opacity-40', 'pointer-events-none');
-    if (mIconCare) mIconCare.textContent = '📸';
+  if (isIntroActive) {
+    if (mBtnVet) mBtnVet.classList.add('opacity-40', 'pointer-events-none');
+    if (mBtnZoo) mBtnZoo.classList.add('opacity-40', 'pointer-events-none');
+    if (mBtnCare) mBtnCare.classList.add('opacity-40', 'pointer-events-none');
+  } else {
+    if (mBtnVet) mBtnVet.classList.remove('opacity-40', 'pointer-events-none');
+    if (mBtnZoo) {
+      mBtnZoo.classList.remove('opacity-40', 'pointer-events-none');
+      if (mIconZoo) mIconZoo.textContent = '🤝';
+    }
+    if (mBtnCare) {
+      mBtnCare.classList.remove('opacity-40', 'pointer-events-none');
+      if (mIconCare) mIconCare.textContent = '📸';
+    }
   }
 
   const a = state.animal;
@@ -2573,7 +2588,9 @@ function showEventModal(title, bodyText, choices) {
 function closeEventModal() {
   document.getElementById('eventOverlayBox').classList.add('hidden');
   document.getElementById('eventOverlayBox').classList.remove('flex');
-  document.getElementById('actionsDashboard').classList.remove('hidden');
+  if (!state.onboarding || state.onboarding.day1ChoiceMade !== false) {
+    document.getElementById('actionsDashboard').classList.remove('hidden');
+  }
   renderAll();
   if (typeof checkMentorTriggers === 'function') {
     setTimeout(() => checkMentorTriggers(), 50);

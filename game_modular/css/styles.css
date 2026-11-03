@@ -49,6 +49,15 @@
   --font-mono: 'JetBrains Mono', monospace;
 }
 
+/* Базовые утилиты скрытия (offline & specificity guard) */
+.hidden {
+  display: none !important;
+}
+
+#actionsDashboard.hidden {
+  display: none !important;
+}
+
 /* 2. ДИНАМИЧЕСКИЕ СЕЗОННЫЕ ТЕМЫ */
 
 body[data-season="summer"] {
@@ -337,7 +346,7 @@ body {
     gap: 10px;
   }
 
-  #actionsDashboard {
+  #actionsDashboard:not(.hidden) {
     flex: 1;
     min-height: 0;
     display: flex;

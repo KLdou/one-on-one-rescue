@@ -654,6 +654,7 @@ function triggerDay1IntroModal() {
       label: '🎓 Я уже опытный куратор: пропустить памятку и начать спасение (0⚡)',
       style: 'primary',
       action: () => {
+        state.onboarding.day1ChoiceMade = true;
         closeEventModal();
         state.onboarding.googleDone = true;
         addLog(`День ${state.day}: 🎓 Опытный куратор: вы уже знаете правила зоозащиты! Переходим к осмотру подопечного.`, 'success');
@@ -665,6 +666,7 @@ function triggerDay1IntroModal() {
       label: '🏥 Сразу заняться спасением: перейти к осмотру в клинике (0⚡)',
       style: 'primary',
       action: () => {
+        state.onboarding.day1ChoiceMade = true;
         closeEventModal();
         switchTab('vet');
       }
@@ -676,6 +678,7 @@ function triggerDay1IntroModal() {
       label: '🔍 Погуглить: «Нашел животное в Минске, что делать?» (-5⚡)',
       style: 'info',
       action: () => {
+        state.onboarding.day1ChoiceMade = true;
         closeEventModal();
         actionGoogleSearch();
       }
@@ -684,6 +687,7 @@ function triggerDay1IntroModal() {
       label: '🏛 Позвонить в «государственный приют» (Фауна города, Гурского, 42) (-5⚡)',
       style: 'info',
       action: () => {
+        state.onboarding.day1ChoiceMade = true;
         closeEventModal();
         actionCallGurskogo();
       }
@@ -692,6 +696,7 @@ function triggerDay1IntroModal() {
       label: '📦 Подбросить коробку под двери ветклиники или зоомагазина',
       style: 'danger',
       action: () => {
+        state.onboarding.day1ChoiceMade = true;
         closeEventModal();
         actionDumpBoxTrap();
       }
