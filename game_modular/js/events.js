@@ -1018,7 +1018,7 @@ function triggerPetNamingModal() {
   stopTimer();
   const a = state.animal;
   const isLitter = (a.count > 1 || a.initialCount > 1);
-  const defName = a.petName || (isLitter ? 'Без клички' : getRandomPetname());
+  const defName = a.petName || (isLitter ? 'Без клички' : getRandomPetname(a.gender));
   const animModal = document.getElementById('animalModal');
   const isModalOpen = animModal && !animModal.classList.contains('hidden');
 

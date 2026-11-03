@@ -628,18 +628,19 @@ function finishTransferToTrial(countToGive, callData, options, fosterSpotHeld) {
   a.trialCount = (a.trialCount || 0) + countToGive;
 
   let assignedPetNames = [];
+  const getLitterGender = () => (a.gender === 'mixed' ? (Math.random() < 0.5 ? 'male' : 'female') : a.gender);
   if (countToGive > 1) {
-    const n1 = getRandomPetname();
-    let n2 = getRandomPetname();
+    const n1 = getRandomPetname(getLitterGender());
+    let n2 = getRandomPetname(getLitterGender());
     while (n2 === n1) {
-      n2 = getRandomPetname();
+      n2 = getRandomPetname(getLitterGender());
     }
     assignedPetNames = [n1, n2];
     addLog(`День ${state.day}: 🏷️ Уезжающим в семью малышам присвоены индивидуальные клички из картотеки «Зоошанса»: «${n1}» и «${n2}»!`, 'info');
   } else {
     let singleName = a.petName;
     if (!singleName || (a.totalCount > 1 || a.initialCount > 1)) {
-      singleName = getRandomPetname();
+      singleName = getRandomPetname(getLitterGender());
       addLog(`День ${state.day}: 🏷️ Уезжающему в семью малышу присвоена индивидуальная кличка из картотеки «Зоошанса»: «${singleName}»!`, 'info');
     }
     assignedPetNames = [singleName];
@@ -693,13 +694,14 @@ function completeOneOrPairAdoption(isPair, successStoryText) {
   a.savedCount = (a.savedCount || 0) + countSaved;
 
   let assignedNames = [];
+  const getSaveGender = () => (a.gender === 'mixed' ? (Math.random() < 0.5 ? 'male' : 'female') : a.gender);
   if (countSaved > 1) {
-    const n1 = getRandomPetname();
-    let n2 = getRandomPetname();
-    while (n2 === n1) n2 = getRandomPetname();
+    const n1 = getRandomPetname(getSaveGender());
+    let n2 = getRandomPetname(getSaveGender());
+    while (n2 === n1) n2 = getRandomPetname(getSaveGender());
     assignedNames = [n1, n2];
   } else {
-    assignedNames = [a.petName || getRandomPetname()];
+    assignedNames = [a.petName || getRandomPetname(getSaveGender())];
   }
 
   assignedNames.forEach((savedPetName, idx) => {

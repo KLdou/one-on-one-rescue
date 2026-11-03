@@ -1206,11 +1206,12 @@ function renderActionTabs() {
     ? 'Срочно'
     : (a.isSterilized ? 'Сделано' : (g.isDog ? 'Собака' : (isMaleCat ? 'Кот' : 'Кошка')));
 
+  const discountedSpayCost = Math.round(baseSpayCost * 0.8);
   const procedureSub = h.isPregnant
-    ? 'Экстренное прерывание беременности по медицинским показаниям.'
+    ? `Экстренное прерывание беременности по медицинским показаниям (${baseSpayCost} BYN / ${discountedSpayCost} BYN по талону «Зоошанса»).`
     : (isMaleCat
-      ? 'Плановая операция перед пристройством взрослого кота.'
-      : 'Обязательная процедура перед пристройством взрослого подопечного.');
+      ? `Плановая операция перед пристройством взрослого кота (${baseSpayCost} BYN / ${discountedSpayCost} BYN по талону «Зоошанса»).`
+      : `Обязательная процедура перед пристройством взрослого подопечного (${baseSpayCost} BYN / ${discountedSpayCost} BYN по талону «Зоошанса»).`);
 
   const billProcedureName = isMaleCat
     ? 'Хирургическая кастрация (кот)'
@@ -2219,6 +2220,9 @@ function renderButtonGrid(containerId, buttons) {
       let priceText = '';
       if (b.baseCostBYN && b.baseCostBYN > b.costBYN) {
         priceText = `<s>${b.baseCostBYN}</s> ${b.costBYN} BYN`;
+      } else if (b.isVoucherEligible && !state.zooshans.applicationSubmitted && b.costBYN > 0) {
+        const discCost = Math.round(b.costBYN * 0.8);
+        priceText = `${sign}${b.costBYN} BYN <span class="opacity-75 text-[10px]">(${discCost} по талону)</span>`;
       } else {
         priceText = `${sign}${b.costBYN} BYN`;
       }

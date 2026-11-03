@@ -831,7 +831,7 @@ function logPetNameChange(text) {
 
 function actionRollRandomPetName() {
   if (state.gameOver) return;
-  state.animal.petName = getRandomPetname();
+  state.animal.petName = getRandomPetname(state.animal.gender);
   logPetNameChange(`🏷️ Подопечному присвоена кличка из картотеки «Зоошанса»: «${state.animal.petName}».`);
   renderAll();
 }
@@ -843,7 +843,7 @@ function actionSetPetName(customName) {
   const parts = clean.split(/\s+/);
   let districtAdded = false;
   if (parts.length === 1) {
-    clean = getSuggestedUniquePetname(clean);
+    clean = getSuggestedUniquePetname(clean, state.animal.gender);
     districtAdded = true;
   }
   state.animal.petName = clean;

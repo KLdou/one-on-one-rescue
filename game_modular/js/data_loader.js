@@ -50,16 +50,18 @@ function adaptToponymGender(topo, isFemale) {
     if (topo === 'Комаров') return 'Комарова';
     if (topo === 'Космонавтова') return 'Космонавтовская';
     if (topo === 'Мавровна') return 'Мавровская';
-    if (topo.endsWith('ский')) return topo.slice(0, -4) + 'ская';
+    if (topo.endsWith('ский') || topo.endsWith('ской')) return topo.slice(0, -4) + 'ская';
     if (topo.endsWith('цкий')) return topo.slice(0, -4) + 'цкая';
-    if (topo.endsWith('ный')) return topo.slice(0, -3) + 'ная';
-    if (topo.endsWith('ной')) return topo.slice(0, -3) + 'ная';
+    if (topo.endsWith('ный') || topo.endsWith('ной')) return topo.slice(0, -3) + 'ная';
     return topo;
   } else {
-    if (topo === 'Комарова') return 'Комаров';
+    if (topo === 'Комарова' || topo === 'Комаров') return 'Комаров';
     if (topo === 'Космонавтова' || topo === 'Космонавтовская') return 'Космонавтов';
     if (topo === 'Мавровна' || topo === 'Мавровская') return 'Мавров';
-    if (topo.endsWith('ская')) return topo.slice(0, -4) + 'ский';
+    if (topo.endsWith('ская')) {
+      if (topo === 'Тракторозаводская') return 'Тракторозаводской';
+      return topo.slice(0, -4) + 'ский';
+    }
     if (topo.endsWith('цкая')) return topo.slice(0, -4) + 'цкий';
     if (topo.endsWith('ная')) return topo.slice(0, -3) + 'ный';
     return topo;
@@ -72,10 +74,22 @@ const FEMALE_BASE_NAMES = new Set([
   'Селеста', 'Луна', 'Кнопка', 'Плюша', 'Герда', 'Боня', 'Лора'
 ]);
 
+const MALE_BASE_NAMES = new Set([
+  'Абрикос', 'Айс', 'Акай', 'Августин', 'Адмирал', 'Сема', 'Барсик',
+  'Кузя', 'Степа', 'Черныш', 'Персик', 'Матроскин', 'Рыжик', 'Тимоша',
+  'Тошка', 'Граф', 'Маркиз', 'Бим', 'Рекс', 'Васька', 'Мурзик',
+  'Оскар', 'Снежок', 'Пушок', 'Лаки', 'Филя', 'Чарли'
+]);
+
+if (typeof window !== 'undefined') {
+  window.FEMALE_BASE_NAMES = FEMALE_BASE_NAMES;
+  window.MALE_BASE_NAMES = MALE_BASE_NAMES;
+}
+
 function getRandomPetname(gender) {
-  const p = window.GAME_DATA.petnames || { baseNames: ['Барсик'], toponyms: ['Рокоссовский'] };
+  const p = (window.GAME_DATA && window.GAME_DATA.petnames) || { baseNames: ['Барсик'], toponyms: ['Рокоссовский'] };
   let effectiveGender = gender;
-  if (!effectiveGender && typeof state !== 'undefined' && state.animal) {
+  if (!effectiveGender && typeof state !== 'undefined' && state && state.animal) {
     effectiveGender = state.animal.gender;
   }
 
@@ -86,13 +100,14 @@ function getRandomPetname(gender) {
   if (isFemale) {
     candidateNames = p.baseNames.filter(n => FEMALE_BASE_NAMES.has(n));
   } else if (isMale) {
-    candidateNames = p.baseNames.filter(n => !FEMALE_BASE_NAMES.has(n));
+    candidateNames = p.baseNames.filter(n => MALE_BASE_NAMES.has(n));
   }
   if (!candidateNames || candidateNames.length === 0) candidateNames = p.baseNames;
 
   const base = randomItem(candidateNames);
   const topo = randomItem(p.toponyms);
-  const adaptedTopo = adaptToponymGender(topo, isFemale || (FEMALE_BASE_NAMES.has(base) && !isMale));
+  const effectiveIsFemale = isFemale || (FEMALE_BASE_NAMES.has(base) && !isMale);
+  const adaptedTopo = adaptToponymGender(topo, effectiveIsFemale);
   return base + ' ' + adaptedTopo;
 }
 
@@ -212,7 +227,7 @@ function generateRandomAnimalScenario(forcedArchetype = null) {
 
   const speciesLabel = raw.speciesLabel.replace(/{cnt}/g, cnt);
   const isLitter = cnt > 1;
-  const petName = isLitter ? null : getRandomPetname();
+  const petName = isLitter ? null : getRandomPetname(raw.gender);
 
   return {
     id: raw.id,
