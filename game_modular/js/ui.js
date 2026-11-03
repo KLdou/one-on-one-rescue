@@ -2997,6 +2997,7 @@ document.addEventListener('keydown', (e) => {
     closeAlbumModal();
     closeEndGameModal();
     closeScenarioPickerModal();
+    if (typeof closeMentorModal === 'function') closeMentorModal();
     if (typeof closeCandidateModal === 'function') closeCandidateModal();
   }
 });
@@ -3162,3 +3163,130 @@ function toggleEnergyTooltip() {
     tt.classList.toggle('hidden');
   }
 }
+
+// 7. МОДАЛЬНОЕ ОКНО ПОДСКАЗКИ НАСТАВНИКА (#mentorModal) И ОЧЕРЕДЬ
+let isMentorModalOpen = false;
+let currentMentorCallback = null;
+const mentorHintQueue = [];
+
+function triggerMentorHint(hintId, onDismissCallback, forceShow = false) {
+  if (!forceShow && typeof isMentorHintUnlocked === 'function' && isMentorHintUnlocked(hintId)) {
+    return false;
+  }
+
+  // Timer Guard (Rule 6.4 from AGENTS.md)
+  if (typeof stopTimer === 'function') {
+    stopTimer();
+  }
+
+  // Unlock hint in state / meta-progress
+  if (typeof unlockMentorHint === 'function') {
+    unlockMentorHint(hintId);
+  }
+
+  const modal = typeof document !== 'undefined' ? document.getElementById('mentorModal') : null;
+  const isModalActive = isMentorModalOpen || (modal && typeof modal.classList?.contains === 'function' && !modal.classList.contains('hidden'));
+
+  // If a mentor modal is already open, push to FIFO queue
+  if (isModalActive) {
+    mentorHintQueue.push({ hintId, onDismissCallback });
+    return true;
+  }
+
+  const hints = (window.GAME_DATA && window.GAME_DATA.mentorHints) ? window.GAME_DATA.mentorHints : null;
+  const hintData = hints ? hints[hintId] : null;
+  if (!hintData) {
+    console.warn(`Mentor hint ${hintId} not found in GAME_DATA.mentorHints`);
+    return false;
+  }
+
+  isMentorModalOpen = true;
+  currentMentorCallback = (typeof onDismissCallback === 'function') ? onDismissCallback : null;
+
+  const isAdvice = (hintData.type === 'advice');
+
+  // Populate content & styling
+  const catElem = document.getElementById('mentorModalCategory');
+  if (catElem) catElem.textContent = hintData.category || (isAdvice ? 'Совет' : 'Разбор полетов');
+
+  const badgeElem = document.getElementById('mentorModalBadge');
+  if (badgeElem) {
+    badgeElem.textContent = isAdvice ? '💡 Совет координатора' : '⚠️ Разбор полетов';
+    badgeElem.className = isAdvice
+      ? 'craft-badge text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded-full bg-emerald-600 text-white'
+      : 'craft-badge text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded-full bg-rose-600 text-white';
+  }
+
+  const titleElem = document.getElementById('mentorModalTitle');
+  if (titleElem) titleElem.textContent = hintData.title || '';
+
+  const speakerElem = document.getElementById('mentorModalSpeaker');
+  if (speakerElem) speakerElem.textContent = hintData.speaker || (isAdvice ? 'Опытный координатор' : 'Разбор полетов');
+
+  const speakerIcon = document.getElementById('mentorModalSpeakerIcon');
+  if (speakerIcon) speakerIcon.textContent = isAdvice ? '👤' : '🔍';
+
+  const msgElem = document.getElementById('mentorModalMessage');
+  if (msgElem) msgElem.textContent = hintData.message || '';
+
+  const ruleElem = document.getElementById('mentorModalRule');
+  if (ruleElem) ruleElem.textContent = hintData.rule || '';
+
+  const ruleBox = document.getElementById('mentorModalRuleBox');
+  if (ruleBox) {
+    ruleBox.className = isAdvice
+      ? 'p-3 sm:p-3.5 rounded-xl text-xs leading-relaxed mb-4 bg-emerald-50 text-emerald-950 border border-emerald-200 transition-colors'
+      : 'p-3 sm:p-3.5 rounded-xl text-xs leading-relaxed mb-4 bg-amber-50 text-amber-950 border border-amber-300 transition-colors';
+  }
+
+  const cardElem = document.getElementById('mentorModalCard');
+  if (cardElem) {
+    cardElem.className = isAdvice
+      ? 'modal-card-custom max-w-lg w-full p-4 sm:p-6 my-auto flex flex-col border-2 border-emerald-500/60 shadow-xl transition-all'
+      : 'modal-card-custom max-w-lg w-full p-4 sm:p-6 my-auto flex flex-col border-2 border-rose-500/80 shadow-xl transition-all';
+  }
+
+  const btnElem = document.getElementById('btnMentorDismiss');
+  if (btnElem) {
+    btnElem.className = isAdvice
+      ? 'w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-xs transition shadow-sm cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white'
+      : 'w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-xs transition shadow-sm cursor-pointer bg-rose-600 hover:bg-rose-500 text-white';
+  }
+
+  if (modal) {
+    modal.classList.remove('hidden');
+  }
+
+  return true;
+}
+
+function closeMentorModal() {
+  const modal = typeof document !== 'undefined' ? document.getElementById('mentorModal') : null;
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+  isMentorModalOpen = false;
+
+  const cb = currentMentorCallback;
+  currentMentorCallback = null;
+  if (typeof cb === 'function') {
+    try {
+      cb();
+    } catch (e) {
+      console.error('Error executing mentor dismiss callback:', e);
+    }
+  }
+
+  if (mentorHintQueue.length > 0) {
+    const next = mentorHintQueue.shift();
+    triggerMentorHint(next.hintId, next.onDismissCallback, true);
+  }
+
+  if (typeof updateHeaderMentorCounter === 'function') {
+    updateHeaderMentorCounter();
+  }
+}
+
+window.mentorHintQueue = mentorHintQueue;
+window.triggerMentorHint = triggerMentorHint;
+window.closeMentorModal = closeMentorModal;

@@ -39,12 +39,22 @@ const mockLocalStorage = {
 const domElements = {};
 function getOrCreateElem(id) {
   if (!domElements[id]) {
+    const isModalOrOverlay = id.toLowerCase().includes('modal') || id.toLowerCase().includes('overlay');
+    const classSet = new Set(isModalOrOverlay ? ['hidden'] : []);
     domElements[id] = {
       id,
       classList: {
-        add: () => {},
-        remove: () => {},
-        contains: () => false
+        add: (...cls) => cls.forEach(c => classSet.add(c)),
+        remove: (...cls) => cls.forEach(c => classSet.delete(c)),
+        contains: (c) => classSet.has(c),
+        toggle: (c, force) => {
+          if (force !== undefined) {
+            if (force) classSet.add(c); else classSet.delete(c);
+            return force;
+          }
+          if (classSet.has(c)) { classSet.delete(c); return false; }
+          classSet.add(c); return true;
+        }
       },
       style: {},
       innerHTML: '',
@@ -242,4 +252,65 @@ context.payVetBill(50, true, 'Осмотр');
 assert(context.isMentorHintUnlocked('CLINIC_DEBT_HALFWAY'), 'payVetBill should trigger CLINIC_DEBT_HALFWAY when debt >= 500');
 
 console.log('✓ Task 3: All 8 reactive mentor triggers and integrations verified');
+
+// Test 4: Mentor modal queue and Timer Guard in ui.js
+context.startNewRun(false);
+context.closeEventModal();
+if (typeof context.closeMentorModal === 'function') {
+  while (context.mentorHintQueue && context.mentorHintQueue.length > 0) {
+    context.mentorHintQueue.shift();
+  }
+  context.closeMentorModal();
+}
+context.resetMentorProgress();
+context.state.onboarding.acutePhase = false;
+context.setSpeed(2);
+assert(context.currentSpeed > 0, 'Speed should be active');
+
+const triggered = context.triggerMentorHint('LOW_ENERGY_WARNING');
+assert.strictEqual(triggered, true, 'triggerMentorHint should return true on first display');
+assert.strictEqual(context.currentSpeed, 0, 'Timer must be stopped when mentor modal opens');
+assert.strictEqual(context.isMentorHintUnlocked('LOW_ENERGY_WARNING'), true, 'Hint marked unlocked');
+
+// Advice styling checks
+const badgeEl = context.document.getElementById('mentorModalBadge');
+assert.strictEqual(badgeEl.textContent, '💡 Совет координатора');
+assert(badgeEl.className.includes('bg-emerald-600'), 'Advice badge should be emerald');
+const ruleBoxEl = context.document.getElementById('mentorModalRuleBox');
+assert(ruleBoxEl.className.includes('bg-emerald-50'), 'Advice rule box should be emerald');
+const btnEl = context.document.getElementById('btnMentorDismiss');
+assert(btnEl.className.includes('bg-emerald-600'), 'Advice dismiss button should be emerald');
+const iconEl = context.document.getElementById('mentorModalSpeakerIcon');
+assert.strictEqual(iconEl.textContent, '👤');
+
+// Queue check: trigger a second hint while first is open
+let secondDismissed = false;
+const secondTriggered = context.triggerMentorHint('REVACCINATION_OVERDUE', () => {
+  secondDismissed = true;
+});
+assert.strictEqual(secondTriggered, true, 'Second hint should be accepted into queue');
+assert.strictEqual(context.mentorHintQueue.length, 1, 'Queue should hold the second hint');
+assert.strictEqual(context.isMentorHintUnlocked('REVACCINATION_OVERDUE'), true, 'Second hint should also be unlocked');
+
+// Close first modal -> second should pop from queue
+context.closeMentorModal();
+assert.strictEqual(context.mentorHintQueue.length, 0, 'Queue should be empty after popping next hint');
+assert.strictEqual(secondDismissed, false, 'Second callback should not fire yet');
+
+// Post-mortem styling checks on popped modal
+assert.strictEqual(badgeEl.textContent, '⚠️ Разбор полетов');
+assert(badgeEl.className.includes('bg-rose-600'), 'Post-mortem badge should be rose');
+assert(ruleBoxEl.className.includes('bg-amber-50'), 'Post-mortem rule box should be amber');
+assert(btnEl.className.includes('bg-rose-600'), 'Post-mortem dismiss button should be rose');
+assert.strictEqual(iconEl.textContent, '🔍');
+
+// Close second modal -> second callback fires
+context.closeMentorModal();
+assert.strictEqual(secondDismissed, true, 'Second callback must fire when second modal is closed');
+
+// Duplicate check without forceShow
+const dupTriggered = context.triggerMentorHint('LOW_ENERGY_WARNING', null, false);
+assert.strictEqual(dupTriggered, false, 'Already unlocked hint should return false if forceShow is false');
+
+console.log('✓ Task 4: Mentor modal queue and Timer Guard verified');
 
