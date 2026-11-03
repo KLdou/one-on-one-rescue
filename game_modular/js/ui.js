@@ -2111,14 +2111,20 @@ function renderButtonGrid(containerId, buttons) {
 
     btn.className = `action-card ${stateClass}`;
 
+    // Полный тултип для подсказки (название, описание, статус)
+    const tooltipParts = [b.title, b.sub];
+    if (b.statusText) tooltipParts.push(`[${b.statusText}]`);
+    const fullTooltip = tooltipParts.filter(Boolean).join(' — ');
+    btn.setAttribute('title', fullTooltip);
+
     if (state.gameOver) {
       btn.disabled = true;
       btn.onclick = null;
       btn.classList.add('cursor-not-allowed', 'opacity-60');
-      btn.title = 'Партия окончена: режим просмотра истории';
+      btn.title = `Партия окончена — ${fullTooltip}`;
     } else if (st !== 'active') {
       btn.disabled = true;
-      if (b.statusText) btn.title = b.statusText;
+      btn.title = fullTooltip;
     } else {
       btn.onclick = b.onClick;
     }
@@ -2203,8 +2209,8 @@ function renderButtonGrid(containerId, buttons) {
         ${b.badge ? `<span class="badge-stage-pill shrink-0">${escapeHtml(b.badge)}</span>` : ''}
       </div>
 
-      <div class="action-card__body">
-        ${escapeHtml(b.sub)}
+      <div class="action-card__body" title="${escapeHtml(b.sub || '')}">
+        ${escapeHtml(b.sub || '')}
       </div>
 
       <div class="action-card__footer">
@@ -2509,8 +2515,8 @@ function renderDeadlines() {
         <div class="flex items-center gap-2 min-w-0">
           <span class="text-sm shrink-0">${item.icon}</span>
           <div class="min-w-0">
-            <div class="font-bold text-[var(--text-primary)] truncate">${item.title}</div>
-            <div class="text-[10px] text-[var(--text-secondary)] truncate">${item.sub}</div>
+            <div class="font-bold text-[var(--text-primary)] truncate" title="${escapeHtml(item.title || '')}">${item.title}</div>
+            <div class="text-[10px] text-[var(--text-secondary)] truncate" title="${escapeHtml(item.sub || '')}">${item.sub}</div>
           </div>
         </div>
         <span class="shrink-0 text-[11px] px-2 py-0.5 rounded border ${badgeClass}">
