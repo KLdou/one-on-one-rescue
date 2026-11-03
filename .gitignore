@@ -25,3 +25,15 @@ tmp/
 temp/
 
 *.zip
+
+# Temporary copies and duplicate artifacts
+* - Copy.*
+* - Copy (*).*
+* - копия.*
+* - копия (*).*
+*(1).*
+*(2).*
+* (1).*
+* (2).*
+*.tmp
+*.bak

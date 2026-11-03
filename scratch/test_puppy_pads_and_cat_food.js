@@ -98,7 +98,11 @@ function runTest() {
     state.animal.name = 'Щенки в коробке';
     
     const logs = [];
-    window.addLog = (msg, type) => logs.push({ msg, type });
+    const origAddLog = window.addLog;
+    window.addLog = (msg, type) => {
+      logs.push({ msg, type });
+      if (typeof origAddLog === 'function') origAddLog(msg, type);
+    };
     
     const careButtonsDog = [];
     // Let's call renderTabCare logic or test careButtons array directly

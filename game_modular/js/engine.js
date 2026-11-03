@@ -1,8 +1,48 @@
 // engine.js - Игровой цикл, пошаговая острая фаза, перемотка времени и дедлайны (v2.2)
 
+function isModalActive() {
+  if (typeof document === 'undefined') return false;
+
+  const evBox = document.getElementById('eventOverlayBox');
+  if (evBox && !evBox.classList.contains('hidden')) return true;
+
+  if (window.currentCandidateCall) {
+    const candModal = document.getElementById('candidateInterviewModal');
+    if (candModal && !candModal.classList.contains('hidden')) return true;
+  }
+
+  if (typeof isMentorModalOpen !== 'undefined' && isMentorModalOpen) {
+    const mentModal = document.getElementById('mentorModal');
+    if (mentModal && !mentModal.classList.contains('hidden')) return true;
+  }
+
+  if (typeof window.isMentorArchiveOpen !== 'undefined' && window.isMentorArchiveOpen) {
+    const archModal = document.getElementById('mentorArchiveModal');
+    if (archModal && !archModal.classList.contains('hidden')) return true;
+  }
+
+  if (typeof window.isScenarioPickerOpen !== 'undefined' && window.isScenarioPickerOpen) {
+    const scenModal = document.getElementById('scenarioPickerModal');
+    if (scenModal && !scenModal.classList.contains('hidden')) return true;
+  }
+
+  if (typeof window.isAlbumModalOpen !== 'undefined' && window.isAlbumModalOpen) {
+    const albModal = document.getElementById('savedAlbumModal');
+    if (albModal && !albModal.classList.contains('hidden')) return true;
+  }
+
+  if (typeof window.isAnimalModalOpen !== 'undefined' && window.isAnimalModalOpen) {
+    const animModal = document.getElementById('animalModal');
+    if (animModal && !animModal.classList.contains('hidden')) return true;
+  }
+
+  return false;
+}
+window.isModalActive = isModalActive;
+
 function setSpeed(speed) {
   if (state.gameOver) return;
-  if (!document.getElementById('eventOverlayBox').classList.contains('hidden') && speed > 0) return;
+  if (isModalActive() && speed > 0) return;
 
   // В первые 3 дня активна пошаговая «Острая фаза» (GDD 2.1)
   if (state.onboarding && state.onboarding.acutePhase && speed > 0) {
@@ -10,8 +50,11 @@ function setSpeed(speed) {
     return;
   }
 
+  if (tickTimer) {
+    clearInterval(tickTimer);
+    tickTimer = null;
+  }
   currentSpeed = speed;
-  if (tickTimer) clearInterval(tickTimer);
   const delays = { 1: 2500, 2: 1200, 5: 500 };
   if (speed > 0 && delays[speed]) {
     tickTimer = setInterval(processDayTick, delays[speed]);
@@ -21,13 +64,21 @@ function setSpeed(speed) {
 
 function stopTimer() {
   currentSpeed = 0;
-  if (tickTimer) clearInterval(tickTimer);
+  if (tickTimer) {
+    clearInterval(tickTimer);
+    tickTimer = null;
+  }
   updateSpeedButtonsUI();
 }
 
 function advanceAcuteDay() {
   if (state.gameOver) return;
   if (!document.getElementById('eventOverlayBox').classList.contains('hidden')) return;
+  if (window.currentCandidateCall) {
+    const candModal = document.getElementById('candidateInterviewModal');
+    if (candModal && !candModal.classList.contains('hidden')) return;
+  }
+  if (typeof isMentorModalOpen !== 'undefined' && isMentorModalOpen) return;
 
   processDayTick();
 
@@ -123,7 +174,7 @@ function updateSpeedButtonsUI() {
 
 function fastForwardCalmDays() {
   if (state.gameOver) return;
-  if (!document.getElementById('eventOverlayBox').classList.contains('hidden')) return;
+  if (isModalActive()) return;
   stopTimer();
 
   if (state.onboarding && state.onboarding.acutePhase) {
@@ -295,20 +346,26 @@ function checkMentorTriggers(directHintId = null) {
     }
   }
 
+  function canShowHint(id) {
+    if (state.shownHints && state.shownHints[id]) return false;
+    if (typeof isMentorHintUnlocked === 'function' && isMentorHintUnlocked(id)) return false;
+    return true;
+  }
+
   if (directHintId) {
-    if (typeof isMentorHintUnlocked === 'function' && !isMentorHintUnlocked(directHintId)) {
+    if (canShowHint(directHintId)) {
       fireMentorHint(directHintId);
     }
     return;
   }
 
   // 1. LOW_ENERGY_WARNING: state.energy <= 25
-  if (state.energy <= 25 && typeof isMentorHintUnlocked === 'function' && !isMentorHintUnlocked('LOW_ENERGY_WARNING')) {
+  if (state.energy <= 25 && canShowHint('LOW_ENERGY_WARNING')) {
     fireMentorHint('LOW_ENERGY_WARNING');
   }
 
   // 2. CLINIC_DEBT_HALFWAY: state.zooshans && state.zooshans.voucherDebt >= 500
-  if (state.zooshans && state.zooshans.voucherDebt >= 500 && typeof isMentorHintUnlocked === 'function' && !isMentorHintUnlocked('CLINIC_DEBT_HALFWAY')) {
+  if (state.zooshans && state.zooshans.voucherDebt >= 500 && canShowHint('CLINIC_DEBT_HALFWAY')) {
     fireMentorHint('CLINIC_DEBT_HALFWAY');
   }
 
@@ -321,8 +378,7 @@ function checkMentorTriggers(directHintId = null) {
     state.zooshans.locationStatus === 'home_floor' &&
     state.animal &&
     state.animal.quarantineDaysDone < 14 &&
-    typeof isMentorHintUnlocked === 'function' &&
-    !isMentorHintUnlocked('QUARANTINE_BREACH_RISK')
+    canShowHint('QUARANTINE_BREACH_RISK')
   ) {
     fireMentorHint('QUARANTINE_BREACH_RISK');
   }
@@ -331,8 +387,7 @@ function checkMentorTriggers(directHintId = null) {
   if (
     state.animal &&
     ((state.animal.parasitesAndVaccinated && state.animal.daysSinceVaccine1 > 28) || state.animal.vaccineDewormLapse) &&
-    typeof isMentorHintUnlocked === 'function' &&
-    !isMentorHintUnlocked('REVACCINATION_OVERDUE')
+    canShowHint('REVACCINATION_OVERDUE')
   ) {
     fireMentorHint('REVACCINATION_OVERDUE');
   }
@@ -342,8 +397,7 @@ function checkMentorTriggers(directHintId = null) {
     state.pr &&
     state.pr.prActive &&
     ((state.pr.daysSinceAdRefresh > 14) || (state.animal && state.animal.ageDays >= 180 && !state.animal.isSterilized)) &&
-    typeof isMentorHintUnlocked === 'function' &&
-    !isMentorHintUnlocked('STALE_PR_WARNING')
+    canShowHint('STALE_PR_WARNING')
   ) {
     fireMentorHint('STALE_PR_WARNING');
   }
@@ -678,9 +732,9 @@ function processDayTick() {
       } else if (a.stationaryReason === 'trauma') {
         a.traumaRehabDaysLeft = 45; // 1.5 месяца покоя
         a.visibleState = 'Реабилитация после операции: сращение перелома (45 дн. покоя).';
-        addLog(`День ${state.day}: 🦴 ${g.nom} выписан(а) из хирургического стационара на домашний покой! Операция позади, но для полного сращения костей требуется 1.5 месяца (45 дней) покоя. Пристройство отложено до снятия спиц и ограничений!`, 'success');
+        addLog(`День ${state.day}: 🦴 ${g.nom} выписан(а) из послеоперационного хирургического стационара на домашний покой! Операция позади, но для полного сращения костей требуется 1.5 месяца (45 дней) покоя. Пристройство отложено до снятия спиц и ограничений!`, 'success');
       } else {
-        addLog(`День ${state.day}: 🏥 ${g.nom} успешно выписан(а) из стационара!`, 'success');
+        addLog(`День ${state.day}: 🏥 ${g.nom} успешно выписан(а) из послеоперационного стационара!`, 'success');
       }
     }
   }

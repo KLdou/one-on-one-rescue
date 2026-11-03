@@ -226,6 +226,8 @@ context.window.currentCandidateCall = {
 };
 context.actionAcceptCandidate(false, {});
 assert(context.isMentorHintUnlocked('SCAM_VICTIM_POSTMORTEM'), 'SCAM_VICTIM_POSTMORTEM triggers on scam consequence');
+if (typeof context.closeEventModal === 'function') context.closeEventModal();
+if (typeof context.closeMentorModal === 'function') context.closeMentorModal();
 
 // 9. ProcessDayTick increments daysSinceVaccine1 and checks triggers
 context.resetMentorProgress();
@@ -257,6 +259,7 @@ console.log('✓ Task 3: All 8 reactive mentor triggers and integrations verifie
 // Test 4: Mentor modal queue and Timer Guard in ui.js
 context.startNewRun(false);
 context.closeEventModal();
+if (typeof context.closeAnimalModal === 'function') context.closeAnimalModal();
 if (typeof context.closeMentorModal === 'function') {
   while (context.mentorHintQueue && context.mentorHintQueue.length > 0) {
     context.mentorHintQueue.shift();
@@ -352,5 +355,37 @@ assert.strictEqual(context.getUnlockedMentorHints().length, 0, 'Hints should be 
 assert.strictEqual(countElem.textContent, '0/8', 'Counter should be 0/8 after confirmResetMentorProgress');
 
 console.log('✓ Task 5: Mentor archive and counter update verified');
+
+// Test 6: shownHints cooldown & backward compatibility
+context.resetMentorProgress();
+context.startNewRun();
+context.state.energy = 20;
+assert(!context.state.shownHints['LOW_ENERGY_WARNING'], 'LOW_ENERGY_WARNING should not be in shownHints yet');
+context.checkMentorTriggers();
+assert(context.state.shownHints['LOW_ENERGY_WARNING'], 'LOW_ENERGY_WARNING should be recorded in shownHints');
+assert(context.state.mentorHistory.includes('LOW_ENERGY_WARNING'), 'LOW_ENERGY_WARNING should be in mentorHistory');
+
+// Simulate repeated tick with low energy: must not re-trigger or queue duplicate
+const queueLenBefore = context.mentorHintQueue ? context.mentorHintQueue.length : 0;
+context.checkMentorTriggers();
+const queueLenAfter = context.mentorHintQueue ? context.mentorHintQueue.length : 0;
+assert.strictEqual(queueLenBefore, queueLenAfter, 'checkMentorTriggers must not spam hint queue on subsequent ticks');
+
+// Backward compatibility check for legacy saves
+const legacyState = {
+  day: 10,
+  cash: 500,
+  animal: { species: 'cat' },
+  zooshans: {}
+};
+context.ensureStateBackwardCompatibility(legacyState);
+assert(legacyState.playerAxes, 'ensureStateBackwardCompatibility must attach playerAxes');
+assert(legacyState.player && legacyState.player.income, 'ensureStateBackwardCompatibility must attach default player perks');
+assert(typeof legacyState.shownHints === 'object', 'shownHints must be an object');
+assert(Array.isArray(legacyState.mentorHistory), 'mentorHistory must be an array');
+assert.strictEqual(legacyState.animal.volunteerHandlesDeworming, false, 'volunteerHandlesDeworming must be boolean false');
+assert.strictEqual(legacyState.zooshans.tempVolunteerDaysLeft, 0, 'tempVolunteerDaysLeft must default to 0');
+console.log('✓ Task 6: shownHints cooldown and backward compatibility verified');
+
 
 

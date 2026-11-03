@@ -216,6 +216,7 @@ function actionAskZooshansTakeover() {
     // 20% (или 60% при предохранителе баланса) — перехват на 14 дней карантина и стабилизации
     state.zooshans.locationStatus = 'temp_volunteer_14d';
     state.zooshans.tempVolunteerDaysLeft = 14;
+    if (typeof markCandidateCallIntercepted === 'function') markCandidateCallIntercepted();
     const woodExamText = handleVolunteerTakeoverExamination('Таня');
     showEventModal(
       'ВРЕМЕННЫЙ ПЕРЕХВАТ НА 14 ДНЕЙ: Опытный волонтер берет на карантин и стабилизацию!',
@@ -237,6 +238,7 @@ function actionAskZooshansTakeover() {
   } else {
     // 5% — редкое чудо: волонтер забирает до пристройства под финкураторство
     state.zooshans.locationStatus = 'full_volunteer_fincuration';
+    if (typeof markCandidateCallIntercepted === 'function') markCandidateCallIntercepted();
     const woodExamText = handleVolunteerTakeoverExamination('Ольга');
     showEventModal(
       'РЕДКОЕ ЧУДО (5%): Волонтер забрал питомца под ваше полное финкураторство!',

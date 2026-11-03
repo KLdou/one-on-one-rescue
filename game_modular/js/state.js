@@ -92,10 +92,74 @@ function isMentorHintUnlocked(id) {
 function resetMentorProgress() {
   try {
     localStorage.removeItem(MENTOR_STORAGE_KEY);
+    if (window.state) {
+      window.state.shownHints = {};
+      window.state.mentorHistory = [];
+    }
   } catch (e) {
     console.error('Failed to reset mentor progress:', e);
   }
 }
+
+function ensureStateBackwardCompatibility(st = window.state) {
+  if (!st) return st;
+
+  // 1. playerAxes & player fields
+  if (!st.playerAxes && window.GAME_DATA && window.GAME_DATA.playerAxes) {
+    st.playerAxes = window.GAME_DATA.playerAxes;
+  }
+  if (!st.player) {
+    st.player = {};
+  }
+  if (window.GAME_DATA && window.GAME_DATA.playerAxes) {
+    const axes = window.GAME_DATA.playerAxes;
+    if (!st.player.income) st.player.income = axes.incomes ? axes.incomes[0] : null;
+    if (!st.player.housing) st.player.housing = axes.housing ? axes.housing[0] : null;
+    if (!st.player.family) st.player.family = axes.family ? axes.family[0] : null;
+    if (!st.player.ownPets) st.player.ownPets = axes.ownPets ? axes.ownPets[0] : null;
+    if (!st.player.mobility) st.player.mobility = axes.mobility ? axes.mobility[0] : null;
+    if (!st.player.socialCapital) st.player.socialCapital = axes.socialCapital ? axes.socialCapital[1] : { multiplier: 1.0 };
+  }
+
+  // 2. Mentor history & shownHints
+  if (!st.shownHints || typeof st.shownHints !== 'object') {
+    st.shownHints = {};
+  }
+  if (!Array.isArray(st.mentorHistory)) {
+    st.mentorHistory = [];
+  }
+
+  // 3. Volunteer timers & flags
+  if (st.animal) {
+    if (typeof st.animal.volunteerHandlesDeworming !== 'boolean') {
+      st.animal.volunteerHandlesDeworming = false;
+    }
+    if (typeof st.animal.quarantineDaysDone !== 'number') {
+      st.animal.quarantineDaysDone = 0;
+    }
+    if (typeof st.animal.dewormStage !== 'number') {
+      st.animal.dewormStage = 0;
+    }
+    if (typeof st.animal.daysSinceDeworm1 !== 'number') {
+      st.animal.daysSinceDeworm1 = 0;
+    }
+    if (typeof st.animal.daysSinceDeworm2 !== 'number') {
+      st.animal.daysSinceDeworm2 = 0;
+    }
+  }
+
+  if (st.zooshans) {
+    if (typeof st.zooshans.tempVolunteerDaysLeft !== 'number') {
+      st.zooshans.tempVolunteerDaysLeft = 0;
+    }
+    if (typeof st.zooshans.socialFosterDaysElapsed !== 'number') {
+      st.zooshans.socialFosterDaysElapsed = 0;
+    }
+  }
+
+  return st;
+}
+window.ensureStateBackwardCompatibility = ensureStateBackwardCompatibility;
 
 function startNewRun(experiencedCurator = false, forcedScenario = null) {
   stopTimer();
@@ -176,6 +240,9 @@ function startNewRun(experiencedCurator = false, forcedScenario = null) {
     secondWindUsed: false,    // «Второе дыхание» в @zooshans_chat (+45% менталки при первом падении до 0%)
     keptForSelfUsed: false,   // Кнопка «Оставить себе» не более 1 раза за партию
     lastOwnPetFoodShareDay: -999, // Кулдаун 14 дней на выручку кормом от своего кота
+    shownHints: {},           // Флаги показанных подсказок ментора в текущем забеге
+    mentorHistory: [],        // История показанных подсказок
+    playerAxes: (window.GAME_DATA && window.GAME_DATA.playerAxes) ? window.GAME_DATA.playerAxes : null,
 
     // Онбординг новичка и Острая фаза (Дни 1-3)
     onboarding: {
@@ -361,6 +428,7 @@ function startNewRun(experiencedCurator = false, forcedScenario = null) {
     : (state.animal.count > 1 ? `Выводок (${state.animal.count} малышей, без клички)` : '«Найденыш»');
   addLog(`День 1 (${calStr}, ${sLabel}): Вы нашли подопечных — ${initialPetNameText} (${state.animal.title}).`, 'info');
   addLog(`День 1: Началась пошаговая острая фаза (Дни 1–3). Таймер отключен. Изучайте обстановку и завершайте дни вручную.`, 'info');
+  ensureStateBackwardCompatibility(state);
   renderAll();
   triggerDay1IntroModal();
   showAnimalModal();

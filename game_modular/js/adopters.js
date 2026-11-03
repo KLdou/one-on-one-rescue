@@ -351,6 +351,22 @@ function renderCandidateActionButtons(callData) {
   if (!container) return;
   container.innerHTML = '';
 
+  const a = state.animal;
+  const nActive = a ? (a.activeCount !== undefined ? a.activeCount : (a.count || 1)) : 0;
+  const isIntercepted = !!(callData && (callData.intercepted || callData.interceptedByVolunteer));
+  const isUnavailable = isIntercepted || nActive <= 0 || (state.zooshans && state.zooshans.locationStatus === 'full_volunteer_fincuration');
+
+  if (isUnavailable) {
+    const btnBlocked = document.createElement('button');
+    btnBlocked.className = 'px-3.5 py-2 rounded-xl bg-slate-700 text-slate-300 font-bold text-xs opacity-60 cursor-not-allowed border border-slate-600 flex items-center gap-1';
+    btnBlocked.disabled = true;
+    btnBlocked.textContent = isIntercepted
+      ? '❌ Заявка перехвачена другим волонтером'
+      : '❌ Животное уже на кураторстве у волонтеров';
+    container.appendChild(btnBlocked);
+    return;
+  }
+
   if (callData.isScam) {
     const btn = document.createElement('button');
     btn.className = 'px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition cursor-pointer shadow-sm';
@@ -459,8 +475,16 @@ function actionRefuseCandidate() {
 function actionAcceptCandidate(isPair, options = {}) {
   if (state.gameOver) return;
   const call = window.currentCandidateCall;
-  closeCandidateModal();
   if (!call) return;
+
+  if (call.intercepted || call.interceptedByVolunteer) {
+    closeCandidateModal();
+    addLog(`День ${state.day}: ⚠️ Заявка уже была перехвачена другим волонтером! Животное передано под опеку «Зоошанса».`, 'warn');
+    renderAll();
+    return;
+  }
+
+  closeCandidateModal();
 
   if (call.isScam) {
     state.cash = Math.max(0, +(state.cash - (call.scamLossBYN || 80)).toFixed(1));
@@ -475,7 +499,24 @@ function actionAcceptCandidate(isPair, options = {}) {
     return;
   }
 
+  const a = state.animal;
+  const nActive = a ? (a.activeCount !== undefined ? a.activeCount : (a.count || 1)) : 0;
+  if (nActive <= 0 || (state.zooshans && state.zooshans.locationStatus === 'full_volunteer_fincuration')) {
+    addLog(`День ${state.day}: ⚠️ Подопечный уже находится под полным кураторством волонтеров «Зоошанса»!`, 'warn');
+    renderAll();
+    return;
+  }
+
   initiateAnimalTransferWithTrial(isPair, call, options);
+}
+
+function markCandidateCallIntercepted(callId = null) {
+  const current = window.currentCandidateCall;
+  if (current && (!callId || current.id === callId)) {
+    current.intercepted = true;
+    current.interceptedByVolunteer = true;
+    renderCandidateActionButtons(current);
+  }
 }
 
 function closeCandidateModal() {
@@ -487,6 +528,7 @@ window.actionInspectCandidateSlot = actionInspectCandidateSlot;
 window.actionRefuseCandidate = actionRefuseCandidate;
 window.closeCandidateModal = closeCandidateModal;
 window.actionAcceptCandidate = actionAcceptCandidate;
+window.markCandidateCallIntercepted = markCandidateCallIntercepted;
 
 
 // 7-ДНЕВНЫЙ ИСПЫТАТЕЛЬНЫЙ СРОК: Передача животного и бронь места на передержке (GDD 8.4, 8.5)

@@ -674,7 +674,7 @@ function renderPlayerAndAnimalCards() {
   let nextHint = 'Готов к пиару на сайтах!';
   const isDogConfined = a.traumaOperated || (h && h.hasSevereTrauma) || a.id === 'severe_trauma_sheri_dog' || (a.inStationaryDaysLeft && a.inStationaryDaysLeft > 0);
   if (a.inStationaryDaysLeft && a.inStationaryDaysLeft > 0) {
-    nextHint = `Животное на интенсивном лечении в стационаре клиники (осталось ${a.inStationaryDaysLeft} дн.)`;
+    nextHint = `Животное на интенсивном лечении в стационаре клиники (осталось ${a.inStationaryDaysLeft} дн.). Обработку можно провести позже, после стационара.`;
   } else if (a.virusRecoveryDaysLeft && a.virusRecoveryDaysLeft > 0) {
     nextHint = `Восстановление после вируса: щадящая диета и карантин (осталось ${a.virusRecoveryDaysLeft} дн. до пиара)`;
   } else if (a.traumaRehabDaysLeft && a.traumaRehabDaysLeft > 0) {
@@ -2760,6 +2760,7 @@ function switchAlbumTab(tabName) {
 
 function showAlbumModal() {
   stopTimer();
+  window.isAlbumModalOpen = true;
   const modal = document.getElementById('savedAlbumModal');
   const trialList = document.getElementById('albumTrialList');
   const adoptedList = document.getElementById('savedAlbumList');
@@ -2928,6 +2929,7 @@ function showAlbumModal() {
 }
 
 function closeAlbumModal() {
+  window.isAlbumModalOpen = false;
   const modal = document.getElementById('savedAlbumModal');
   if (modal) modal.classList.add('hidden');
 }
@@ -2979,6 +2981,7 @@ window.actionReceiveGreetingFromHome = actionReceiveGreetingFromHome;
 // 6. МОДАЛЬНОЕ ОКНО КАРТОЧКИ ПОДОПЕЧНОГО
 function showAnimalModal() {
   stopTimer();
+  window.isAnimalModalOpen = true;
   const modal = document.getElementById('animalModal');
   if (modal) {
     modal.classList.remove('hidden');
@@ -2986,6 +2989,7 @@ function showAnimalModal() {
 }
 
 function closeAnimalModal() {
+  window.isAnimalModalOpen = false;
   const modal = document.getElementById('animalModal');
   if (modal) {
     modal.classList.add('hidden');
@@ -3008,6 +3012,7 @@ let currentScenarioFilter = 'all';
 
 function openScenarioPickerModal() {
   stopTimer();
+  window.isScenarioPickerOpen = true;
   const modal = document.getElementById('scenarioPickerModal');
   if (!modal) return;
   modal.classList.remove('hidden');
@@ -3015,6 +3020,7 @@ function openScenarioPickerModal() {
 }
 
 function closeScenarioPickerModal() {
+  window.isScenarioPickerOpen = false;
   const modal = document.getElementById('scenarioPickerModal');
   if (modal) {
     modal.classList.add('hidden');
@@ -3172,11 +3178,19 @@ let currentMentorCallback = null;
 const mentorHintQueue = [];
 
 function triggerMentorHint(hintId, onDismissCallback, forceShow = false) {
-  if (!forceShow && typeof isMentorHintUnlocked === 'function' && isMentorHintUnlocked(hintId)) {
-    if (typeof onDismissCallback === 'function') {
-      try { onDismissCallback(); } catch (e) { console.error(e); }
+  if (!forceShow) {
+    if (typeof isMentorHintUnlocked === 'function' && isMentorHintUnlocked(hintId)) {
+      if (typeof onDismissCallback === 'function') {
+        try { onDismissCallback(); } catch (e) { console.error(e); }
+      }
+      return false;
     }
-    return false;
+    if (window.state && window.state.shownHints && window.state.shownHints[hintId]) {
+      if (typeof onDismissCallback === 'function') {
+        try { onDismissCallback(); } catch (e) { console.error(e); }
+      }
+      return false;
+    }
   }
 
   const hints = (window.GAME_DATA && window.GAME_DATA.mentorHints) ? window.GAME_DATA.mentorHints : null;
@@ -3184,6 +3198,14 @@ function triggerMentorHint(hintId, onDismissCallback, forceShow = false) {
   if (!hintData) {
     console.warn(`Mentor hint ${hintId} not found in GAME_DATA.mentorHints`);
     return false;
+  }
+
+  // Record shownHint cooldown in state and mentor history
+  if (window.state) {
+    if (!window.state.shownHints) window.state.shownHints = {};
+    window.state.shownHints[hintId] = window.state.day || 1;
+    if (!Array.isArray(window.state.mentorHistory)) window.state.mentorHistory = [];
+    if (!window.state.mentorHistory.includes(hintId)) window.state.mentorHistory.push(hintId);
   }
 
   // Timer Guard (Rule 6.4 from AGENTS.md)
@@ -3313,6 +3335,7 @@ function openMentorArchiveModal() {
   if (typeof stopTimer === 'function') {
     stopTimer();
   }
+  window.isMentorArchiveOpen = true;
   renderMentorArchive();
   const modal = typeof document !== 'undefined' ? document.getElementById('mentorArchiveModal') : null;
   if (modal) {
@@ -3321,6 +3344,7 @@ function openMentorArchiveModal() {
 }
 
 function closeMentorArchiveModal() {
+  window.isMentorArchiveOpen = false;
   const modal = typeof document !== 'undefined' ? document.getElementById('mentorArchiveModal') : null;
   if (modal) {
     modal.classList.add('hidden');
