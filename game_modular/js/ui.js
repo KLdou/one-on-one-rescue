@@ -998,14 +998,25 @@ function renderActionTabs() {
     state: vacState,
     statusText: vacStatusText,
     onClick: () => {
-      if (!payVetBill(60, false, 'Комплексная вакцинация с ветпаспортом', false, 10)) return;
-      a.parasitesAndVaccinated = true;
-      a.health = Math.min(100, a.health + 10);
-      addLog(`День ${state.day}: 💉 Проведена вакцинация по возрасту, оформлен официальный ветпаспорт!`, 'success');
-      if (state.pr.earlyBookedAdopterWaiting) {
-        triggerEarlyBookedTransferModal();
+      if (typeof actionVaccinate === 'function') {
+        actionVaccinate();
+      } else {
+        if (!payVetBill(60, false, 'Комплексная вакцинация с ветпаспортом', false, 10)) return;
+        a.parasitesAndVaccinated = true;
+        a.daysSinceVaccine1 = 0;
+        if (a.dewormStage < 2) {
+          a.vaccineDewormLapse = true;
+        }
+        a.health = Math.min(100, a.health + 10);
+        addLog(`День ${state.day}: 💉 Проведена вакцинация по возрасту, оформлен официальный ветпаспорт!`, 'success');
+        if (state.pr && state.pr.earlyBookedAdopterWaiting) {
+          triggerEarlyBookedTransferModal();
+        }
+        if (typeof checkMentorTriggers === 'function') {
+          checkMentorTriggers();
+        }
+        renderAll();
       }
-      renderAll();
     }
   });
 
@@ -1963,6 +1974,13 @@ function renderActionTabs() {
         state.abroad.rabiesVaccineAndChipDone = true;
         state.abroad.daysSinceRabiesVaccine = 0;
         a.parasitesAndVaccinated = true;
+        a.daysSinceVaccine1 = 0;
+        if (a.dewormStage < 2) {
+          a.vaccineDewormLapse = true;
+        }
+        if (typeof checkMentorTriggers === 'function') {
+          checkMentorTriggers();
+        }
         addLog(`День ${state.day}: 🌍 Поставлен микрочип и вакцина от бешенства (-80 BYN)! Ждем 30 дней выработки антител.`, 'success');
       } else {
         if (state.cash < 630) {

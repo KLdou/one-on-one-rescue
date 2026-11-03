@@ -283,10 +283,81 @@ function getTomorrowDeadlineWarning() {
   return null;
 }
 
+// Проверка триггеров наставника (GDD Реактивный ментор)
+function checkMentorTriggers(directHintId = null) {
+  if (state.gameOver) return;
+
+  function fireMentorHint(id) {
+    if (typeof triggerMentorHint === 'function') {
+      triggerMentorHint(id);
+    } else if (typeof unlockMentorHint === 'function') {
+      unlockMentorHint(id);
+    }
+  }
+
+  if (directHintId) {
+    if (typeof isMentorHintUnlocked === 'function' && !isMentorHintUnlocked(directHintId)) {
+      fireMentorHint(directHintId);
+    }
+    return;
+  }
+
+  // 1. LOW_ENERGY_WARNING: state.energy <= 25
+  if (state.energy <= 25 && typeof isMentorHintUnlocked === 'function' && !isMentorHintUnlocked('LOW_ENERGY_WARNING')) {
+    fireMentorHint('LOW_ENERGY_WARNING');
+  }
+
+  // 2. CLINIC_DEBT_HALFWAY: state.zooshans && state.zooshans.voucherDebt >= 500
+  if (state.zooshans && state.zooshans.voucherDebt >= 500 && typeof isMentorHintUnlocked === 'function' && !isMentorHintUnlocked('CLINIC_DEBT_HALFWAY')) {
+    fireMentorHint('CLINIC_DEBT_HALFWAY');
+  }
+
+  // 3. QUARANTINE_BREACH_RISK: unvax cat on floor with quarantine < 14 days
+  if (
+    state.player &&
+    state.player.ownPets &&
+    state.player.ownPets.id === 'unvaccinated_cat' &&
+    state.zooshans &&
+    state.zooshans.locationStatus === 'home_floor' &&
+    state.animal &&
+    state.animal.quarantineDaysDone < 14 &&
+    typeof isMentorHintUnlocked === 'function' &&
+    !isMentorHintUnlocked('QUARANTINE_BREACH_RISK')
+  ) {
+    fireMentorHint('QUARANTINE_BREACH_RISK');
+  }
+
+  // 4. REVACCINATION_OVERDUE: past 28 days or vaccine without deworming
+  if (
+    state.animal &&
+    ((state.animal.parasitesAndVaccinated && state.animal.daysSinceVaccine1 > 28) || state.animal.vaccineDewormLapse) &&
+    typeof isMentorHintUnlocked === 'function' &&
+    !isMentorHintUnlocked('REVACCINATION_OVERDUE')
+  ) {
+    fireMentorHint('REVACCINATION_OVERDUE');
+  }
+
+  // 5. STALE_PR_WARNING: stale ads > 14 days or animal reached 180 days without sterilization
+  if (
+    state.pr &&
+    state.pr.prActive &&
+    ((state.pr.daysSinceAdRefresh > 14) || (state.animal && state.animal.ageDays >= 180 && !state.animal.isSterilized)) &&
+    typeof isMentorHintUnlocked === 'function' &&
+    !isMentorHintUnlocked('STALE_PR_WARNING')
+  ) {
+    fireMentorHint('STALE_PR_WARNING');
+  }
+}
+window.checkMentorTriggers = checkMentorTriggers;
+
 function processDayTick() {
   if (state.gameOver) {
     stopTimer();
     return;
+  }
+
+  if (typeof checkMentorTriggers === 'function') {
+    checkMentorTriggers();
   }
 
   const a = state.animal;
@@ -372,6 +443,9 @@ function processDayTick() {
   // Переход к новому дню и взросление
   state.day += 1;
   a.ageDays += 1;
+  if (a && a.parasitesAndVaccinated) {
+    a.daysSinceVaccine1 = (a.daysSinceVaccine1 || 0) + 1;
+  }
 
   // Окончание лактации у мамы-кошки на 45-й день
   if (a.hasMotherCat && a.motherLactating && a.ageDays >= 45) {
@@ -1087,6 +1161,10 @@ function processDayTick() {
     triggerVoucherDeadlineModal();
     renderAll();
     return;
+  }
+
+  if (typeof checkMentorTriggers === 'function') {
+    checkMentorTriggers();
   }
 
   renderAll();

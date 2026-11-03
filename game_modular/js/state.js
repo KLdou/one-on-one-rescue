@@ -395,6 +395,9 @@ function spendEnergy(amount) {
     return false;
   }
   state.energy -= amount;
+  if (typeof checkMentorTriggers === 'function') {
+    checkMentorTriggers();
+  }
   return true;
 }
 

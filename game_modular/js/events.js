@@ -700,6 +700,9 @@ function triggerDay1IntroModal() {
 
 function triggerRedFlagDelayedStrikeModal(trialItem) {
   stopTimer();
+  if (typeof checkMentorTriggers === 'function') {
+    checkMentorTriggers('ADOPTION_FAILED_POSTMORTEM');
+  }
   state.fatalMistakeReason = trialItem.callData.id;
   const consequence = trialItem.callData.consequenceText;
   showEventModal(
@@ -805,6 +808,9 @@ function triggerTrialSuccessModal(trialItem) {
 
 function triggerTrialReturnModal(trialItem) {
   stopTimer();
+  if (typeof checkMentorTriggers === 'function') {
+    checkMentorTriggers('ADOPTION_FAILED_POSTMORTEM');
+  }
   const isPair = (trialItem.count || 1) > 1;
   if (trialItem.fosterSpotHeld) {
     state.mental = Math.max(0, state.mental - 10);
@@ -910,6 +916,9 @@ function triggerTrialReturnModal(trialItem) {
 
 function triggerTrialAsthmaReturnModal(trialItem) {
   stopTimer();
+  if (typeof checkMentorTriggers === 'function') {
+    checkMentorTriggers('ADOPTION_FAILED_POSTMORTEM');
+  }
   state.cash = +(state.cash + 85).toFixed(1);
   state.supplies.daysLeft += 10;
   state.animal.trialCount = Math.max(0, state.animal.trialCount - trialItem.count);

@@ -133,6 +133,15 @@ function payVetBill(baseCostBYN, voucherEligible, serviceTitle, isExpensiveProce
   }
 
   // 5. Проведение оплаты
+  if (serviceTitle && (serviceTitle.toLowerCase().includes('вакцин') || serviceTitle.toLowerCase().includes('вакцинац'))) {
+    if (state.animal) {
+      state.animal.daysSinceVaccine1 = 0;
+      if (state.animal.dewormStage < 2) {
+        state.animal.vaccineDewormLapse = true;
+      }
+    }
+  }
+
   if (hasDiscount) {
     if (state.zooshans.clinicMode === 'partner_cash' && !isExpensiveProcedure) {
       state.cash = +(state.cash - discounted).toFixed(1);
@@ -143,6 +152,9 @@ function payVetBill(baseCostBYN, voucherEligible, serviceTitle, isExpensiveProce
 
     if (state.zooshans.clinicMode === 'major_voucher' || isExpensiveProcedure) {
       state.zooshans.voucherDebt = +(state.zooshans.voucherDebt + discounted).toFixed(1);
+      if (typeof checkMentorTriggers === 'function') {
+        checkMentorTriggers();
+      }
       addLog(`День ${state.day}: 🎫 ${serviceTitle} — выписан гарантийный талон ветцентра (-20%, +${discounted} BYN в долг на 30 дней. Общий долг: ${state.zooshans.voucherDebt}/1000 BYN).`, 'info');
       return true;
     }
@@ -821,6 +833,33 @@ function provideVolunteerDeworming(source, volunteerName = 'волонтер') {
   renderAll();
 }
 
+function actionVaccinate() {
+  if (state.gameOver) return false;
+  const a = state.animal;
+  if (!a) return false;
+  if (!payVetBill(60, false, 'Комплексная вакцинация с ветпаспортом', false, 10)) return false;
+  a.parasitesAndVaccinated = true;
+  a.daysSinceVaccine1 = 0;
+  if (a.dewormStage < 2) {
+    a.vaccineDewormLapse = true;
+  }
+  a.health = Math.min(100, a.health + 10);
+  addLog(`День ${state.day}: 💉 Проведена вакцинация по возрасту, оформлен официальный ветпаспорт!`, 'success');
+  if (state.pr && state.pr.earlyBookedAdopterWaiting) {
+    if (typeof triggerEarlyBookedTransferModal === 'function') {
+      triggerEarlyBookedTransferModal();
+    }
+  }
+  if (typeof checkMentorTriggers === 'function') {
+    checkMentorTriggers();
+  }
+  if (typeof renderAll === 'function') {
+    renderAll();
+  }
+  return true;
+}
+
+window.actionVaccinate = actionVaccinate;
 window.canAffordVetBill = canAffordVetBill;
 window.payVetBill = payVetBill;
 window.handleVolunteerTakeoverExamination = handleVolunteerTakeoverExamination;

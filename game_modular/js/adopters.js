@@ -465,6 +465,9 @@ function actionAcceptCandidate(isPair, options = {}) {
   if (call.isScam) {
     state.cash = Math.max(0, +(state.cash - (call.scamLossBYN || 80)).toFixed(1));
     state.mental = Math.max(0, state.mental - 35);
+    if (typeof checkMentorTriggers === 'function') {
+      checkMentorTriggers('SCAM_VICTIM_POSTMORTEM');
+    }
     showEventModal('ФИШИНГОВЫЙ РАЗВОД МОШЕННИКОВ', call.consequenceText, [
       { label: 'Горький урок (Продолжить партию)', style: 'danger', action: () => closeEventModal() }
     ]);
@@ -628,6 +631,9 @@ function finishTransferToTrial(countToGive, callData, options, fosterSpotHeld) {
   };
 
   state.trialAnimals.push(trialItem);
+  if (typeof checkMentorTriggers === 'function') {
+    checkMentorTriggers('FIRST_TRIAL_STARTED');
+  }
 
   const displayTarget = countToGive > 1 ? `«${assignedPetName}» (парочка котят)` : `«${assignedPetName}» (подопечный)`;
   addLog(`День ${state.day}: 🚚 ${displayTarget} отправлен(ы) в новый дом на 14-дневный испытательный срок! Бытовой расход корма и энергии снят.`, 'success');

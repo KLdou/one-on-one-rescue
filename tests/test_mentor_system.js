@@ -138,3 +138,108 @@ assert.strictEqual(context.isMentorHintUnlocked('LOW_ENERGY_WARNING'), true, 'Hi
 context.resetMentorProgress();
 assert.strictEqual(context.isMentorHintUnlocked('LOW_ENERGY_WARNING'), false, 'Hints should be cleared after reset');
 console.log('✓ Task 2: Meta-progress and localStorage persistence verified');
+
+// Test 3: Triggers verification
+// 1. LOW_ENERGY_WARNING
+context.startNewRun(false);
+context.resetMentorProgress();
+context.state.energy = 25;
+context.checkMentorTriggers();
+assert(context.isMentorHintUnlocked('LOW_ENERGY_WARNING'), 'LOW_ENERGY_WARNING should trigger at energy <= 25');
+
+// 2. CLINIC_DEBT_HALFWAY
+context.state.zooshans.voucherDebt = 500;
+context.checkMentorTriggers();
+assert(context.isMentorHintUnlocked('CLINIC_DEBT_HALFWAY'), 'CLINIC_DEBT_HALFWAY should trigger at debt >= 500');
+
+// 3. QUARANTINE_BREACH_RISK
+context.state.player.ownPets = { id: 'unvaccinated_cat' };
+context.state.zooshans.locationStatus = 'home_floor';
+context.state.animal.species = 'cat';
+context.state.animal.quarantineDaysDone = 0;
+context.checkMentorTriggers();
+assert(context.isMentorHintUnlocked('QUARANTINE_BREACH_RISK'), 'QUARANTINE_BREACH_RISK should trigger with unvax cat on floor');
+
+// 4. REVACCINATION_OVERDUE (past 28 days)
+context.state.animal.parasitesAndVaccinated = true;
+context.state.animal.daysSinceVaccine1 = 29;
+context.checkMentorTriggers();
+assert(context.isMentorHintUnlocked('REVACCINATION_OVERDUE'), 'REVACCINATION_OVERDUE triggers past 28 days');
+
+// 4b. REVACCINATION_OVERDUE (deworm lapse)
+context.resetMentorProgress();
+context.state.animal.daysSinceVaccine1 = 5;
+context.state.animal.vaccineDewormLapse = true;
+context.checkMentorTriggers();
+assert(context.isMentorHintUnlocked('REVACCINATION_OVERDUE'), 'REVACCINATION_OVERDUE triggers on vaccineDewormLapse');
+
+// 5. STALE_PR_WARNING (refresh > 14 days)
+context.state.animal.vaccineDewormLapse = false;
+context.state.pr.prActive = true;
+context.state.pr.daysSinceAdRefresh = 15;
+context.checkMentorTriggers();
+assert(context.isMentorHintUnlocked('STALE_PR_WARNING'), 'STALE_PR_WARNING triggers when PR refresh > 14 days');
+
+// 5b. STALE_PR_WARNING (ageDays >= 180 and !isSterilized)
+context.resetMentorProgress();
+context.state.pr.prActive = true;
+context.state.pr.daysSinceAdRefresh = 3;
+context.state.animal.ageDays = 180;
+context.state.animal.isSterilized = false;
+context.checkMentorTriggers();
+assert(context.isMentorHintUnlocked('STALE_PR_WARNING'), 'STALE_PR_WARNING triggers when age >= 180 and not sterilized');
+
+// 6. FIRST_TRIAL_STARTED
+context.resetMentorProgress();
+context.finishTransferToTrial(1, { candidateName: 'Тест', source: 'Куфар' }, {}, false);
+assert(context.isMentorHintUnlocked('FIRST_TRIAL_STARTED'), 'FIRST_TRIAL_STARTED should trigger on trial transfer');
+
+// 7. ADOPTION_FAILED_POSTMORTEM
+context.resetMentorProgress();
+const mockTrialItem = {
+  petName: 'Тест',
+  count: 1,
+  fosterSpotHeld: true,
+  fosterLocation: 'home_cage',
+  callData: { id: 'call_test' }
+};
+context.triggerTrialReturnModal(mockTrialItem);
+assert(context.isMentorHintUnlocked('ADOPTION_FAILED_POSTMORTEM'), 'ADOPTION_FAILED_POSTMORTEM triggers on trial return');
+
+// 8. SCAM_VICTIM_POSTMORTEM
+context.resetMentorProgress();
+context.window.currentCandidateCall = {
+  isScam: true,
+  scamLossBYN: 80,
+  consequenceText: 'Мошенники'
+};
+context.actionAcceptCandidate(false, {});
+assert(context.isMentorHintUnlocked('SCAM_VICTIM_POSTMORTEM'), 'SCAM_VICTIM_POSTMORTEM triggers on scam consequence');
+
+// 9. ProcessDayTick increments daysSinceVaccine1 and checks triggers
+context.resetMentorProgress();
+context.state.animal.parasitesAndVaccinated = true;
+context.state.animal.daysSinceVaccine1 = 10;
+context.state.energy = 20;
+context.processDayTick();
+assert.strictEqual(context.state.animal.daysSinceVaccine1, 11, 'processDayTick should increment daysSinceVaccine1');
+assert(context.isMentorHintUnlocked('LOW_ENERGY_WARNING'), 'processDayTick should trigger LOW_ENERGY_WARNING');
+
+// 10. spendEnergy calls checkMentorTriggers
+context.resetMentorProgress();
+context.state.energy = 30;
+context.spendEnergy(10);
+assert.strictEqual(context.state.energy, 20);
+assert(context.isMentorHintUnlocked('LOW_ENERGY_WARNING'), 'spendEnergy should invoke checkMentorTriggers');
+
+// 11. payVetBill calls checkMentorTriggers on debt increase
+context.resetMentorProgress();
+context.state.energy = 100;
+context.state.zooshans.applicationSubmitted = true;
+context.state.zooshans.clinicMode = 'major_voucher';
+context.state.zooshans.voucherDebt = 480;
+context.payVetBill(50, true, 'Осмотр');
+assert(context.isMentorHintUnlocked('CLINIC_DEBT_HALFWAY'), 'payVetBill should trigger CLINIC_DEBT_HALFWAY when debt >= 500');
+
+console.log('✓ Task 3: All 8 reactive mentor triggers and integrations verified');
+
