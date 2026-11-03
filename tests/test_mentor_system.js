@@ -97,7 +97,8 @@ const context = {
   clearTimeout: clearTimeout,
   setInterval: setInterval,
   clearInterval: clearInterval,
-  Math: Math
+  Math: Math,
+  confirm: () => true
 };
 context.window = context;
 vm.createContext(context);
@@ -313,4 +314,43 @@ const dupTriggered = context.triggerMentorHint('LOW_ENERGY_WARNING', null, false
 assert.strictEqual(dupTriggered, false, 'Already unlocked hint should return false if forceShow is false');
 
 console.log('✓ Task 4: Mentor modal queue and Timer Guard verified');
+
+// Test 5: Mentor archive modal and counter update
+context.resetMentorProgress();
+context.unlockMentorHint('LOW_ENERGY_WARNING');
+context.unlockMentorHint('FIRST_TRIAL_STARTED');
+
+const unlockedList = context.getUnlockedMentorHints();
+assert.strictEqual(unlockedList.length, 2, 'Should have 2 unlocked hints');
+
+context.renderMentorArchive();
+const countElem = context.document.getElementById('headerMentorCount');
+assert.strictEqual(countElem.textContent, '2/8', 'Header counter should show 2/8');
+
+// Test modal open/close and Timer Guard
+context.setSpeed(2);
+assert(context.currentSpeed > 0, 'Speed must be > 0 before openMentorArchiveModal');
+context.openMentorArchiveModal();
+assert.strictEqual(context.currentSpeed, 0, 'openMentorArchiveModal must stop timer');
+const archiveModal = context.document.getElementById('mentorArchiveModal');
+assert.strictEqual(archiveModal.classList.contains('hidden'), false, 'mentorArchiveModal must be visible');
+context.closeMentorArchiveModal();
+assert.strictEqual(archiveModal.classList.contains('hidden'), true, 'mentorArchiveModal must be hidden after close');
+
+// Test reset
+context.resetMentorProgress();
+assert.strictEqual(context.getUnlockedMentorHints().length, 0, 'Should have 0 hints after reset');
+context.renderMentorArchive();
+assert.strictEqual(countElem.textContent, '0/8', 'Header counter should reset to 0/8');
+
+// Test confirmResetMentorProgress
+context.unlockMentorHint('REVACCINATION_OVERDUE');
+context.updateHeaderMentorCounter();
+assert.strictEqual(countElem.textContent, '1/8', 'Counter should be 1/8 before confirm reset');
+context.confirmResetMentorProgress();
+assert.strictEqual(context.getUnlockedMentorHints().length, 0, 'Hints should be 0 after confirmResetMentorProgress');
+assert.strictEqual(countElem.textContent, '0/8', 'Counter should be 0/8 after confirmResetMentorProgress');
+
+console.log('✓ Task 5: Mentor archive and counter update verified');
+
 

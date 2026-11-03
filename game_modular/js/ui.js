@@ -167,6 +167,7 @@ function renderAll() {
   renderActionTabs();
   renderDeadlines();
   renderLog();
+  updateHeaderMentorCounter();
 }
 
 function renderTopBar() {
@@ -3193,6 +3194,9 @@ function triggerMentorHint(hintId, onDismissCallback, forceShow = false) {
   if (typeof unlockMentorHint === 'function') {
     unlockMentorHint(hintId);
   }
+  if (typeof updateHeaderMentorCounter === 'function') {
+    updateHeaderMentorCounter();
+  }
 
   const modal = typeof document !== 'undefined' ? document.getElementById('mentorModal') : null;
   const isModalActive = isMentorModalOpen || (modal && typeof modal.classList?.contains === 'function' && !modal.classList.contains('hidden'));
@@ -3293,3 +3297,137 @@ function closeMentorModal() {
 window.mentorHintQueue = mentorHintQueue;
 window.triggerMentorHint = triggerMentorHint;
 window.closeMentorModal = closeMentorModal;
+
+// 8. Памятка куратора: архив подсказок наставника (#mentorArchiveModal)
+function updateHeaderMentorCounter() {
+  const counterEl = typeof document !== 'undefined' ? document.getElementById('headerMentorCount') : null;
+  if (!counterEl) return;
+  const hints = (window.GAME_DATA && window.GAME_DATA.mentorHints) ? window.GAME_DATA.mentorHints : {};
+  const totalCount = Object.keys(hints).length || 8;
+  const unlocked = typeof getUnlockedMentorHints === 'function' ? getUnlockedMentorHints() : [];
+  counterEl.textContent = `${unlocked.length}/${totalCount}`;
+}
+
+function openMentorArchiveModal() {
+  if (typeof stopTimer === 'function') {
+    stopTimer();
+  }
+  renderMentorArchive();
+  const modal = typeof document !== 'undefined' ? document.getElementById('mentorArchiveModal') : null;
+  if (modal) {
+    modal.classList.remove('hidden');
+  }
+}
+
+function closeMentorArchiveModal() {
+  const modal = typeof document !== 'undefined' ? document.getElementById('mentorArchiveModal') : null;
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+}
+
+function renderMentorArchive() {
+  updateHeaderMentorCounter();
+
+  const listEl = typeof document !== 'undefined' ? document.getElementById('mentorArchiveList') : null;
+  if (!listEl) return;
+
+  const hintsObj = (window.GAME_DATA && window.GAME_DATA.mentorHints) ? window.GAME_DATA.mentorHints : {};
+  const unlocked = typeof getUnlockedMentorHints === 'function' ? getUnlockedMentorHints() : [];
+  const hintKeys = Object.keys(hintsObj);
+
+  if (hintKeys.length === 0) {
+    listEl.innerHTML = '<div class="text-xs text-[var(--text-secondary)] text-center py-4">Нет доступных памяток.</div>';
+    return;
+  }
+
+  listEl.innerHTML = hintKeys.map(key => {
+    const hint = hintsObj[key];
+    const isUnlocked = unlocked.includes(key);
+    const isAdvice = hint.type === 'advice';
+
+    if (isUnlocked) {
+      const typeBadgeCls = isAdvice ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white';
+      const typeBadgeText = isAdvice ? '💡 Совет координатора' : '⚠️ Разбор полетов';
+      const borderCls = isAdvice ? 'border-2 border-emerald-500/60 bg-[var(--bg-card)]' : 'border-2 border-rose-500/60 bg-[var(--bg-card)]';
+      const ruleBoxCls = isAdvice 
+        ? 'p-3 rounded-lg text-xs leading-relaxed bg-emerald-50 text-emerald-950 border border-emerald-200' 
+        : 'p-3 rounded-lg text-xs leading-relaxed bg-amber-50 text-amber-950 border border-amber-300';
+      const speakerIcon = isAdvice ? '👤' : '🔍';
+
+      return `
+        <div class="rounded-xl p-4 shadow-sm ${borderCls}">
+          <div class="flex items-center justify-between gap-2 mb-2 flex-wrap">
+            <span class="text-[10px] font-mono uppercase tracking-wider text-[var(--text-secondary)] font-bold">
+              ${hint.category || (isAdvice ? 'Совет' : 'Разбор ошибки')}
+            </span>
+            <span class="craft-badge text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded-full ${typeBadgeCls}">
+              ${typeBadgeText}
+            </span>
+          </div>
+
+          <h3 class="text-sm font-extrabold text-[var(--text-primary)] mb-1 leading-snug">
+            ${hint.title || ''}
+          </h3>
+
+          <div class="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] mb-2 font-medium">
+            <span>${speakerIcon}</span>
+            <span>${hint.speaker || (isAdvice ? 'Опытный координатор' : 'Разбор полетов')}</span>
+          </div>
+
+          <p class="text-xs text-[var(--text-secondary)] leading-relaxed mb-3">
+            ${hint.message || ''}
+          </p>
+
+          <div class="${ruleBoxCls}">
+            <div class="font-bold flex items-center gap-1 mb-1 text-[11px] font-mono uppercase">
+              <span>💡 Золотое правило:</span>
+            </div>
+            <p class="font-medium">
+              ${hint.rule || ''}
+            </p>
+          </div>
+        </div>
+      `;
+    } else {
+      return `
+        <div class="rounded-xl p-4 border-2 border-dashed border-[var(--border-subtle)] bg-[var(--bg-muted)]/40 opacity-60">
+          <div class="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
+            <span class="text-[10px] font-mono uppercase tracking-wider text-[var(--text-secondary)] font-bold">
+              ${hint.category || 'Памятка куратора'}
+            </span>
+            <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[var(--bg-muted)] text-[var(--text-secondary)] border border-[var(--border-subtle)]">
+              🔒 Закрыто
+            </span>
+          </div>
+          <h3 class="text-xs sm:text-sm font-bold text-[var(--text-secondary)] mb-1 flex items-center gap-1.5">
+            <span>🔒</span> <span>Карточка еще не открыта</span>
+          </h3>
+          <p class="text-[11px] text-[var(--text-secondary)] italic">
+            Сработает автоматически в игре при возникновении ситуации
+          </p>
+        </div>
+      `;
+    }
+  }).join('');
+}
+
+function confirmResetMentorProgress() {
+  const confirmed = typeof confirm === 'function' ? confirm('Вы уверены, что хотите сбросить прогресс обучения? Все открытые карточки снова станут закрытыми.') : true;
+  if (confirmed) {
+    if (typeof resetMentorProgress === 'function') {
+      resetMentorProgress();
+    }
+    if (typeof addLog === 'function') {
+      addLog('Прогресс обучения сброшен.', 'info');
+    }
+    renderMentorArchive();
+    updateHeaderMentorCounter();
+  }
+}
+
+window.updateHeaderMentorCounter = updateHeaderMentorCounter;
+window.openMentorArchiveModal = openMentorArchiveModal;
+window.closeMentorArchiveModal = closeMentorArchiveModal;
+window.renderMentorArchive = renderMentorArchive;
+window.confirmResetMentorProgress = confirmResetMentorProgress;
