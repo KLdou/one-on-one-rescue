@@ -19,6 +19,7 @@
     "dewormPill2": 20,
     "vaccine": 60,
     "pcrProfile": 105,
+    "castrateCat": 100,
     "spayCat": 160,
     "spayPregnantCat": 225,
     "spayDog": 300,

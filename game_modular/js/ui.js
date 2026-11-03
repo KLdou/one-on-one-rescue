@@ -1170,14 +1170,20 @@ function renderActionTabs() {
   }
 
   // 1.6. Стерилизация / Кастрация
-  const baseSpayCost = g.isDog ? 300 : (h.isPregnant ? 225 : 160);
+  const prices = (window.GAME_DATA && window.GAME_DATA.config && window.GAME_DATA.config.prices) || {};
+  const isMaleCat = !g.isDog && a.gender === 'male';
+  const baseSpayCost = g.isDog
+    ? (prices.spayDog || 300)
+    : (h.isPregnant
+      ? (prices.spayPregnantCat || 225)
+      : (isMaleCat ? (prices.castrateCat || 100) : (prices.spayCat || 160)));
   const spayCost = hasDiscount ? Math.round(baseSpayCost * 0.8) : baseSpayCost;
 
   let spayState = 'active';
   let spayStatusText = '';
   if (a.isSterilized) {
     spayState = 'completed';
-    spayStatusText = '✓ Стерилизован(а)';
+    spayStatusText = isMaleCat ? '✓ Кастрирован' : '✓ Стерилизована';
   } else if (a.hasMotherCat && a.motherLactating) {
     spayState = 'locked';
     spayStatusText = `🔒 Кормящая мама (${a.ageDays}/45 дн.)`;
@@ -1192,11 +1198,33 @@ function renderActionTabs() {
     spayStatusText = `🔒 Поиск хозяев (${state.pr.lostSearchDaysDone}/10 дн.)`;
   }
 
+  const procedureTitle = h.isPregnant
+    ? 'Экстренная стерилизация'
+    : (isMaleCat ? 'Кастрация (кот)' : (g.isDog ? 'Стерилизация (собака)' : 'Стерилизация (кошка)'));
+
+  const procedureBadge = h.isPregnant
+    ? 'Срочно'
+    : (a.isSterilized ? 'Сделано' : (g.isDog ? 'Собака' : (isMaleCat ? 'Кот' : 'Кошка')));
+
+  const procedureSub = h.isPregnant
+    ? 'Экстренное прерывание беременности по медицинским показаниям.'
+    : (isMaleCat
+      ? 'Плановая операция перед пристройством взрослого кота.'
+      : 'Обязательная процедура перед пристройством взрослого подопечного.');
+
+  const billProcedureName = isMaleCat
+    ? 'Хирургическая кастрация (кот)'
+    : (h.isPregnant ? 'Экстренная стерилизация' : `Хирургическая стерилизация (${g.shortNom})`);
+
+  const spaySuccessLog = isMaleCat
+    ? `День ${state.day}: ✂️ Кастрация кота проведена успешно! (На плановую кастрацию р/с «Зоошанса» не открывается — гасим своими средствами со скидкой 20% или сбором на карту).`
+    : `День ${state.day}: ✂️ Стерилизация проведена успешно! (На плановую стерилизацию р/с «Зоошанса» не открывается — гасим своими средствами или сбором на карту).`;
+
   vetButtons.push({
     icon: '✂️',
-    title: h.isPregnant ? 'Экстренная стерилизация' : `Стерилизация (${g.shortNom})`,
-    badge: h.isPregnant ? 'Срочно' : (a.isSterilized ? 'Сделано' : (g.isDog ? 'Собака' : 'Кошка')),
-    sub: h.isPregnant ? 'Экстренное прерывание беременности по медицинским показаниям.' : 'Обязательная процедура перед пристройством взрослого подопечного.',
+    title: procedureTitle,
+    badge: procedureBadge,
+    sub: procedureSub,
     costBYN: spayState === 'completed' ? 0 : spayCost,
     baseCostBYN: spayState === 'completed' ? null : (hasDiscount ? baseSpayCost : null),
     costEnergy: spayState === 'completed' ? 0 : 20,
@@ -1204,11 +1232,11 @@ function renderActionTabs() {
     state: spayState,
     statusText: spayStatusText,
     onClick: () => {
-      if (!payVetBill(baseSpayCost, true, `Хирургическая стерилизация (${g.shortNom})`, false, 20)) return;
+      if (!payVetBill(baseSpayCost, true, billProcedureName, false, 20)) return;
       a.isSterilized = true;
       a.motherSterilized = true;
       h.isPregnant = false;
-      addLog(`День ${state.day}: ✂️ Стерилизация проведена успешно! (На плановую стерилизацию р/с «Зоошанса» не открывается — гасим своими средствами или сбором на карту).`, 'success');
+      addLog(spaySuccessLog, 'success');
       if (a.hasMotherCat && a.savedCount >= (a.totalCount || a.initialCount || 1)) {
         triggerEndGame(
           true,
