@@ -2999,6 +2999,7 @@ document.addEventListener('keydown', (e) => {
     closeEndGameModal();
     closeScenarioPickerModal();
     if (typeof closeMentorModal === 'function') closeMentorModal();
+    if (typeof closeMentorArchiveModal === 'function') closeMentorArchiveModal();
     if (typeof closeCandidateModal === 'function') closeCandidateModal();
   }
 });

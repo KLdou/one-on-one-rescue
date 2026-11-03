@@ -108,8 +108,11 @@ function startNewRun(experiencedCurator = false, forcedScenario = null) {
   if (scenModal) scenModal.classList.add('hidden');
   const mentModal = document.getElementById('mentorModal');
   if (mentModal) mentModal.classList.add('hidden');
-  if (typeof closeMentorModal === 'function') closeMentorModal();
+  const mentArchModal = document.getElementById('mentorArchiveModal');
+  if (mentArchModal) mentArchModal.classList.add('hidden');
   if (typeof mentorHintQueue !== 'undefined' && Array.isArray(mentorHintQueue)) mentorHintQueue.length = 0;
+  if (typeof closeMentorModal === 'function') closeMentorModal();
+  if (typeof closeMentorArchiveModal === 'function') closeMentorArchiveModal();
   document.getElementById('eventOverlayBox').classList.add('hidden');
   document.getElementById('actionsDashboard').classList.remove('hidden');
 
