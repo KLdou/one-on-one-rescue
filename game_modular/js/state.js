@@ -106,6 +106,10 @@ function startNewRun(experiencedCurator = false, forcedScenario = null) {
   if (animModal) animModal.classList.add('hidden');
   const scenModal = document.getElementById('scenarioPickerModal');
   if (scenModal) scenModal.classList.add('hidden');
+  const mentModal = document.getElementById('mentorModal');
+  if (mentModal) mentModal.classList.add('hidden');
+  if (typeof closeMentorModal === 'function') closeMentorModal();
+  if (typeof mentorHintQueue !== 'undefined' && Array.isArray(mentorHintQueue)) mentorHintQueue.length = 0;
   document.getElementById('eventOverlayBox').classList.add('hidden');
   document.getElementById('actionsDashboard').classList.remove('hidden');
 

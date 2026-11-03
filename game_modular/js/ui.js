@@ -3171,6 +3171,16 @@ const mentorHintQueue = [];
 
 function triggerMentorHint(hintId, onDismissCallback, forceShow = false) {
   if (!forceShow && typeof isMentorHintUnlocked === 'function' && isMentorHintUnlocked(hintId)) {
+    if (typeof onDismissCallback === 'function') {
+      try { onDismissCallback(); } catch (e) { console.error(e); }
+    }
+    return false;
+  }
+
+  const hints = (window.GAME_DATA && window.GAME_DATA.mentorHints) ? window.GAME_DATA.mentorHints : null;
+  const hintData = hints ? hints[hintId] : null;
+  if (!hintData) {
+    console.warn(`Mentor hint ${hintId} not found in GAME_DATA.mentorHints`);
     return false;
   }
 
@@ -3191,13 +3201,6 @@ function triggerMentorHint(hintId, onDismissCallback, forceShow = false) {
   if (isModalActive) {
     mentorHintQueue.push({ hintId, onDismissCallback });
     return true;
-  }
-
-  const hints = (window.GAME_DATA && window.GAME_DATA.mentorHints) ? window.GAME_DATA.mentorHints : null;
-  const hintData = hints ? hints[hintId] : null;
-  if (!hintData) {
-    console.warn(`Mentor hint ${hintId} not found in GAME_DATA.mentorHints`);
-    return false;
   }
 
   isMentorModalOpen = true;
