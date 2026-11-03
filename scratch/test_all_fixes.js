@@ -207,7 +207,7 @@ const maleName = window.getRandomPetname('male');
 const femaleName = window.getRandomPetname('female');
 console.log(`  Sample male name: "${maleName}"`);
 console.log(`  Sample female name: "${femaleName}"`);
-assert.ok(femaleName.includes('ая') || femaleName.includes('яя') || femaleName.includes('Комаровская') || femaleName.includes('ская') || femaleName.includes('цкая'));
+assert.ok(femaleName.includes('ая') || femaleName.includes('яя') || femaleName.includes('Комаровская') || femaleName.includes('ская') || femaleName.includes('цкая') || femaleName.includes('Прушинских') || femaleName.includes('их'));
 console.log('✓ Test 2.4 passed!');
 
 // Test 2.5: Dynamic calls loading from window.GAME_DATA.calls

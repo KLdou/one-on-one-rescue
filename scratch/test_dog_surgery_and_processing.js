@@ -150,6 +150,7 @@ if (!hintPostOp.includes('после стационара') && !hintPostOp.inclu
 // 4. Advance through Day 2, Day 3, Day 4
 console.log('\n--- Advancing to Day 4 to test Escape Prevention ---');
 getOrCreateElement('eventOverlayBox').classList.add('hidden');
+closeAnimalModal();
 advanceAcuteDay(); // Day 2
 console.log('Day now:', state.day, 'inStationaryDaysLeft:', state.animal.inStationaryDaysLeft);
 

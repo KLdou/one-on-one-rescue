@@ -1,48 +1,71 @@
 // engine.js - Игровой цикл, пошаговая острая фаза, перемотка времени и дедлайны (v2.2)
 
-function isModalActive() {
+function isAnyBlockingModalOpen() {
   if (typeof document === 'undefined') return false;
 
   const evBox = document.getElementById('eventOverlayBox');
-  if (evBox && !evBox.classList.contains('hidden')) return true;
-
-  if (window.currentCandidateCall) {
-    const candModal = document.getElementById('candidateInterviewModal');
-    if (candModal && !candModal.classList.contains('hidden')) return true;
+  if (evBox && typeof evBox.classList?.contains === 'function' && !evBox.classList.contains('hidden')) {
+    return true;
   }
 
-  if (typeof isMentorModalOpen !== 'undefined' && isMentorModalOpen) {
-    const mentModal = document.getElementById('mentorModal');
-    if (mentModal && !mentModal.classList.contains('hidden')) return true;
+  const candModal = document.getElementById('candidateInterviewModal');
+  if (candModal && typeof candModal.classList?.contains === 'function' && !candModal.classList.contains('hidden')) {
+    if (typeof window !== 'undefined' && window.currentCandidateCall) {
+      return true;
+    }
   }
 
-  if (typeof window.isMentorArchiveOpen !== 'undefined' && window.isMentorArchiveOpen) {
-    const archModal = document.getElementById('mentorArchiveModal');
-    if (archModal && !archModal.classList.contains('hidden')) return true;
+  const mentModal = document.getElementById('mentorModal');
+  if (mentModal && typeof mentModal.classList?.contains === 'function' && !mentModal.classList.contains('hidden')) {
+    if (typeof isMentorModalOpen !== 'undefined' && isMentorModalOpen) {
+      return true;
+    }
   }
 
-  if (typeof window.isScenarioPickerOpen !== 'undefined' && window.isScenarioPickerOpen) {
-    const scenModal = document.getElementById('scenarioPickerModal');
-    if (scenModal && !scenModal.classList.contains('hidden')) return true;
+  const mentArchModal = document.getElementById('mentorArchiveModal');
+  if (mentArchModal && typeof mentArchModal.classList?.contains === 'function' && !mentArchModal.classList.contains('hidden')) {
+    if (typeof window !== 'undefined' && window.isMentorArchiveOpen) {
+      return true;
+    }
   }
 
-  if (typeof window.isAlbumModalOpen !== 'undefined' && window.isAlbumModalOpen) {
-    const albModal = document.getElementById('savedAlbumModal');
-    if (albModal && !albModal.classList.contains('hidden')) return true;
+  const scenModal = document.getElementById('scenarioPickerModal');
+  if (scenModal && typeof scenModal.classList?.contains === 'function' && !scenModal.classList.contains('hidden')) {
+    if (typeof window !== 'undefined' && window.isScenarioPickerOpen) {
+      return true;
+    }
   }
 
-  if (typeof window.isAnimalModalOpen !== 'undefined' && window.isAnimalModalOpen) {
-    const animModal = document.getElementById('animalModal');
-    if (animModal && !animModal.classList.contains('hidden')) return true;
+  const albModal = document.getElementById('savedAlbumModal');
+  if (albModal && typeof albModal.classList?.contains === 'function' && !albModal.classList.contains('hidden')) {
+    if (typeof window !== 'undefined' && window.isAlbumModalOpen) {
+      return true;
+    }
+  }
+
+  const animModal = document.getElementById('animalModal');
+  if (animModal && typeof animModal.classList?.contains === 'function' && !animModal.classList.contains('hidden')) {
+    if (typeof window !== 'undefined' && window.isAnimalModalOpen) {
+      return true;
+    }
+  }
+
+  const endModal = document.getElementById('endGameModal');
+  if (endModal && typeof endModal.classList?.contains === 'function' && !endModal.classList.contains('hidden')) {
+    if (typeof state !== 'undefined' && state.gameOver) {
+      return true;
+    }
   }
 
   return false;
 }
-window.isModalActive = isModalActive;
+const isModalActive = isAnyBlockingModalOpen;
+window.isAnyBlockingModalOpen = isAnyBlockingModalOpen;
+window.isModalActive = isAnyBlockingModalOpen;
 
 function setSpeed(speed) {
   if (state.gameOver) return;
-  if (isModalActive() && speed > 0) return;
+  if (isAnyBlockingModalOpen() && speed > 0) return;
 
   // В первые 3 дня активна пошаговая «Острая фаза» (GDD 2.1)
   if (state.onboarding && state.onboarding.acutePhase && speed > 0) {
@@ -73,12 +96,7 @@ function stopTimer() {
 
 function advanceAcuteDay() {
   if (state.gameOver) return;
-  if (!document.getElementById('eventOverlayBox').classList.contains('hidden')) return;
-  if (window.currentCandidateCall) {
-    const candModal = document.getElementById('candidateInterviewModal');
-    if (candModal && !candModal.classList.contains('hidden')) return;
-  }
-  if (typeof isMentorModalOpen !== 'undefined' && isMentorModalOpen) return;
+  if (isAnyBlockingModalOpen()) return;
 
   processDayTick();
 
@@ -174,7 +192,7 @@ function updateSpeedButtonsUI() {
 
 function fastForwardCalmDays() {
   if (state.gameOver) return;
-  if (isModalActive()) return;
+  if (isAnyBlockingModalOpen()) return;
   stopTimer();
 
   if (state.onboarding && state.onboarding.acutePhase) {
@@ -913,7 +931,7 @@ function processDayTick() {
   }
 
   let pendingFinAudit = false;
-  if (state.zooshans.cardFundraiserActive && state.zooshans.daysSinceLastFinReport === 7) {
+  if (state.zooshans.personalFundraiserActive && !state.zooshans.personalDonationsBanned && state.zooshans.daysSinceLastFinReport >= 7) {
     pendingFinAudit = true;
   }
 

@@ -1802,10 +1802,15 @@ function renderActionTabs() {
     state: litterState,
     statusText: litterStatusText,
     onClick: () => {
+      const cost = !a.litterTrained ? 26 : 16;
+      if (state.cash < cost) {
+        addLog(`День ${state.day}: ❌ Не хватает средств (${state.cash} BYN из требуемых ${cost} BYN) на покупку необходимых средств!`, 'danger');
+        return;
+      }
+      if (!spendEnergy(15)) return;
+      state.cash = +(state.cash - cost).toFixed(1);
+      state.personalMoneySpent = +(state.personalMoneySpent + cost).toFixed(1);
       if (!a.litterTrained) {
-        if (!spendEnergy(15)) return;
-        state.cash = +(state.cash - 26).toFixed(1);
-        state.personalMoneySpent = +(state.personalMoneySpent + 26).toFixed(1);
         a.litterTrained = true;
         const toiletSuccessMsg = isPuppy
           ? `Вы застелили пол впитывающими пеленками и применили энзимный спрей — ${g.nom} теперь ходят строго на пеленку!`
@@ -1814,9 +1819,6 @@ function renderActionTabs() {
               : `Вы подобрали правильный наполнитель и энзимный спрей — ${g.nom} теперь ходит в лоток без промахов!`);
         addLog(`День ${state.day}: ${isPuppy ? '🧻' : '🚽'} ${toiletSuccessMsg}`, 'success');
       } else {
-        if (!spendEnergy(15)) return;
-        state.cash = +(state.cash - 16).toFixed(1);
-        state.personalMoneySpent = +(state.personalMoneySpent + 16).toFixed(1);
         state.zooshans.cageReturnedClean = true;
         state.mental = Math.min(100, state.mental + 8);
         addLog(`День ${state.day}: 🧼 Вы купили дезсредство Виркон (-16 BYN), тщательно отмыли и вернули клетку на склад «Зоошанса»! (+8% Менталки).`, 'success');
@@ -2573,6 +2575,9 @@ function closeEventModal() {
   document.getElementById('eventOverlayBox').classList.remove('flex');
   document.getElementById('actionsDashboard').classList.remove('hidden');
   renderAll();
+  if (typeof checkMentorTriggers === 'function') {
+    setTimeout(() => checkMentorTriggers(), 50);
+  }
 }
 
 // 4. ФИНАЛЬНЫЙ ЭКРАН, РАЗБОР ОШИБОК, АЛЬБОМ И КАРТОЧКА 9:16 (GDD 9.1, 9.2, 9.3)

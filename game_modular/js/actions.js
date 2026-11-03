@@ -153,7 +153,12 @@ function payVetBill(baseCostBYN, voucherEligible, serviceTitle, isExpensiveProce
     if (state.zooshans.clinicMode === 'major_voucher' || isExpensiveProcedure) {
       state.zooshans.voucherDebt = +(state.zooshans.voucherDebt + discounted).toFixed(1);
       if (typeof checkMentorTriggers === 'function') {
-        checkMentorTriggers();
+        const evBox = typeof document !== 'undefined' ? document.getElementById('eventOverlayBox') : null;
+        if (evBox && !evBox.classList.contains('hidden')) {
+          setTimeout(() => checkMentorTriggers(), 50);
+        } else {
+          checkMentorTriggers();
+        }
       }
       addLog(`День ${state.day}: 🎫 ${serviceTitle} — выписан гарантийный талон ветцентра (-20%, +${discounted} BYN в долг на 30 дней. Общий долг: ${state.zooshans.voucherDebt}/1000 BYN).`, 'info');
       return true;
@@ -800,6 +805,20 @@ function provideVolunteerDeworming(source, volunteerName = 'волонтер') {
   if (state.gameOver) return;
   const a = state.animal;
   if (!a) return;
+
+  // Если у игрока есть подаренная таблетка от волонтеров — используем ее бесплатно (0 BYN)
+  if (state.zooshans && state.zooshans.hasGiftedDewormPill) {
+    state.zooshans.hasGiftedDewormPill = false;
+    a.volunteerHandlesDeworming = true;
+    if (a.dewormStage === 0) {
+      a.dewormStage = 1;
+      a.daysSinceDeworm1 = 0;
+    }
+    addLog(`День ${state.day}: 🎁 Использована подаренная волонтерами таблетка от глистов (0 BYN)! ${volunteerName} дала 1-ю дозу. Вторую обработку волонтер проведет на 10-й день без вашего участия.`, 'success');
+    closeEventModal();
+    renderAll();
+    return;
+  }
 
   if (source === 'flea_market') {
     if (state.energy < 10) {

@@ -155,6 +155,12 @@ function ensureStateBackwardCompatibility(st = window.state) {
     if (typeof st.zooshans.socialFosterDaysElapsed !== 'number') {
       st.zooshans.socialFosterDaysElapsed = 0;
     }
+    if (typeof st.zooshans.hasGiftedDewormPill !== 'boolean') {
+      st.zooshans.hasGiftedDewormPill = false;
+    }
+    if (typeof st.zooshans.personalFundraiserActive !== 'boolean') {
+      st.zooshans.personalFundraiserActive = false;
+    }
   }
 
   return st;

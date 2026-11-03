@@ -79,7 +79,7 @@ function checkMedicalAndCrisisTriggers() {
         label: 'Согласовать с Колл-центром и поместить в инфекционный ОРИТ на 3 суток (336 BYN по талону)',
         style: 'primary',
         action: () => {
-          if (!payVetBill(336, true, '3 суток реанимации в инфекционном ОРИТ', true)) return;
+          if (!payVetBill(420, true, '3 суток реанимации в инфекционном ОРИТ', true)) return;
           state.zooshans.expensiveApproved = true;
           a.inStationaryDaysLeft = 3;
           a.stationaryReason = 'virus';
@@ -598,8 +598,15 @@ function triggerEuAdoptionReadyModal() {
         label: 'Оформить евросертификат (-50 BYN) и отправить в семью!',
         style: 'primary',
         action: () => {
-          state.cash = +(state.cash - 50).toFixed(1);
-          state.personalMoneySpent = +(state.personalMoneySpent + 50).toFixed(1);
+          if (state.cash < 50) {
+            const shortBYN = +(50 - state.cash).toFixed(1);
+            state.personalMoneySpent = +(state.personalMoneySpent + state.cash).toFixed(1);
+            state.cash = 0;
+            addLog(`День ${state.day}: ⚠️ На оформление евросертификата не хватало ${shortBYN} BYN — недостающую сумму одолжили друзья по чату @zooshans_chat!`, 'warn');
+          } else {
+            state.cash = +(state.cash - 50).toFixed(1);
+            state.personalMoneySpent = +(state.personalMoneySpent + 50).toFixed(1);
+          }
           completeOneOrPairAdoption(false, `Невероятное международное спасение! ${g.nom} успешно пересек(ла) границу и уже спит на мягком пледе в уютном доме в Европе. Семья прислала видео с восторженными приветствиями!`);
         }
       }
