@@ -5,8 +5,13 @@ function checkMedicalAndCrisisTriggers() {
   const h = a.hiddenState;
   const g = getAnimalGrammar(a);
 
-  // Самовосстановление: если квест побега был ошибочно активирован для пациента в стационаре клиники, сбрасываем его
-  if (state.escapeQuest && state.escapeQuest.active && a.inStationaryDaysLeft && a.inStationaryDaysLeft > 0) {
+  // Самовосстановление: если квест побега с передержки был ошибочно активирован для пациента в стационаре или на долечивании/реабилитации, сбрасываем его
+  const isMedRestricted = Boolean(
+    (a.inStationaryDaysLeft && a.inStationaryDaysLeft > 0) ||
+    (a.virusRecoveryDaysLeft && a.virusRecoveryDaysLeft > 0) ||
+    (a.traumaRehabDaysLeft && a.traumaRehabDaysLeft > 0)
+  );
+  if (state.escapeQuest && state.escapeQuest.active && isMedRestricted) {
     state.escapeQuest.active = false;
     state.escapeQuest.daysRemaining = 0;
     state.escapeQuest.searchProgress = 0;
@@ -267,7 +272,13 @@ function checkMedicalAndCrisisTriggers() {
   }
 
   // З) Побег на недобросовестной передержке у новичка на 7-й день (GDD 7.3)
-  const isConfinedOrStationary = Boolean((a.inStationaryDaysLeft && a.inStationaryDaysLeft > 0) || a.traumaOperated || h.hasSevereTrauma);
+  const isConfinedOrStationary = Boolean(
+    (a.inStationaryDaysLeft && a.inStationaryDaysLeft > 0) ||
+    (a.virusRecoveryDaysLeft && a.virusRecoveryDaysLeft > 0) ||
+    (a.traumaRehabDaysLeft && a.traumaRehabDaysLeft > 0) ||
+    a.traumaOperated ||
+    h.hasSevereTrauma
+  );
   if (!isConfinedOrStationary && state.zooshans.locationStatus === 'social_foster_novice' && state.zooshans.socialFosterDaysElapsed === 7 && !state.triggeredEvents.windowEscape) {
     state.triggeredEvents.windowEscape = true;
     state.escapeQuest.active = true;

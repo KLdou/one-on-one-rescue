@@ -165,16 +165,21 @@ function switchTab(tabName) {
 }
 
 function renderAll() {
-  // Самовосстановление: пациент в стационаре клиники не может быть беглецом с домашней передержки
-  if (typeof isAnimalInStationary === 'function' && isAnimalInStationary()) {
-    if (state.escapeQuest && state.escapeQuest.active) {
-      state.escapeQuest.active = false;
-      state.escapeQuest.daysRemaining = 0;
-      state.escapeQuest.searchProgress = 0;
-      state.triggeredEvents.windowEscape = false;
-      const escBanner = document.getElementById('escapeUrgentBanner');
-      if (escBanner) escBanner.classList.add('hidden');
-    }
+  // Самовосстановление: пациент в стационаре клиники или на карантине/реабилитации не может быть беглецом с домашней передержки
+  const isMedRestricted = Boolean(
+    state.animal && (
+      (typeof isAnimalInStationary === 'function' && isAnimalInStationary()) ||
+      (state.animal.virusRecoveryDaysLeft && state.animal.virusRecoveryDaysLeft > 0) ||
+      (state.animal.traumaRehabDaysLeft && state.animal.traumaRehabDaysLeft > 0)
+    )
+  );
+  if (isMedRestricted && state.escapeQuest && state.escapeQuest.active) {
+    state.escapeQuest.active = false;
+    state.escapeQuest.daysRemaining = 0;
+    state.escapeQuest.searchProgress = 0;
+    state.triggeredEvents.windowEscape = false;
+    const escBanner = document.getElementById('escapeUrgentBanner');
+    if (escBanner) escBanner.classList.add('hidden');
   }
 
   renderTopBar();
