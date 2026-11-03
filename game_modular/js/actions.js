@@ -380,11 +380,38 @@ function actionWriteStorytellingPost() {
   if (roll < 0.12) {
     // 12% шанс: подписчик влюбляется в сторис, переводит 85 BYN и бронирует
     state.cash = +(state.cash + 85).toFixed(1);
+    state.pr.earlyBooking = {
+      active: true,
+      bookedOnDay: state.day,
+      candidateName: 'Семья по сторис (ранняя бронь)',
+      notifiedReady: false
+    };
     state.pr.earlyBookedAdopterWaiting = true;
     state.mental = Math.min(100, state.mental + 15);
     addLog(`День ${state.day}: 💖 ЧУДО СТОРИТЕЛЛИНГА: Подписчица влюбилась в хвостика по вашим сторис! Она перевела 85 BYN помощи и забронировала питомца себе домой!`, 'success');
     renderAll();
-    triggerEarlyBookedTransferModal();
+
+    const isRestricted = typeof isAnimalMedicallyRestricted === 'function' && isAnimalMedicallyRestricted();
+    if (isRestricted) {
+      stopTimer();
+      showEventModal(
+        '💖 ЧУДО СТОРИТЕЛЛИНГА: Ранняя бронь подопечного!',
+        `Подписчица влюбилась в подопечного («${state.animal.petName || state.animal.title}») по вашим сторис и перевела 85 BYN помощи на лечение!\n\nОна в курсе, что хвостик сейчас проходит лечение или карантин, и терпеливо ждет его полного выздоровления.\n\nКак только подопечный поправится, свяжитесь с семьей во вкладке «Быт и Пиар» (кнопка «Семья по ранней брони»), чтобы согласовать передачу по договору!`,
+        [
+          {
+            label: '💖 Принять бронь и продолжить лечение малыша',
+            style: 'primary',
+            action: () => {
+              addLog(`День ${state.day}: 📝 Подопечный на брони! Семья терпеливо ждет новостей о выздоровлении.`, 'info');
+              closeEventModal();
+              renderAll();
+            }
+          }
+        ]
+      );
+    } else {
+      triggerEarlyBookedTransferModal();
+    }
     return;
   } else if (roll < 0.47) {
     // 35% шанс: вещественная «посылка добра»
@@ -419,6 +446,83 @@ function thankForMaterialGift() {
   addLog(`День ${state.day}: 📸 Вы опубликовали фото-благодарность с подарком (+6% Менталки)! Доверие аудитории выросло.`, 'success');
   renderAll();
 }
+
+function actionContactEarlyBookedAdopter() {
+  if (!state.pr || !state.pr.earlyBooking || !state.pr.earlyBooking.active) {
+    addLog(`День ${state.day}: ℹ️ На данный момент активной ранней брони нет.`, 'info');
+    return;
+  }
+  const a = state.animal;
+  const isRestricted = typeof isAnimalMedicallyRestricted === 'function' && isAnimalMedicallyRestricted();
+  const waitDays = typeof getEarlyBookingWaitDays === 'function'
+    ? getEarlyBookingWaitDays()
+    : Math.max(0, state.day - (state.pr.earlyBooking.bookedOnDay || state.day));
+  const candidateName = state.pr.earlyBooking.candidateName || 'Семья по ранней брони';
+
+  const petNameDisplay = a.petName || a.name || a.title || 'Подопечный';
+
+  if (isRestricted) {
+    stopTimer();
+    showEventModal(
+      '📞 СОЗВОН С СЕМЬЕЙ: Подопечный еще на лечении',
+      `С момента брони прошло ${waitDays} дн. Подопечный («${petNameDisplay}») еще проходит медицинское лечение, восстановление или карантин.\n\nВы позвонили семье, чтобы рассказать о ходе терапии. Люди благодарят за весточку:\n«Спасибо, что держите нас в курсе! Мы переживаем за малыша и ждем, когда врачи подтвердят полное выздоровление!»`,
+      [
+        {
+          label: '💬 Поблагодарить за терпение (+5% менталки)',
+          style: 'primary',
+          action: () => {
+            state.mental = Math.min(100, state.mental + 5);
+            addLog(`День ${state.day}: 📞 Созвон с забронировавшей семьей: люди терпеливо ждут окончания лечения (+5% Менталки).`, 'info');
+            closeEventModal();
+            renderAll();
+          }
+        },
+        {
+          label: 'Назад',
+          style: 'secondary',
+          action: () => {
+            closeEventModal();
+          }
+        }
+      ]
+    );
+    return;
+  }
+
+  // Животное выздоровело: расчет вероятности отказа (чем дольше ждали, тем выше риск)
+  const dropChance = typeof calculateEarlyBookingDropChance === 'function'
+    ? calculateEarlyBookingDropChance(waitDays)
+    : (waitDays <= 7 ? 0.18 : (waitDays <= 14 ? 0.25 : 0.35));
+
+  const roll = Math.random();
+  stopTimer();
+
+  if (roll < dropChance) {
+    state.pr.earlyBooking.active = false;
+    state.pr.earlyBookedAdopterWaiting = false;
+    state.mental = Math.max(0, state.mental - 10);
+    if (typeof checkMentalHealth === 'function') checkMentalHealth();
+
+    showEventModal(
+      '💔 СЕМЬЯ ПЕРЕДУМАЛА: Срыв брони после ожидания',
+      `Вы набрали номер забронировавшей семьи, чтобы обрадовать: «${petNameDisplay}» полностью здоров и готов к переезду домой!\n\nОднако в трубке звучит смущенный голос:\n«Ой, здравствуйте... Вы знаете, прошло уже столько дней (${waitDays} дн.)... Дети очень плакали и просили котенка, поэтому на прошлых выходных мы взяли малыша у знакомых / у нас изменились обстоятельства... Извините нас, пожалуйста! Надеемся, наши 85 BYN помогли вам вылечить хвостика!»\n\nБронь аннулирована. Подопечный возвращается в общий поиск хозяев (-10% Менталки).`,
+      [
+        {
+          label: 'Вздохнуть и вернуться к общему пиару',
+          style: 'danger',
+          action: () => {
+            addLog(`День ${state.day}: 💔 Семья отказалась от брони после ${waitDays} дн. ожидания («изменились обстоятельства»). Подопечный возвращен в общий пиар.`, 'warn');
+            closeEventModal();
+            renderAll();
+          }
+        }
+      ]
+    );
+  } else {
+    triggerEarlyBookedTransferModal();
+  }
+}
+window.actionContactEarlyBookedAdopter = actionContactEarlyBookedAdopter;
 
 function payVoucherDebtWithOwnMoney() {
   if (state.zooshans.voucherDebt <= 0) return;

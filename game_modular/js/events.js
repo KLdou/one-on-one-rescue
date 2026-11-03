@@ -784,6 +784,7 @@ function triggerEarlyBookedTransferModal() {
         action: () => {
           closeEventModal();
           state.pr.earlyBookedAdopterWaiting = false;
+          if (state.pr.earlyBooking) state.pr.earlyBooking.active = false;
           initiateAnimalTransferWithTrial(false, {
             id: 'call_early_booked_adopter',
             caller: 'Семья по ранней брони',

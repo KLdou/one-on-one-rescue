@@ -786,6 +786,14 @@ function processDayTick() {
     }
   }
 
+  // Оповещение о готовности к передаче по ранней брони после выздоровления
+  if (state.pr && state.pr.earlyBooking && state.pr.earlyBooking.active && !state.pr.earlyBooking.notifiedReady) {
+    if (typeof isAnimalMedicallyRestricted === 'function' && !isAnimalMedicallyRestricted()) {
+      state.pr.earlyBooking.notifiedReady = true;
+      addLog(`День ${state.day}: 🌟 Подопечный полностью восстановился и готов к переезду! Самое время связаться с семьей по ранней брони во вкладке «Быт и Пиар»!`, 'success');
+    }
+  }
+
   if (a.hiddenState.needsSocialization && a.hiddenState.socializationDaysDone < 14) {
     a.hiddenState.socializationDaysDone += 1;
     if (a.hiddenState.socializationDaysDone === 14) {

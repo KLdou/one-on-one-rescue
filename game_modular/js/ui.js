@@ -704,7 +704,12 @@ function renderPlayerAndAnimalCards() {
     nextHint = `Восстановление после вируса: щадящая диета и карантин (осталось ${a.virusRecoveryDaysLeft} дн. до пиара)`;
   } else if (a.traumaRehabDaysLeft && a.traumaRehabDaysLeft > 0) {
     nextHint = `Реабилитация после перелома: покой и сращение костей (осталось ${a.traumaRehabDaysLeft} дн. до пиара)`;
-  } else if (state.pr.earlyBookedAdopterWaiting) nextHint = 'Малыш забронирован! Передайте его семье по договору (вкладка 3) до вакцинации.';
+  } else if ((state.pr.earlyBooking && state.pr.earlyBooking.active) || state.pr.earlyBookedAdopterWaiting) {
+    const isRestricted = typeof isAnimalMedicallyRestricted === 'function' && isAnimalMedicallyRestricted();
+    nextHint = isRestricted
+      ? 'Малыш забронирован! Долечите его, а затем свяжитесь с семьей во вкладке «Быт и Пиар» (Вкладка 3).'
+      : 'Малыш готов к семье! Свяжитесь с забронировавшей семьей во вкладке «Быт и Пиар» (Вкладка 3).';
+  }
   else if (h.hasSevereTrauma && !a.traumaOperated) {
     nextHint = !state.zooshans.applicationSubmitted
       ? 'Подайте заявление в Колл-центр «Зоошанса» (вкладка 2), чтобы согласовать талон на экстренную операцию!'
@@ -806,7 +811,12 @@ function renderPlayerAndAnimalCards() {
   } else if (a.traumaRehabDaysLeft && a.traumaRehabDaysLeft > 0) {
     prLabel = `🦴 Сращение перелома (${a.traumaRehabDaysLeft} дн. — пиар отложен)`;
   } else if (state.pr.lostSearchActive) prLabel = `🔎 Поиск старых хозяев: ${state.pr.lostSearchDaysDone}/10 дн.`;
-  else if (state.pr.earlyBookedAdopterWaiting) prLabel = '📝 ЗАБРОНИРОВАН! Готов к переезду в семью по договору до вакцинации (вкладка 3)';
+  else if ((state.pr.earlyBooking && state.pr.earlyBooking.active) || state.pr.earlyBookedAdopterWaiting) {
+    const isRestricted = typeof isAnimalMedicallyRestricted === 'function' && isAnimalMedicallyRestricted();
+    prLabel = isRestricted
+      ? '💖 Забронирован (семья ждет окончания лечения, Вкладка 3)'
+      : '🌟 Забронирован! Готов к звонку и переезду в семью (Вкладка 3)';
+  }
   else if (state.pr.prActive) prLabel = `📢 Пиар на сайтах (${state.pr.daysInPr} дн., обновление через ${Math.max(0, 6 - state.pr.daysSinceAdRefresh)} дн.)`;
   document.getElementById('prProgressText').textContent = prLabel;
 }
@@ -1594,28 +1604,40 @@ function renderActionTabs() {
 
   const nActiveNow = a.activeCount !== undefined ? a.activeCount : (a.count || 0);
 
-  // 3.0. Передать по ранней брони до вакцинации по договору
-  if (state.pr.earlyBookedAdopterWaiting && nActiveNow > 0) {
-    let earlyState = 'active';
-    let earlyStatus = 'Семья ждет!';
-    if (isMedicallyRestricted) {
-      earlyState = 'locked';
-      earlyStatus = a.inStationaryDaysLeft > 0
-        ? '🔒 В стационаре'
-        : (a.virusRecoveryDaysLeft > 0 ? '🔒 Долечивание вируса' : '🔒 Реабилитация перелома');
+  // 3.0. Связаться с семьей по ранней брони
+  const hasEarlyBooking = Boolean((state.pr.earlyBooking && state.pr.earlyBooking.active) || state.pr.earlyBookedAdopterWaiting);
+  if (hasEarlyBooking && nActiveNow > 0) {
+    const isRestricted = typeof isAnimalMedicallyRestricted === 'function'
+      ? isAnimalMedicallyRestricted()
+      : isMedicallyRestricted;
+    const waitDays = typeof getEarlyBookingWaitDays === 'function'
+      ? getEarlyBookingWaitDays()
+      : Math.max(0, state.day - (state.pr.earlyBooking?.bookedOnDay || state.day));
+
+    let earlyStatus = '✨ Готов к передаче!';
+    let earlySub = `Позвонить семье по брони (ждем ${waitDays} дн.). Обсудить готовность и передачу по договору.`;
+
+    if (isRestricted) {
+      earlyStatus = (a.inStationaryDaysLeft && a.inStationaryDaysLeft > 0)
+        ? '⏳ В стационаре'
+        : ((a.virusRecoveryDaysLeft && a.virusRecoveryDaysLeft > 0)
+          ? '⏳ Долечивание вируса'
+          : (a.knownRingworm === true ? '⏳ Лечение лишая' : '⏳ Реабилитация'));
+      earlySub = `Подопечный еще лечится (${waitDays} дн. на брони). Нажмите, чтобы связаться с семьей и дать весточку о здоровье.`;
     }
+
     careButtons.push({
-      icon: '🎉',
-      title: 'Передать по ранней брони',
-      badge: 'Договор',
-      sub: isMedicallyRestricted
-        ? 'Передача отложена до полного выздоровления и окончания реабилитации!'
-        : 'Передать забронированного малыша семье по договору куратора до вакцинации.',
+      icon: '📞',
+      title: 'Семья по ранней брони',
+      badge: `Бронь ${waitDays} дн.`,
+      sub: earlySub,
       costBYN: 0,
-      costEnergy: isMedicallyRestricted ? 0 : 5,
-      state: earlyState,
+      costEnergy: 0,
+      state: 'active',
       statusText: earlyStatus,
-      onClick: isMedicallyRestricted ? () => {} : triggerEarlyBookedTransferModal
+      onClick: typeof actionContactEarlyBookedAdopter === 'function'
+        ? actionContactEarlyBookedAdopter
+        : triggerEarlyBookedTransferModal
     });
   }
 
@@ -2316,14 +2338,17 @@ function renderDeadlines() {
     });
   }
 
-  // 3. Ранняя бронь усыновителями (готовы забрать до вакцинации)
-  if (state.pr.earlyBookedAdopterWaiting && nActive > 0) {
+  // 3. Ранняя бронь усыновителями (готовы забрать после выздоровления/по договору)
+  const hasEarlyBookingRadar = Boolean((state.pr.earlyBooking && state.pr.earlyBooking.active) || state.pr.earlyBookedAdopterWaiting);
+  if (hasEarlyBookingRadar && nActive > 0) {
+    const isRestricted = typeof isAnimalMedicallyRestricted === 'function' && isAnimalMedicallyRestricted();
+    const waitDays = typeof getEarlyBookingWaitDays === 'function' ? getEarlyBookingWaitDays() : 0;
     items.push({
-      icon: '🎉',
-      title: 'Ранняя бронь ждет',
-      days: 'Готов',
-      sub: 'Можно отдать до вакцинации!',
-      urgent: true,
+      icon: '📞',
+      title: 'Семья по ранней брони',
+      days: isRestricted ? `${waitDays} дн.` : 'Готов',
+      sub: isRestricted ? 'Ждет выздоровления' : 'Свяжитесь во вкладке 3!',
+      urgent: !isRestricted,
       danger: false
     });
   }

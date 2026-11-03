@@ -169,6 +169,17 @@ function ensureStateBackwardCompatibility(st = window.state) {
     }
   }
 
+  if (st.pr) {
+    if (!st.pr.earlyBooking) {
+      st.pr.earlyBooking = {
+        active: Boolean(st.pr.earlyBookedAdopterWaiting),
+        bookedOnDay: st.day || 1,
+        candidateName: 'Семья по ранней брони',
+        notifiedReady: false
+      };
+    }
+  }
+
   return st;
 }
 window.ensureStateBackwardCompatibility = ensureStateBackwardCompatibility;
@@ -425,6 +436,12 @@ function startNewRun(experiencedCurator = false, forcedScenario = null) {
       daysInPr: 0,
       daysSinceAdRefresh: 0,
       earlyBookedAdopterWaiting: false,
+      earlyBooking: {
+        active: false,
+        bookedOnDay: 0,
+        candidateName: 'Семья по ранней брони',
+        notifiedReady: false
+      },
       storytellingBoost: 0,
       storytellingCallBonus: 0,
       lastStorytellingDay: -999
@@ -453,6 +470,34 @@ function isAnimalInStationary() {
 function isAnimalAtPlayerHome() {
   if (isAnimalInStationary()) return false;
   return state.zooshans.locationStatus === 'home_floor' || state.zooshans.locationStatus === 'home_cage';
+}
+
+function isAnimalMedicallyRestricted() {
+  const a = state.animal;
+  if (!a) return false;
+  return Boolean(
+    (a.inStationaryDaysLeft && a.inStationaryDaysLeft > 0) ||
+    (a.virusRecoveryDaysLeft && a.virusRecoveryDaysLeft > 0) ||
+    (a.traumaRehabDaysLeft && a.traumaRehabDaysLeft > 0) ||
+    (a.knownRingworm === true) ||
+    (a.hiddenState && a.hiddenState.hasSevereTrauma && !a.traumaOperated) ||
+    (a.teethCrisis && !a.teethOperated) ||
+    (a.fipTreatment && a.fipDaysLeft > 0)
+  );
+}
+
+function getEarlyBookingWaitDays() {
+  if (!state.pr || !state.pr.earlyBooking || !state.pr.earlyBooking.active) return 0;
+  const bookedDay = state.pr.earlyBooking.bookedOnDay || state.day;
+  return Math.max(0, state.day - bookedDay);
+}
+
+function calculateEarlyBookingDropChance(waitDays) {
+  if (waitDays <= 3) return 0.10;
+  if (waitDays <= 7) return 0.18;
+  if (waitDays <= 14) return 0.25;
+  if (waitDays <= 25) return 0.35;
+  return 0.45;
 }
 
 function calculateDailyHouseholdEnergyDrain() {
