@@ -749,10 +749,16 @@ function processDayTick() {
         a.virusRecoveryDaysLeft = 14; // 2 недели восстановления
         a.knownVirus = 'Выжил (долечивание 14 дн.)';
         a.hiddenState.deadlyVirus = null;
+        if (state.zooshans.locationStatus === 'social_foster_novice' || state.zooshans.locationStatus === 'paid_foster') {
+          state.zooshans.locationStatus = state.zooshans.hasCage ? 'home_cage' : 'home_floor';
+        }
         addLog(`День ${state.day}: 🌿 ${g.nom} успешно выписан(а) из инфекционного стационара! Кризис миновал, но впереди 2 недели (14 дней) долечивания, щадящей диеты Gastrointestinal и карантина. Вакцинация и пристройство строго отложены!`, 'success');
       } else if (a.stationaryReason === 'trauma') {
         a.traumaRehabDaysLeft = 45; // 1.5 месяца покоя
         a.visibleState = 'Реабилитация после операции: сращение перелома (45 дн. покоя).';
+        if (state.zooshans.locationStatus === 'social_foster_novice') {
+          state.zooshans.locationStatus = state.zooshans.hasCage ? 'home_cage' : 'home_floor';
+        }
         addLog(`День ${state.day}: 🦴 ${g.nom} выписан(а) из послеоперационного хирургического стационара на домашний покой! Операция позади, но для полного сращения костей требуется 1.5 месяца (45 дней) покоя. Пристройство отложено до снятия спиц и ограничений!`, 'success');
       } else {
         addLog(`День ${state.day}: 🏥 ${g.nom} успешно выписан(а) из послеоперационного стационара!`, 'success');
@@ -838,7 +844,8 @@ function processDayTick() {
   state.mental = Math.min(100, Math.max(0, state.mental + state.player.family.mentalBonus - housingMentalDrain));
 
   // 10. Оплата коммерческой платной передержки (16 BYN/сут кот | 33 BYN/сут собака, GDD 7.2)
-  if (state.zooshans.locationStatus === 'paid_foster' && nActive > 0) {
+  const inStationary = Boolean(a.inStationaryDaysLeft && a.inStationaryDaysLeft > 0);
+  if (state.zooshans.locationStatus === 'paid_foster' && nActive > 0 && !inStationary) {
     const fCost = a.species === 'dog' ? 33 : 16;
     if (state.cash >= fCost) {
       state.cash = +(state.cash - fCost).toFixed(1);
@@ -868,7 +875,7 @@ function processDayTick() {
   }
 
   // 13. Конфликт с передержкой у новичка из соцсетей на 12-й день (GDD 7.2)
-  if (state.zooshans.locationStatus === 'social_foster_novice' && nActive > 0) {
+  if (state.zooshans.locationStatus === 'social_foster_novice' && nActive > 0 && !inStationary) {
     state.zooshans.socialFosterDaysElapsed += 1;
     if (state.zooshans.socialFosterDaysElapsed === 12 && !state.zooshans.socialFosterConflictTriggered) {
       state.zooshans.socialFosterConflictTriggered = true;
@@ -879,7 +886,7 @@ function processDayTick() {
   }
 
   // 14. Окончание 14-дневного перехвата волонтером на карантин (GDD 7.2)
-  if ((state.zooshans.locationStatus === 'temp_volunteer_14d' || state.zooshans.locationStatus === 'temp_volunteer_10d') && nActive > 0) {
+  if ((state.zooshans.locationStatus === 'temp_volunteer_14d' || state.zooshans.locationStatus === 'temp_volunteer_10d') && nActive > 0 && !inStationary) {
     state.zooshans.tempVolunteerDaysLeft -= 1;
     if (state.zooshans.tempVolunteerDaysLeft <= 0) {
       triggerReturnFromTempVolunteerModal();

@@ -5,6 +5,14 @@ function checkMedicalAndCrisisTriggers() {
   const h = a.hiddenState;
   const g = getAnimalGrammar(a);
 
+  // Самовосстановление: если квест побега был ошибочно активирован для пациента в стационаре клиники, сбрасываем его
+  if (state.escapeQuest && state.escapeQuest.active && a.inStationaryDaysLeft && a.inStationaryDaysLeft > 0) {
+    state.escapeQuest.active = false;
+    state.escapeQuest.daysRemaining = 0;
+    state.escapeQuest.searchProgress = 0;
+    state.triggeredEvents.windowEscape = false;
+  }
+
   // А) Сбитыш / тяжелая травма таза + поиск донора крови в чате @zooshans_chat (GDD 4.2)
   if (h.hasSevereTrauma && !a.traumaOperated) {
     a.health -= 18;
@@ -85,6 +93,17 @@ function checkMedicalAndCrisisTriggers() {
           a.stationaryReason = 'virus';
           a.health = 45; // В ОРИТ, тяжелое но под контролем врачей
           a.knownVirus = 'В инфекционном ОРИТ (капельницы)';
+
+          // Если подопечный был на передержке у новичка или платной передержке:
+          if (state.zooshans.locationStatus === 'social_foster_novice') {
+            state.zooshans.socialFosterDaysElapsed = 0;
+            state.zooshans.locationStatus = state.zooshans.hasCage ? 'home_cage' : 'home_floor';
+            addLog(`День ${state.day}: 🏠 Девушка с бесплатной передержки в панике отказалась брать тяжелобольного назад. После стационара выхаживание ложится на вас!`, 'warn');
+          } else if (state.zooshans.locationStatus === 'paid_foster') {
+            state.zooshans.locationStatus = state.zooshans.hasCage ? 'home_cage' : 'home_floor';
+            addLog(`День ${state.day}: ⚠️ Платная передержка категорически отказалась принимать больного с опасной вирусной инфекцией.`, 'warn');
+          }
+
           addLog(`День ${state.day}: 🏥 ${g.nom} экстренно госпитализирован(а) в инфекционный ОРИТ под инфузоматы. Врачи борются за жизнь!`, 'warn');
           closeEventModal();
           renderAll();
@@ -248,7 +267,8 @@ function checkMedicalAndCrisisTriggers() {
   }
 
   // З) Побег на недобросовестной передержке у новичка на 7-й день (GDD 7.3)
-  if (state.zooshans.locationStatus === 'social_foster_novice' && state.zooshans.socialFosterDaysElapsed === 7 && !state.triggeredEvents.windowEscape) {
+  const isConfinedOrStationary = Boolean((a.inStationaryDaysLeft && a.inStationaryDaysLeft > 0) || a.traumaOperated || h.hasSevereTrauma);
+  if (!isConfinedOrStationary && state.zooshans.locationStatus === 'social_foster_novice' && state.zooshans.socialFosterDaysElapsed === 7 && !state.triggeredEvents.windowEscape) {
     state.triggeredEvents.windowEscape = true;
     state.escapeQuest.active = true;
     state.escapeQuest.daysRemaining = 4;

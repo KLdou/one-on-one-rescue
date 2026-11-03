@@ -165,6 +165,18 @@ function switchTab(tabName) {
 }
 
 function renderAll() {
+  // Самовосстановление: пациент в стационаре клиники не может быть беглецом с домашней передержки
+  if (typeof isAnimalInStationary === 'function' && isAnimalInStationary()) {
+    if (state.escapeQuest && state.escapeQuest.active) {
+      state.escapeQuest.active = false;
+      state.escapeQuest.daysRemaining = 0;
+      state.escapeQuest.searchProgress = 0;
+      state.triggeredEvents.windowEscape = false;
+      const escBanner = document.getElementById('escapeUrgentBanner');
+      if (escBanner) escBanner.classList.add('hidden');
+    }
+  }
+
   renderTopBar();
   renderPlayerAndAnimalCards();
   renderActionTabs();
@@ -568,7 +580,11 @@ function renderPlayerAndAnimalCards() {
     'social_foster_novice': `🏠 Бесплатно у человека из соцсетей (${state.zooshans.socialFosterDaysElapsed} дн.)`,
     'maneuver_adopters': '⏳ Временно у несостоявшихся ручек (маневр 3 дня)'
   };
-  document.getElementById('fosterStatusBadge').textContent = locMap[state.zooshans.locationStatus] || 'Дома';
+  if (typeof isAnimalInStationary === 'function' && isAnimalInStationary()) {
+    document.getElementById('fosterStatusBadge').textContent = `🏥 В стационаре ветклиники (${state.animal.inStationaryDaysLeft} дн.)`;
+  } else {
+    document.getElementById('fosterStatusBadge').textContent = locMap[state.zooshans.locationStatus] || 'Дома';
+  }
 
   // Теги профиля игрока (включая 6-ю ось Социального капитала, GDD 3.0)
   const playerTags = [
@@ -1403,17 +1419,18 @@ function renderActionTabs() {
   });
 
   // 2.2. Опубликовать SOS-пост: поиск бесплатной передержки
+  const inStationary = typeof isAnimalInStationary === 'function' && isAnimalInStationary();
   const atHome = isAnimalAtPlayerHome();
   zooButtons.push({
     icon: '📢',
     title: 'SOS-пост: Поиск передержки',
-    badge: !atHome ? 'На передержке' : 'Соцсети',
-    sub: 'Поиск добровольца в соцсетях для бесплатной передержки (шанс ~30%).',
+    badge: inStationary ? 'В стационаре' : (!atHome ? 'На передержке' : 'Соцсети'),
+    sub: inStationary ? 'Поиск передержки заблокирован: подопечный в стационаре клиники.' : 'Поиск добровольца в соцсетях для бесплатной передержки (шанс ~30%).',
     costBYN: 0,
-    costEnergy: !atHome ? 0 : 15,
-    state: !atHome ? 'completed' : 'active',
-    statusText: !atHome ? '✓ Подопечный на передержке' : '',
-    onClick: actionSearchSocialFosterPost
+    costEnergy: (inStationary || !atHome) ? 0 : 15,
+    state: inStationary ? 'locked' : (!atHome ? 'completed' : 'active'),
+    statusText: inStationary ? '🔒 В стационаре клиники' : (!atHome ? '✓ Подопечный на передержке' : ''),
+    onClick: inStationary ? null : actionSearchSocialFosterPost
   });
 
   // 2.3. Волонтерская барахолка @zooshans_chat
@@ -2115,7 +2132,11 @@ function renderButtonGrid(containerId, buttons) {
     const tooltipParts = [b.title, b.sub];
     if (b.statusText) tooltipParts.push(`[${b.statusText}]`);
     const fullTooltip = tooltipParts.filter(Boolean).join(' — ');
-    btn.setAttribute('title', fullTooltip);
+    if (typeof btn.setAttribute === 'function') {
+      btn.setAttribute('title', fullTooltip);
+    } else {
+      btn.title = fullTooltip;
+    }
 
     if (state.gameOver) {
       btn.disabled = true;

@@ -271,6 +271,10 @@ function actionAskZooshansTakeover() {
 // 4. ПОИСК БЕСПЛАТНОЙ ПЕРЕДЕРЖКИ В СОЦСЕТЯХ (GDD 7.2)
 
 function actionSearchSocialFosterPost() {
+  if (typeof isAnimalInStationary === 'function' && isAnimalInStationary()) {
+    addLog(`День ${state.day}: 🏥 Подопечный находится в стационаре ветклиники! Поиск домашней передержки возможен только после выписки.`, 'warn');
+    return;
+  }
   if (!spendEnergy(15)) return;
   const g = getAnimalGrammar(state.animal);
   const roll = Math.random();

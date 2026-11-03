@@ -446,13 +446,18 @@ function startNewRun(experiencedCurator = false, forcedScenario = null) {
   triggerDay1IntroModal();
 }
 
+function isAnimalInStationary() {
+  return Boolean(state.animal && state.animal.inStationaryDaysLeft && state.animal.inStationaryDaysLeft > 0);
+}
+
 function isAnimalAtPlayerHome() {
+  if (isAnimalInStationary()) return false;
   return state.zooshans.locationStatus === 'home_floor' || state.zooshans.locationStatus === 'home_cage';
 }
 
 function calculateDailyHouseholdEnergyDrain() {
   // На передержке, в стационаре ветклиники или когда все животные на испытательном сроке/дома — быт = 0⚡/день
-  if (!isAnimalAtPlayerHome() || (state.animal && state.animal.inStationaryDaysLeft > 0)) return 0;
+  if (!isAnimalAtPlayerHome() || isAnimalInStationary()) return 0;
   const a = state.animal;
   const nActive = a.activeCount !== undefined ? a.activeCount : a.count;
   if (nActive <= 0) return 0;
