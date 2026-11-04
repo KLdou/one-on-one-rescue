@@ -44,7 +44,21 @@ assert(
   'Desktop HUD <section> MUST NOT include class "hidden"'
 );
 
-// 3. Verify styles.css specifies @media (max-width: 1023px) rules hiding .desktop-header and .desktop-hud
+// 3. Verify container wrapping showAlbumModal() has class 'desktop-service-buttons' and does NOT have 'hidden'
+const albumContainerMatch = htmlContent.match(/<div\s+class="([^"]*)"[^>]*>\s*<button[^>]*onclick="showAlbumModal\(\)"/);
+assert(albumContainerMatch, 'index.html MUST contain a container wrapping showAlbumModal()');
+
+const albumContainerClasses = albumContainerMatch[1].split(/\s+/);
+assert(
+  albumContainerClasses.includes('desktop-service-buttons'),
+  'Container wrapping showAlbumModal() MUST include class "desktop-service-buttons"'
+);
+assert(
+  !albumContainerClasses.includes('hidden'),
+  'Container wrapping showAlbumModal() MUST NOT include class "hidden"'
+);
+
+// 4. Verify styles.css specifies @media (max-width: 1023px) rules hiding .desktop-header, .desktop-hud, and .desktop-service-buttons
 assert(
   cssContent.includes('@media (max-width: 1023px)'),
   'styles.css MUST contain "@media (max-width: 1023px)"'
@@ -57,16 +71,17 @@ const minIndex = cssContent.indexOf('@media (min-width: 1024px)');
 assert(maxIndex !== -1, 'styles.css MUST have @media (max-width: 1023px)');
 assert(minIndex !== -1, 'styles.css MUST have @media (min-width: 1024px)');
 
-// Check that under max-width 1023px, desktop-header and desktop-hud are hidden with display: none !important
+// Check that under max-width 1023px, desktop-header, desktop-hud, and desktop-service-buttons are hidden with display: none !important
 const mobileBlock = cssContent.substring(maxIndex, minIndex > maxIndex ? minIndex : cssContent.length);
 assert(
   mobileBlock.includes('.desktop-header') &&
   mobileBlock.includes('.desktop-hud') &&
+  mobileBlock.includes('.desktop-service-buttons') &&
   mobileBlock.includes('display: none !important'),
-  'styles.css MUST hide .desktop-header and .desktop-hud in @media (max-width: 1023px) with display: none !important'
+  'styles.css MUST hide .desktop-header, .desktop-hud, and .desktop-service-buttons in @media (max-width: 1023px) with display: none !important'
 );
 
-// 4. Verify styles.css specifies @media (min-width: 1024px) rules restoring display for .desktop-header and .desktop-hud
+// 5. Verify styles.css specifies @media (min-width: 1024px) rules restoring display for .desktop-header, .desktop-hud, and .desktop-service-buttons
 const desktopBlock = cssContent.substring(minIndex);
 assert(
   desktopBlock.includes('.desktop-header') &&
@@ -78,6 +93,12 @@ assert(
   desktopBlock.includes('.desktop-hud') &&
   desktopBlock.includes('display: grid !important'),
   'styles.css MUST set .desktop-hud { display: grid !important; } in @media (min-width: 1024px)'
+);
+
+assert(
+  desktopBlock.includes('.desktop-service-buttons') &&
+  desktopBlock.includes('display: flex !important'),
+  'styles.css MUST set .desktop-service-buttons { display: flex !important; } in @media (min-width: 1024px)'
 );
 
 console.log('✅ Desktop Header & HUD Visibility test passed.');

@@ -413,7 +413,8 @@ body {
 /* Мобильный режим (< 1024px) */
 @media (max-width: 1023px) {
   .desktop-header,
-  .desktop-hud {
+  .desktop-hud,
+  .desktop-service-buttons {
     display: none !important;
   }
 
@@ -1450,6 +1451,10 @@ body {
 
   .desktop-hud {
     display: grid !important;
+  }
+
+  .desktop-service-buttons {
+    display: flex !important;
   }
 
   .mobile-top-sticky,
