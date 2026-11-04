@@ -512,6 +512,19 @@ function processDayTick() {
       state.mental -= 8; // Недосып дома со слепышами
     } else {
       // На передержке быт не на игроке, но игрок обеспечивает смесь!
+      const milkDays = (state.newborn && state.newborn.milkDaysLeft) || 0;
+      if (typeof state.newborn.lastFormulaWarningDay !== 'number') {
+        state.newborn.lastFormulaWarningDay = -1;
+      }
+      if (milkDays <= 1 && state.newborn.lastFormulaWarningDay !== state.day) {
+        state.newborn.lastFormulaWarningDay = state.day;
+        if (typeof triggerFormulaLowModal === 'function') {
+          triggerFormulaLowModal(milkDays <= 0);
+        }
+        renderAll();
+        return;
+      }
+
       if (state.newborn.milkDaysLeft > 0) {
         state.newborn.milkDaysLeft -= 1;
       } else {
@@ -544,6 +557,21 @@ function processDayTick() {
   }
 
   if (foodConsumptionRate > 0) {
+    const totalFood = ((state.supplies && state.supplies.daysLeft) || 0) + ((state.zooshans && state.zooshans.giftedFoodDaysLeft) || 0);
+    if (state.supplies) {
+      if (typeof state.supplies.lastWarningDay !== 'number') {
+        state.supplies.lastWarningDay = -1;
+      }
+      if (totalFood <= 1 && state.supplies.lastWarningDay !== state.day) {
+        state.supplies.lastWarningDay = state.day;
+        if (typeof triggerSuppliesLowModal === 'function') {
+          triggerSuppliesLowModal(totalFood <= 0);
+        }
+        renderAll();
+        return;
+      }
+    }
+
     if (state.zooshans.giftedFoodDaysLeft > 0) {
       state.zooshans.giftedFoodDaysLeft = Math.max(0, +(state.zooshans.giftedFoodDaysLeft - foodConsumptionRate).toFixed(2));
     } else if (state.supplies.daysLeft > 0) {

@@ -180,6 +180,15 @@ function ensureStateBackwardCompatibility(st = window.state) {
     }
   }
 
+  if (!st.supplies) {
+    st.supplies = { daysLeft: 4, lastWarningDay: -1 };
+  } else if (typeof st.supplies.lastWarningDay !== 'number') {
+    st.supplies.lastWarningDay = -1;
+  }
+  if (st.newborn && typeof st.newborn.lastFormulaWarningDay !== 'number') {
+    st.newborn.lastFormulaWarningDay = -1;
+  }
+
   return st;
 }
 window.ensureStateBackwardCompatibility = ensureStateBackwardCompatibility;
@@ -385,12 +394,14 @@ function startNewRun(experiencedCurator = false, forcedScenario = null) {
       fedToday: false,
       milkDaysLeft: 0,
       knowsAboutFormula: false,
-      receivedFreeStarterPacket: false
+      receivedFreeStarterPacket: false,
+      lastFormulaWarningDay: -1
     },
 
     // Расходники (в днях) — пакеты на 14 дней в зоомагазине
     supplies: {
-      daysLeft: 4
+      daysLeft: 4,
+      lastWarningDay: -1
     },
 
     // Колл-центр «Зоошанса», Лимит долга 1000 BYN и Лимит карты 6500 BYN

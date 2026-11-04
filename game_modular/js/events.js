@@ -1084,3 +1084,122 @@ function triggerPetNamingModal() {
     ]
   );
 }
+
+function triggerSuppliesLowModal(isZero) {
+  stopTimer();
+  if (typeof switchMobileTab === 'function') {
+    switchMobileTab('actions');
+  }
+
+  const a = state.animal || {};
+  const g = typeof getAnimalGrammar === 'function' ? getAnimalGrammar(a) : { isDog: a.species === 'dog' };
+  const cost = g.isDog ? 120 : 65;
+  const supplyName = g.isDog ? 'корм и пеленки' : 'корм и наполнитель';
+
+  const title = isZero
+    ? '🚨 ЗАКОНЧИЛСЯ КОРМ И НАПОЛНИТЕЛЬ!'
+    : '⚠️ ЗАКАНЧИВАЕТСЯ КОРМ И НАПОЛНИТЕЛЬ!';
+
+  const bodyText = isZero
+    ? `У подопечного полностью закончился запас корма и расходников (${supplyName})! Животное голодает (-8% жизни, -10% менталки каждый день). Срочно закупите рацион на 14 дней!`
+    : `У подопечного остался запас корма и расходников (${supplyName}) менее чем на 1 день! Если запасы не пополнить, завтра начнется вынужденное голодание и стресс.`;
+
+  showEventModal(
+    title,
+    bodyText,
+    [
+      {
+        label: `Купить корм и наполнитель на 14 дней (-${cost} BYN)`,
+        style: 'primary',
+        action: () => {
+          if (state.cash < cost) {
+            addLog(`День ${state.day}: ❌ Не хватает средств на покупку корма на 14 дней (${cost} BYN)! Пополните баланс через сборы или выберите другой вариант.`, 'danger');
+            closeEventModal();
+            return;
+          }
+          state.cash = +(state.cash - cost).toFixed(1);
+          state.personalMoneySpent = +(state.personalMoneySpent + cost).toFixed(1);
+          state.supplies.daysLeft = (state.supplies.daysLeft || 0) + 14;
+          addLog(`День ${state.day}: 🛒 Вы экстренно закупили ${supplyName} на 14 дней (-${cost} BYN).`, 'success');
+          closeEventModal();
+        }
+      },
+      {
+        label: 'Перейти в зоомагазин (Быт и Пиар)',
+        style: 'info',
+        action: () => {
+          if (typeof switchTab === 'function') {
+            switchTab('care');
+          }
+          closeEventModal();
+        }
+      },
+      {
+        label: 'Отложить (куплю позже)',
+        style: 'secondary',
+        action: () => {
+          closeEventModal();
+        }
+      }
+    ]
+  );
+}
+window.triggerSuppliesLowModal = triggerSuppliesLowModal;
+
+function triggerFormulaLowModal(isZero) {
+  stopTimer();
+  if (typeof switchMobileTab === 'function') {
+    switchMobileTab('actions');
+  }
+
+  const cost = 105;
+  const title = isZero
+    ? '🚨 ЗАКОНЧИЛАСЬ СМЕСЬ ДЛЯ СЛЕПЫШЕЙ!'
+    : '🍼 ЗАКАНЧИВАЕТСЯ СМЕСЬ ДЛЯ СЛЕПЫШЕЙ!';
+
+  const bodyText = isZero
+    ? 'У передержки полностью закончилась специализированная смесь для выкорма слепышей! Без смеси новорожденные котята голодают (-25% жизни каждый день). Срочно закупите банку Royal Canin Babycat Milk (105 BYN)!'
+    : 'У передержки со слепышами осталось специализированной смеси менее чем на 1 день! Чтобы малыши не голодали, необходимо заблаговременно закупить новую банку Royal Canin Babycat Milk (105 BYN).';
+
+  showEventModal(
+    title,
+    bodyText,
+    [
+      {
+        label: `Купить смесь Royal Canin Babycat Milk на 14 дней (-${cost} BYN)`,
+        style: 'primary',
+        action: () => {
+          if (state.cash < cost) {
+            addLog(`День ${state.day}: ❌ Не хватает средств на покупку смеси Royal Canin Babycat Milk (${cost} BYN)!`, 'danger');
+            closeEventModal();
+            return;
+          }
+          state.cash = +(state.cash - cost).toFixed(1);
+          state.personalMoneySpent = +(state.personalMoneySpent + cost).toFixed(1);
+          state.newborn.milkDaysLeft = (state.newborn.milkDaysLeft || 0) + 14;
+          state.newborn.knowsAboutFormula = true;
+          addLog(`День ${state.day}: 🍼 Вы экстренно закупили банку специализированной смеси Royal Canin Babycat Milk (-${cost} BYN, +14 дней рациона).`, 'success');
+          closeEventModal();
+        }
+      },
+      {
+        label: 'Перейти в зоомагазин (Быт и Пиар)',
+        style: 'info',
+        action: () => {
+          if (typeof switchTab === 'function') {
+            switchTab('care');
+          }
+          closeEventModal();
+        }
+      },
+      {
+        label: 'Отложить (куплю позже)',
+        style: 'secondary',
+        action: () => {
+          closeEventModal();
+        }
+      }
+    ]
+  );
+}
+window.triggerFormulaLowModal = triggerFormulaLowModal;
