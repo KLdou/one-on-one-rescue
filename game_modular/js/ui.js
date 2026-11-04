@@ -1681,17 +1681,56 @@ function renderActionTabs() {
 
   // 2.2. Опубликовать SOS-пост: поиск бесплатной передержки
   const inStationary = typeof isAnimalInStationary === 'function' && isAnimalInStationary();
+  const isManeuver = Boolean(state.maneuver && state.maneuver.active);
   const atHome = isAnimalAtPlayerHome();
+
+  let fosterBadge = 'Соцсети';
+  let fosterSub = 'Поиск сочувствующих в соцсетях для бесплатной передержки (шанс ~30%).';
+  let fosterCostEnergy = 15;
+  let fosterState = 'active';
+  let fosterStatusText = '';
+  let fosterOnClick = actionSearchSocialFosterPost;
+
+  if (inStationary) {
+    fosterBadge = 'В стационаре';
+    fosterSub = 'Поиск передержки заблокирован: подопечный в стабильном тяжелом.';
+    fosterCostEnergy = 0;
+    fosterState = 'locked';
+    fosterStatusText = '🔒 В стационаре клиники';
+    fosterOnClick = null;
+  } else if (isManeuver) {
+    fosterBadge = 'Срочно (маневр 3 дн.)';
+    fosterSub = 'Срочный поиск новой передержки: ручки согласились подержать питомца лишь 3 дня!';
+    fosterCostEnergy = 15;
+    fosterState = 'active';
+    fosterStatusText = '';
+    fosterOnClick = actionSearchSocialFosterPost;
+  } else if (!atHome) {
+    fosterBadge = 'На передержке';
+    fosterSub = 'Поиск сочувствующих в соцсетях для бесплатной передержки (шанс ~30%).';
+    fosterCostEnergy = 0;
+    fosterState = 'completed';
+    fosterStatusText = '✓ Подопечный на передержке';
+    fosterOnClick = null;
+  } else {
+    fosterBadge = 'Соцсети';
+    fosterSub = 'Поиск сочувствующих в соцсетях для бесплатной передержки (шанс ~30%).';
+    fosterCostEnergy = 15;
+    fosterState = 'active';
+    fosterStatusText = '';
+    fosterOnClick = actionSearchSocialFosterPost;
+  }
+
   zooButtons.push({
     icon: '📢',
     title: 'SOS-пост: Поиск передержки',
-    badge: inStationary ? 'В стационаре' : (!atHome ? 'На передержке' : 'Соцсети'),
-    sub: inStationary ? 'Поиск передержки заблокирован: подопечный в стационаре клиники.' : 'Поиск добровольца в соцсетях для бесплатной передержки (шанс ~30%).',
+    badge: fosterBadge,
+    sub: fosterSub,
     costBYN: 0,
-    costEnergy: (inStationary || !atHome) ? 0 : 15,
-    state: inStationary ? 'locked' : (!atHome ? 'completed' : 'active'),
-    statusText: inStationary ? '🔒 В стационаре клиники' : (!atHome ? '✓ Подопечный на передержке' : ''),
-    onClick: inStationary ? null : actionSearchSocialFosterPost
+    costEnergy: fosterCostEnergy,
+    state: fosterState,
+    statusText: fosterStatusText,
+    onClick: fosterOnClick
   });
 
   // 2.3. Волонтерская барахолка @zooshans_chat
