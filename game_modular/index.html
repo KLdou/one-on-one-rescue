@@ -506,27 +506,27 @@
 
   <!-- ================= 3. МОБИЛЬНЫЙ ТАБ-БАР (ВИДЕН НА ЭКРАНАХ < 1024px) ================= -->
   <nav class="mobile-bottom-nav">
-    <button id="mobileTabBtn_vet" onclick="switchTab('vet'); closeDrawers();" class="flex flex-col items-center justify-center text-[10px] font-mono text-[var(--text-secondary)] hover:text-emerald-700 py-1 flex-1">
+    <button id="mobileTabBtn_vet" onclick="switchTab('vet'); closeDrawers();" class="mobile-tab-btn active active-mobile-tab">
       <span class="text-base">🏥</span>
       <span>Клиника</span>
     </button>
     
-    <button id="mobileTabBtn_zooshans" onclick="switchTab('zooshans'); closeDrawers();" class="flex flex-col items-center justify-center text-[10px] font-mono text-[var(--text-secondary)] hover:text-emerald-700 py-1 flex-1">
+    <button id="mobileTabBtn_zooshans" onclick="switchTab('zooshans'); closeDrawers();" class="mobile-tab-btn">
       <span class="text-base" id="mobileTabIcon_zooshans">🤝</span>
       <span id="mobileTabLabel_zooshans">Зоошанс</span>
     </button>
     
-    <button id="mobileTabBtn_care" onclick="switchTab('care'); closeDrawers();" class="flex flex-col items-center justify-center text-[10px] font-mono text-[var(--text-secondary)] hover:text-emerald-700 py-1 flex-1">
+    <button id="mobileTabBtn_care" onclick="switchTab('care'); closeDrawers();" class="mobile-tab-btn">
       <span class="text-base" id="mobileTabIcon_care">📸</span>
       <span id="mobileTabLabel_care">Быт/Пиар</span>
     </button>
     
-    <button onclick="toggleDrawer('left')" class="flex flex-col items-center justify-center text-[10px] font-mono text-[var(--text-secondary)] hover:text-emerald-700 py-1 flex-1">
+    <button id="mobileTabBtn_profile" onclick="toggleDrawer('left')" class="mobile-tab-btn">
       <span class="text-base">👤</span>
       <span>Профиль</span>
     </button>
     
-    <button onclick="toggleDrawer('right')" class="flex flex-col items-center justify-center text-[10px] font-mono text-[var(--text-secondary)] hover:text-emerald-700 py-1 flex-1">
+    <button id="mobileTabBtn_radar" onclick="toggleDrawer('right')" class="mobile-tab-btn">
       <span class="text-base">⏱️</span>
       <span>Радар</span>
     </button>

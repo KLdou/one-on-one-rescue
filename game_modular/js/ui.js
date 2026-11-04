@@ -145,6 +145,18 @@ function buildPetSVG(a, showCage = true) {
   return svg;
 }
 
+function updateMobileNavUI(tabName) {
+  ['vet', 'zooshans', 'care'].forEach(t => {
+    const mBtn = document.getElementById('mobileTabBtn_' + t);
+    if (!mBtn) return;
+    if (t === tabName) {
+      mBtn.classList.add('active', 'active-mobile-tab');
+    } else {
+      mBtn.classList.remove('active', 'active-mobile-tab');
+    }
+  });
+}
+
 function switchTab(tabName) {
   activeTab = tabName;
   if (typeof closeAllResourceTooltips === 'function') {
@@ -162,6 +174,7 @@ function switchTab(tabName) {
       btn.className = 'px-3 py-1.5 rounded-lg text-xs font-mono font-semibold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] transition';
     }
   });
+  updateMobileNavUI(tabName);
 }
 
 function renderAll() {
