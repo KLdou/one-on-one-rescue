@@ -192,7 +192,7 @@ function updateSpeedButtonsUI() {
     mBtnAcute.disabled = Boolean(state.gameOver);
   }
 
-  const mSpeedGroup = document.getElementById('mobileSpeedGroup');
+  const mSpeedGroup = document.getElementById('mobileSpeedControls') || document.getElementById('mobileSpeedGroup');
   if (mSpeedGroup) {
     if (isAcute) {
       mSpeedGroup.classList.add('hidden');

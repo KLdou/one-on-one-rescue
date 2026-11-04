@@ -13,8 +13,80 @@
 </head>
 <body data-season="summer">
 
-  <!-- ================= 1. ТОП-БАР: ВРЕМЯ, ОСТРАЯ ФАЗА, СКОРОСТЬ И УПРАВЛЕНИЕ ================= -->
-  <header class="sticky top-0 z-30 shrink-0 bg-[var(--bg-card)]/95 backdrop-blur border-b border-[var(--border-subtle)] px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-sm mobile-header">
+  <!-- ================= 0. МОБИЛЬНЫЙ СТИКИ-ТОП: ХЕДЕР И КОМПАКТНЫЙ 4-СТАТ HUD (< 1024px) ================= -->
+  <div id="mobileTopSticky" class="mobile-top-sticky lg:hidden">
+    <div class="app-header">
+      <!-- Кнопка подопечного: фото, имя, день -->
+      <button id="mobilePetQuickBtn" onclick="showAnimalModal()" class="pet-quick-btn" title="Посмотреть карточку подопечного">
+        <div id="mobilePetAvatar" class="w-7 h-7 rounded-full overflow-hidden border border-[var(--border-subtle)] bg-[var(--bg-card)] shrink-0 flex items-center justify-center">
+          <!-- SVG рендерится JS функцией buildPetSVG -->
+        </div>
+        <div class="pet-meta">
+          <span id="mobilePetName" class="pet-name">«Найденыш»</span>
+          <span id="mobileGameDay" class="game-day">День 1 · 12 мая</span>
+        </div>
+      </button>
+
+      <!-- Правая группа: фаза и настройки -->
+      <div class="header-badges">
+        <span id="mobilePhaseChip" class="phase-chip">🌙 1/3</span>
+        <button id="mobileSettingsBtn" onclick="openMobileSettingsMenu()" class="w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-sm transition" title="Меню игры и настройки">
+          ⚙️
+        </button>
+      </div>
+    </div>
+
+    <!-- Компактный 4-ресурсный HUD -->
+    <div class="hud-bar">
+      <!-- Бюджет -->
+      <div id="mobileHudCash" class="hud-item" onclick="toggleResourceTooltip('tooltip-cash')" title="Нажмите для подсказки о бюджете">
+        <div class="hud-row">
+          <span>💰</span>
+          <span id="mobileHudCashVal" class="hud-val font-mono">280 <small>BYN</small></span>
+        </div>
+        <div class="hud-progress">
+          <div id="mobileHudCashFill" class="fill budget" style="width: 28%"></div>
+        </div>
+      </div>
+
+      <!-- Менталка -->
+      <div id="mobileHudMental" class="hud-item" onclick="toggleResourceTooltip('tooltip-mental')" title="Нажмите для подсказки о менталке">
+        <div class="hud-row">
+          <span>🧠</span>
+          <span id="mobileHudMentalVal" class="hud-val font-mono">100%</span>
+        </div>
+        <div class="hud-progress">
+          <div id="mobileHudMentalFill" class="fill mental" style="width: 100%"></div>
+        </div>
+      </div>
+
+      <!-- Энергия -->
+      <div id="mobileHudEnergy" class="hud-item" onclick="toggleResourceTooltip('energy-tooltip')" title="Нажмите для расшифровки быта и энергии">
+        <div class="hud-row">
+          <span>⚡</span>
+          <span id="mobileHudEnergyVal" class="hud-val font-mono">90/10🔒</span>
+        </div>
+        <div class="hud-progress">
+          <div id="mobileHudEnergyFill" class="fill energy" style="width: 90%"></div>
+          <div id="mobileHudLockedFill" class="fill locked" style="width: 10%"></div>
+        </div>
+      </div>
+
+      <!-- Здоровье -->
+      <div id="mobileHudHealth" class="hud-item" onclick="toggleResourceTooltip('tooltip-health')" title="Нажмите для подсказки о здоровье">
+        <div class="hud-row">
+          <span>❤️</span>
+          <span id="mobileHudHealthVal" class="hud-val font-mono">88%</span>
+        </div>
+        <div class="hud-progress">
+          <div id="mobileHudHealthFill" class="fill health" style="width: 88%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 1. ДЕСКТОПНЫЙ ТОП-БАР: ВРЕМЯ, ОСТРАЯ ФАЗА, СКОРОСТЬ (>= 1024px) ================= -->
+  <header class="sticky top-0 z-30 shrink-0 bg-[var(--bg-card)]/95 backdrop-blur border-b border-[var(--border-subtle)] px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-sm mobile-header hidden lg:flex">
     <div class="max-w-[1440px] mx-auto flex items-center justify-between gap-1.5 sm:gap-2 flex-nowrap lg:flex-wrap w-full">
       
       <!-- Левый блок: Название, День, Дата, Подопечный -->
@@ -116,17 +188,15 @@
   </header>
 
   <!-- ================= 2. ОСНОВНОЙ АДАПТИВНЫЙ КАРКАС: 3 КОЛОНКИ НА ДЕСКТОПЕ ================= -->
-  <div class="app-layout">
+  <div class="app-layout mobile-main-content">
 
-    <!-- ================= ЛЕВАЯ КОЛОНКА (320px): ПРОФИЛЬ, ЛИМИТЫ, СНАБЖЕНИЕ, КЛИНИКА ================= -->
-    <aside class="drawer-left craft-card p-4 flex flex-col gap-3.5" id="drawerLeft">
+    <!-- ================= ЛЕВАЯ КОЛОНКА (320px): ПРОФИЛЬ, ЛИМИТЫ, СНАБЖЕНИЕ, КЛИНИКА (ВКЛАДКА 2 НА МОБИЛЬНОМ) ================= -->
+    <aside class="drawer-left craft-card p-4 flex flex-col gap-3.5 hidden lg:flex" id="mobileTab_supply">
+      <span id="drawerLeft" class="hidden"></span>
       
-      <!-- Мобильный заголовок со стрелкой закрытия -->
+      <!-- Мобильный заголовок вкладки -->
       <div class="flex items-center justify-between lg:hidden pb-2 border-b border-[var(--border-subtle)]">
-        <span class="font-bold text-xs uppercase text-[var(--text-secondary)] font-mono">Меню куратора</span>
-        <button onclick="closeDrawers()" class="w-7 h-7 flex items-center justify-center rounded bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-xs font-mono font-bold" title="Закрыть">
-          ✕
-        </button>
+        <span class="font-bold text-xs uppercase text-[var(--text-secondary)] font-mono">🛒 Снабжение и быт</span>
       </div>
 
       <!-- Карточка: Профиль куратора -->
@@ -267,8 +337,8 @@
         </div>
       </div>
 
-      <!-- 1. HUD: 4 ГЛАВНЫЕ ШКАЛЫ В 1 РЯД (на мобильном 2x2) -->
-      <section class="grid grid-cols-2 lg:grid-cols-4 gap-2">
+      <!-- 1. HUD: 4 ГЛАВНЫЕ ШКАЛЫ В 1 РЯД (видны только на десктопе >= 1024px) -->
+      <section class="hidden lg:grid grid-cols-2 lg:grid-cols-4 gap-2">
         
         <!-- Бюджет (BYN) -->
         <div id="widget-cash" class="craft-card resource-widget p-2.5 flex flex-col justify-between" onclick="toggleResourceTooltip('tooltip-cash')" title="Нажмите или наведите для подсказки о восполнении бюджета">
@@ -344,7 +414,10 @@
 
       </section>
 
-      <!-- СПЕЦИАЛЬНЫЕ ЭКСТРЕННЫЕ БАННЕРЫ -->
+      <!-- ================= 1. МОБИЛЬНАЯ ВКЛАДКА: ДЕЙСТВИЯ КУРАТОРА ================= -->
+      <div id="mobileTab_actions" class="flex flex-col gap-3">
+
+        <!-- СПЕЦИАЛЬНЫЕ ЭКСТРЕННЫЕ БАННЕРЫ -->
       
       <!-- Баннер: Выкорм слепышей дома -->
       <div id="newbornUrgentBanner" class="hidden craft-card border-2 border-rose-500 bg-rose-50/90 p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
@@ -450,18 +523,82 @@
         <div id="tabContent_zooshans" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5"></div>
         <div id="tabContent_care" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5"></div>
       </div>
+      <!-- Конец mobileTab_actions -->
+
+      <!-- ================= 4. МОБИЛЬНАЯ ВКЛАДКА: БАЗА ЗНАНИЙ И СЕРВИСЫ КУРАТОРА ================= -->
+      <div id="mobileTab_base" class="hidden lg:hidden flex-col gap-3">
+        <!-- Быстрые действия куратора -->
+        <div class="craft-card p-4 flex flex-col gap-2.5">
+          <div class="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
+            <h3 class="text-xs font-mono uppercase tracking-wider text-[var(--text-primary)] font-bold flex items-center gap-1.5">
+              <span>📖</span>
+              <span>БАЗА И СЕРВИСЫ КУРАТОРА</span>
+            </h3>
+          </div>
+          <div class="grid grid-cols-1 gap-2 pt-1">
+            <button onclick="showAnimalModal()" class="w-full p-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-left font-mono text-xs flex items-center justify-between transition">
+              <span class="flex items-center gap-2"><span>🐾</span><span class="font-bold text-[var(--text-primary)]">Карточка подопечного</span></span>
+              <span class="text-[10px] text-[var(--text-secondary)]">Открыть ➔</span>
+            </button>
+            <button onclick="openMentorArchiveModal()" class="w-full p-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-left font-mono text-xs flex items-center justify-between transition">
+              <span class="flex items-center gap-2"><span>💡</span><span class="font-bold text-[var(--text-primary)]">Памятка куратора</span></span>
+              <span class="text-[10px] text-[var(--text-secondary)]">Архив советов ➔</span>
+            </button>
+            <button onclick="showAlbumModal()" class="w-full p-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-left font-mono text-xs flex items-center justify-between transition">
+              <span class="flex items-center gap-2"><span>📖</span><span class="font-bold text-[var(--text-primary)]">Альбом спасённых хвостов</span></span>
+              <span class="text-[10px] text-[var(--text-secondary)]">Истории ➔</span>
+            </button>
+            <button onclick="openScenarioPickerModal()" class="w-full p-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-left font-mono text-xs flex items-center justify-between transition">
+              <span class="flex items-center gap-2"><span>📋</span><span class="font-bold text-[var(--text-primary)]">Сценарии подопечного</span></span>
+              <span class="text-[10px] text-[var(--text-secondary)]">Выбрать кейс ➔</span>
+            </button>
+            <button onclick="startNewRun()" class="w-full p-2.5 rounded-xl border border-rose-300 bg-rose-50 hover:bg-rose-100 text-left font-mono text-xs flex items-center justify-between transition">
+              <span class="flex items-center gap-2"><span>↻</span><span class="font-bold text-rose-800">Начать новую партию</span></span>
+              <span class="text-[10px] text-rose-700">Сброс ➔</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Контакты и ЕРИП «Зоошанс» -->
+        <div class="craft-card p-4 flex flex-col gap-2.5">
+          <div class="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
+            <h3 class="text-xs font-mono uppercase tracking-wider text-[var(--text-primary)] font-bold flex items-center gap-1.5">
+              <span>🤝</span>
+              <span>КОНТАКТЫ И ЕРИП «ЗООШАНС»</span>
+            </h3>
+          </div>
+          <div class="space-y-2 text-xs font-sans text-[var(--text-secondary)]">
+            <div class="p-2.5 rounded-lg bg-[var(--bg-muted)] border border-[var(--border-subtle)] font-mono text-xs">
+              <div class="font-bold text-emerald-800">ЕРИП: код услуги 4346991</div>
+              <div class="text-[11px] text-[var(--text-muted)] mt-0.5">Благотворительность ➔ Защита животных ➔ Зоошанс</div>
+            </div>
+            <div class="flex flex-col gap-1.5 font-mono text-xs pt-1">
+              <div class="flex items-center justify-between">
+                <span>Чат кураторов:</span>
+                <span class="font-bold text-sky-700">@zooshans_chat</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span>Инфо-бот:</span>
+                <span class="font-bold text-sky-700">@zooshans_info_bot</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span>Сайт организации:</span>
+                <span class="font-bold text-emerald-700">zooshans.by</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
     </main>
 
-    <!-- ================= ПРАВАЯ КОЛОНКА (350px): РАДАР ДЕДЛАЙНОВ + ДНЕВНИК КУРАТОРА ================= -->
-    <aside class="drawer-right craft-card p-4 flex flex-col gap-3.5" id="drawerRight">
+    <!-- ================= ПРАВАЯ КОЛОНКА (350px): РАДАР ДЕДЛАЙНОВ + ДНЕВНИК КУРАТОРА (ВКЛАДКА 3 НА МОБИЛЬНОМ) ================= -->
+    <aside class="drawer-right craft-card p-4 flex flex-col gap-3.5 hidden lg:flex" id="mobileTab_radar">
+      <span id="drawerRight" class="hidden"></span>
       
-      <!-- Мобильный заголовок со стрелкой закрытия -->
+      <!-- Мобильный заголовок вкладки -->
       <div class="flex items-center justify-between lg:hidden pb-2 border-b border-[var(--border-subtle)]">
-        <span class="font-bold text-xs uppercase text-[var(--text-secondary)] font-mono">Радар & Дневник</span>
-        <button onclick="closeDrawers()" class="w-7 h-7 flex items-center justify-center rounded bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-xs font-mono font-bold" title="Закрыть">
-          ✕
-        </button>
+        <span class="font-bold text-xs uppercase text-[var(--text-secondary)] font-mono">⏱️ Радар и Дневник</span>
       </div>
 
       <!-- Блок 1: Радар дедлайнов (Автостоп ⏩) -->
@@ -501,64 +638,53 @@
 
   </div>
 
-  <!-- ================= МОБИЛЬНЫЙ ОВЕРЛЕЙНЫЙ BACKDROP ================= -->
-  <div id="drawerBackdrop" class="drawer-backdrop" onclick="closeDrawers()"></div>
+  <!-- ================= МОБИЛЬНЫЙ ОВЕРЛЕЙНЫЙ BACKDROP (LEGACY) ================= -->
+  <div id="drawerBackdrop" class="drawer-backdrop hidden" onclick="closeDrawers()"></div>
+  <div id="mobileTimeDock" class="hidden" style="display: none;"></div>
+  <nav class="mobile-bottom-nav hidden" style="display: none;"></nav>
 
-  <!-- ================= 2.5. ПЛАВАЮЩИЙ МОБИЛЬНЫЙ ДОК УПРАВЛЕНИЯ ВРЕМЕНЕМ (THUMB ZONE) ================= -->
-  <div id="mobileTimeDock" class="mobile-time-dock">
-    <!-- Кнопка пошагового режима в острой фазе (Дни 1-3) -->
-    <button id="mobileBtnAdvanceAcuteDay" onclick="advanceAcuteDay()" class="urgent-btn flex-1 py-2 px-4 rounded-xl text-xs font-mono font-extrabold bg-amber-500 hover:bg-amber-400 text-slate-950 border border-amber-600 transition shadow-md flex items-center justify-center gap-2">
-      <span class="text-base">🌙</span>
-      <span>Завершить день</span>
-    </button>
+  <!-- ================= 3. МОБИЛЬНЫЙ НИЖНИЙ ДОК (< 1024px, THUMB ZONE) ================= -->
+  <div id="mobileBottomDock" class="mobile-bottom-dock lg:hidden">
+    <!-- Тайм-контроллер: острая фаза / скорости -->
+    <div class="time-controller-bar">
+      <!-- Кнопка острой фазы (Дни 1-3) -->
+      <button id="mobileBtnAdvanceAcuteDay" onclick="advanceAcuteDay()" class="end-day-btn">
+        <span>🌙 Завершить день</span>
+      </button>
 
-    <!-- Группа скоростей на мобильном (активна с 4-го дня) -->
-    <div id="mobileSpeedGroup" class="hidden items-center justify-between w-full gap-1">
-      <button id="mobileBtnSpeed0" onclick="setSpeed(0)" class="flex-1 py-2 rounded-xl text-xs font-mono font-bold bg-emerald-600 text-white transition shadow-xs flex items-center justify-center gap-1">
-        <span>⏸</span> <span>Пауза</span>
-      </button>
-      <button id="mobileBtnSpeed1" onclick="setSpeed(1)" class="px-2.5 py-2 rounded-xl text-xs font-mono font-semibold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] transition">
-        1x
-      </button>
-      <button id="mobileBtnSpeed2" onclick="setSpeed(2)" class="px-2.5 py-2 rounded-xl text-xs font-mono font-semibold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] transition">
-        2x
-      </button>
-      <button id="mobileBtnSpeed5" onclick="setSpeed(5)" class="px-2.5 py-2 rounded-xl text-xs font-mono font-semibold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] transition">
-        5x
-      </button>
-      <button id="mobileBtnFastForward" onclick="fastForwardCalmDays()" title="Промотать спокойные дни" class="px-2.5 py-2 rounded-xl text-xs font-mono font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-xs">
-        ⏩ Штиль
-      </button>
+      <!-- Скорости спокойной фазы (активны с 4-го дня) -->
+      <div id="mobileSpeedControls" class="speed-controls hidden">
+        <button id="mobileBtnSpeed0" onclick="setSpeed(0)" class="speed-btn active" title="Пауза">⏸</button>
+        <button id="mobileBtnSpeed1" onclick="setSpeed(1)" class="speed-btn" title="1x">1x</button>
+        <button id="mobileBtnSpeed2" onclick="setSpeed(2)" class="speed-btn" title="2x">2x</button>
+        <button id="mobileBtnSpeed5" onclick="setSpeed(5)" class="speed-btn" title="5x">5x</button>
+      </div>
     </div>
-  </div>
 
-  <!-- ================= 3. МОБИЛЬНЫЙ ТАБ-БАР (ВИДЕН НА ЭКРАНАХ < 1024px) ================= -->
-  <nav class="mobile-bottom-nav">
-    <button id="mobileTabBtn_vet" onclick="switchTab('vet'); closeDrawers();" class="mobile-tab-btn active active-mobile-tab">
-      <span class="text-base">🏥</span>
-      <span>Клиника</span>
-    </button>
-    
-    <button id="mobileTabBtn_zooshans" onclick="switchTab('zooshans'); closeDrawers();" class="mobile-tab-btn">
-      <span class="text-base" id="mobileTabIcon_zooshans">🤝</span>
-      <span id="mobileTabLabel_zooshans">Зоошанс</span>
-    </button>
-    
-    <button id="mobileTabBtn_care" onclick="switchTab('care'); closeDrawers();" class="mobile-tab-btn">
-      <span class="text-base" id="mobileTabIcon_care">📸</span>
-      <span id="mobileTabLabel_care">Быт/Пиар</span>
-    </button>
-    
-    <button id="mobileTabBtn_profile" onclick="toggleDrawer('left')" class="mobile-tab-btn">
-      <span class="text-base">👤</span>
-      <span>Профиль</span>
-    </button>
-    
-    <button id="mobileTabBtn_radar" onclick="toggleDrawer('right')" class="mobile-tab-btn">
-      <span class="text-base">⏱️</span>
-      <span>Радар</span>
-    </button>
-  </nav>
+    <!-- 4 Вкладки навигации -->
+    <nav class="bottom-nav">
+      <button id="mobileTabBtn_actions" onclick="switchMobileTab('actions')" class="nav-tab active">
+        <span class="nav-icon">🐾</span>
+        <span>Действия</span>
+      </button>
+
+      <button id="mobileTabBtn_supply" onclick="switchMobileTab('supply')" class="nav-tab">
+        <span class="nav-icon">🛒</span>
+        <span>Снабжение</span>
+      </button>
+
+      <button id="mobileTabBtn_radar" onclick="switchMobileTab('radar')" class="nav-tab">
+        <span class="nav-icon">⏱️</span>
+        <span>Радар</span>
+        <span id="mobileRadarBadge" class="nav-badge">0</span>
+      </button>
+
+      <button id="mobileTabBtn_base" onclick="switchMobileTab('base')" class="nav-tab">
+        <span class="nav-icon">📖</span>
+        <span>База</span>
+      </button>
+    </nav>
+  </div>
 
   <!-- ================= МОДАЛЬНОЕ ОКНО: КАРТОЧКА ПОДОПЕЧНОГО (ФОТО, КЛИЧКА, ЧЕК-ЛИСТ) ================= -->
   <div id="animalModal" class="fixed inset-0 z-50 hidden modal-backdrop-custom" onclick="if(event.target === this) closeAnimalModal()">

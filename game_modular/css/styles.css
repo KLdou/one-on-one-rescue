@@ -1323,6 +1323,22 @@ body {
     padding: 12px 12px calc(var(--bottom-dock-height) + env(safe-area-inset-bottom, 0px) + 16px);
   }
 
+  #mobileTab_supply,
+  #mobileTab_radar {
+    position: static !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-shadow: var(--shadow-card) !important;
+  }
+
+  #mobileTab_supply.hidden,
+  #mobileTab_radar.hidden,
+  #mobileTab_actions.hidden,
+  #mobileTab_base.hidden {
+    display: none !important;
+  }
+
   .mobile-bottom-dock {
     position: fixed;
     bottom: 0;
@@ -1424,8 +1440,14 @@ body {
 /* Скрытие мобильных виджетов на десктопе (>= 1024px) */
 @media (min-width: 1024px) {
   .mobile-top-sticky,
-  .mobile-bottom-dock {
+  .mobile-bottom-dock,
+  #mobileTab_base {
     display: none !important;
+  }
+
+  #mobileTab_supply,
+  #mobileTab_radar {
+    display: flex !important;
   }
 }
 
