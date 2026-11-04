@@ -412,6 +412,11 @@ body {
 
 /* Мобильный режим (< 1024px) */
 @media (max-width: 1023px) {
+  .desktop-header,
+  .desktop-hud {
+    display: none !important;
+  }
+
   .mobile-header {
     height: 48px;
     max-height: 48px;
@@ -1439,6 +1444,14 @@ body {
 
 /* Скрытие мобильных виджетов на десктопе (>= 1024px) */
 @media (min-width: 1024px) {
+  .desktop-header {
+    display: flex !important;
+  }
+
+  .desktop-hud {
+    display: grid !important;
+  }
+
   .mobile-top-sticky,
   .mobile-bottom-dock,
   #mobileTab_base {

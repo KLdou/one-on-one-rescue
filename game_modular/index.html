@@ -86,7 +86,7 @@
   </div>
 
   <!-- ================= 1. ДЕСКТОПНЫЙ ТОП-БАР: ВРЕМЯ, ОСТРАЯ ФАЗА, СКОРОСТЬ (>= 1024px) ================= -->
-  <header class="sticky top-0 z-30 shrink-0 bg-[var(--bg-card)]/95 backdrop-blur border-b border-[var(--border-subtle)] px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-sm mobile-header hidden lg:flex">
+  <header class="sticky top-0 z-30 shrink-0 bg-[var(--bg-card)]/95 backdrop-blur border-b border-[var(--border-subtle)] px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-sm desktop-header">
     <div class="max-w-[1440px] mx-auto flex items-center justify-between gap-1.5 sm:gap-2 flex-nowrap lg:flex-wrap w-full">
       
       <!-- Левый блок: Название, День, Дата, Подопечный -->
@@ -338,7 +338,7 @@
       </div>
 
       <!-- 1. HUD: 4 ГЛАВНЫЕ ШКАЛЫ В 1 РЯД (видны только на десктопе >= 1024px) -->
-      <section class="hidden lg:grid grid-cols-2 lg:grid-cols-4 gap-2">
+      <section class="desktop-hud grid-cols-2 lg:grid-cols-4 gap-2">
         
         <!-- Бюджет (BYN) -->
         <div id="widget-cash" class="craft-card resource-widget p-2.5 flex flex-col justify-between" onclick="toggleResourceTooltip('tooltip-cash')" title="Нажмите или наведите для подсказки о восполнении бюджета">
