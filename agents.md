@@ -74,7 +74,7 @@
 ## 5. Superpowers Skills Integration (Mandatory Workflows)
 When modifying code or implementing features, strictly invoke and follow these Superpowers skills:
 - **`brainstorming`:** Invoke before designing any new feature, mechanic, or major UX change. Explore options and align on solutions first.
-- **`writing-plans` / `executing-plans`:** Create structured implementation plans before touching code on multi-step tasks.
+- **`writing-plans` / `subagent-driven-development`:** Create structured implementation plans before touching code on multi-step tasks. **ALWAYS use `subagent-driven-development` for executing implementation plans** (fresh subagent per task, fresh reviewer per task, final broad review). Never ask the user to choose between native and subagent-driven execution; subagent-driven is the mandatory standard.
 - **`test-driven-development`:** Apply Red-Green-Refactor when implementing standalone logic, state calculations, or edge cases. Write test harnesses/assertions before implementation.
 - **`systematic-debugging`:** When diagnosing bugs or regressions, systematically verify the problem, hypothesize root causes, and inspect data before altering code.
 - **`verification-before-completion`:** Never mark a task complete without executing verification checks (syntax, runtime sanity, regression assertions).
