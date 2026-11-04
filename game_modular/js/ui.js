@@ -177,6 +177,202 @@ function switchTab(tabName) {
   updateMobileNavUI(tabName);
 }
 
+let activeMobileTab = 'actions';
+
+function switchMobileTab(tabId) {
+  const allowedTabs = ['actions', 'supply', 'radar', 'base'];
+  if (!allowedTabs.includes(tabId)) return;
+  activeMobileTab = tabId;
+
+  if (typeof closeAllResourceTooltips === 'function') {
+    closeAllResourceTooltips();
+  }
+
+  allowedTabs.forEach(t => {
+    const btn = document.getElementById(`mobileTabBtn_${t}`);
+    if (btn) {
+      if (t === tabId) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    }
+
+    const container = document.getElementById(`mobileTab_${t}`);
+    if (container) {
+      if (t === tabId) {
+        container.classList.remove('hidden');
+      } else {
+        container.classList.add('hidden');
+      }
+    }
+  });
+}
+
+function updateTimeControlsVisibility() {
+  if (!state) return;
+  const isAcute = (state.onboarding && state.onboarding.acutePhase) !== undefined
+    ? Boolean(state.onboarding.acutePhase)
+    : (state.day <= 3);
+
+  const mBtnAcute = document.getElementById('mobileBtnAdvanceAcuteDay');
+  if (mBtnAcute) {
+    if (isAcute) {
+      mBtnAcute.classList.remove('hidden');
+    } else {
+      mBtnAcute.classList.add('hidden');
+    }
+    mBtnAcute.disabled = Boolean(state.gameOver);
+  }
+
+  const mSpeedControls = document.getElementById('mobileSpeedControls');
+  if (mSpeedControls) {
+    if (isAcute) {
+      mSpeedControls.classList.add('hidden');
+    } else {
+      mSpeedControls.classList.remove('hidden');
+    }
+  }
+
+  const speed = typeof currentSpeed !== 'undefined' ? currentSpeed : 0;
+  [0, 1, 2, 5].forEach(s => {
+    const btn = document.getElementById(`mobileBtnSpeed${s}`);
+    if (btn) {
+      btn.classList.add('speed-btn');
+      if (speed === s) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    }
+  });
+}
+
+function renderHUD() {
+  if (!state) return;
+  const a = state.animal || {};
+  const p = state.player || {};
+
+  // 1. Mobile Header
+  const mobileNameEl = document.getElementById('mobilePetName');
+  if (mobileNameEl) {
+    mobileNameEl.textContent = a.name || a.petName || 'Найденыш';
+  }
+
+  const mobileDayEl = document.getElementById('mobileGameDay');
+  if (mobileDayEl) {
+    let dateStr = '';
+    if (typeof formatCalendarDate === 'function') {
+      dateStr = formatCalendarDate(state.calendarDate || state.date);
+    } else if (state.calendarDate || state.date) {
+      const d = state.calendarDate || state.date;
+      dateStr = d instanceof Date ? `${d.getDate()} мая` : String(d);
+    }
+    const dayNum = state.day !== undefined ? state.day : 1;
+    mobileDayEl.textContent = dateStr ? `День ${dayNum} • ${dateStr}` : `День ${dayNum}`;
+  }
+
+  const mobilePhaseChip = document.getElementById('mobilePhaseChip');
+  if (mobilePhaseChip) {
+    const isAcute = (state.onboarding && state.onboarding.acutePhase) !== undefined
+      ? Boolean(state.onboarding.acutePhase)
+      : (state.day <= 3);
+    if (isAcute) {
+      mobilePhaseChip.textContent = `🌙 ${state.day || 1}/3`;
+      mobilePhaseChip.className = 'phase-chip';
+    } else {
+      const seasonLabels = {
+        summer: '☀️ Лето',
+        autumn: '🍂 Осень',
+        winter: '❄️ Зима',
+        spring: '🌱 Весна'
+      };
+      const sLabel = seasonLabels[state.currentSeason] || (typeof getSeasonLabelRu === 'function' ? getSeasonLabelRu(state.currentSeason) : 'Спокойная фаза');
+      mobilePhaseChip.textContent = sLabel;
+      mobilePhaseChip.className = 'phase-chip';
+    }
+  }
+
+  const mobileAvatarEl = document.getElementById('mobilePetAvatar');
+  if (mobileAvatarEl && a) {
+    if (typeof buildPetSVG === 'function') {
+      mobileAvatarEl.innerHTML = buildPetSVG(a, false);
+    } else {
+      mobileAvatarEl.textContent = a.species === 'dog' ? '🐶' : '🐱';
+    }
+    if (a.knownRingworm) mobileAvatarEl.classList.add('ringworm-glow');
+    else mobileAvatarEl.classList.remove('ringworm-glow');
+  }
+
+  // 2. Mobile 4-Resource HUD
+  // Cash (strictly BYN!)
+  const cash = (p.cash !== undefined) ? p.cash : (state.cash !== undefined ? state.cash : 0);
+  const cashValEl = document.getElementById('mobileHudCashVal');
+  if (cashValEl) {
+    cashValEl.innerHTML = `${Math.round(cash)}<small>BYN</small>`;
+  }
+  const cashFillEl = document.getElementById('mobileHudCashFill');
+  if (cashFillEl) {
+    const maxCash = p.maxCash || 1000;
+    const cashPct = Math.min(100, Math.max(0, isNaN(cash) ? 0 : Math.round((cash / maxCash) * 100)));
+    cashFillEl.style.width = `${cashPct}%`;
+  }
+
+  // Mental
+  const mental = (p.mental !== undefined) ? p.mental : (state.mental !== undefined ? state.mental : 100);
+  const mentalVal = Math.round(mental);
+  const mentalPct = Math.min(100, Math.max(0, isNaN(mentalVal) ? 0 : mentalVal));
+  const mentalValEl = document.getElementById('mobileHudMentalVal');
+  if (mentalValEl) {
+    mentalValEl.textContent = `${mentalVal}%`;
+  }
+  const mentalFillEl = document.getElementById('mobileHudMentalFill');
+  if (mentalFillEl) {
+    mentalFillEl.style.width = `${mentalPct}%`;
+  }
+
+  // Energy & Locked
+  const energy = (p.energy !== undefined) ? p.energy : (state.energy !== undefined ? state.energy : 100);
+  const lockedEnergy = (p.dailyLockedEnergy !== undefined)
+    ? p.dailyLockedEnergy
+    : (state.dailyLockedEnergy !== undefined
+        ? state.dailyLockedEnergy
+        : (typeof calculateDailyHouseholdEnergyDrain === 'function' && (typeof isAnimalAtPlayerHome !== 'function' || isAnimalAtPlayerHome())
+            ? calculateDailyHouseholdEnergyDrain()
+            : 0));
+  const energyVal = Math.round(energy);
+  const lockedVal = Math.round(lockedEnergy || 0);
+  const energyValEl = document.getElementById('mobileHudEnergyVal');
+  if (energyValEl) {
+    energyValEl.innerHTML = `${energyVal}<small>/${lockedVal}🔒</small>`;
+  }
+  const energyFillEl = document.getElementById('mobileHudEnergyFill');
+  if (energyFillEl) {
+    const energyPct = Math.min(100, Math.max(0, isNaN(energyVal) ? 0 : energyVal));
+    energyFillEl.style.width = `${energyPct}%`;
+  }
+  const lockedFillEl = document.getElementById('mobileHudLockedFill');
+  if (lockedFillEl) {
+    const lockedPct = Math.min(100, Math.max(0, isNaN(lockedVal) ? 0 : lockedVal));
+    lockedFillEl.style.width = `${lockedPct}%`;
+  }
+
+  // Health
+  const health = (a.health !== undefined) ? a.health : 0;
+  const healthVal = Math.round(health);
+  const healthPct = Math.min(100, Math.max(0, isNaN(healthVal) ? 0 : healthVal));
+  const healthValEl = document.getElementById('mobileHudHealthVal');
+  if (healthValEl) {
+    healthValEl.textContent = `${healthVal}%`;
+  }
+  const healthFillEl = document.getElementById('mobileHudHealthFill');
+  if (healthFillEl) {
+    healthFillEl.style.width = `${healthPct}%`;
+  }
+
+  updateTimeControlsVisibility();
+}
+
 function renderAll() {
   // Самовосстановление: пациент в стационаре клиники или на карантине/реабилитации не может быть беглецом с домашней передержки
   const isMedRestricted = Boolean(
@@ -196,6 +392,7 @@ function renderAll() {
   }
 
   renderTopBar();
+  renderHUD();
   renderPlayerAndAnimalCards();
   renderActionTabs();
   renderDeadlines();
@@ -2344,7 +2541,7 @@ function renderDeadlines() {
   const items = [];
 
   // 0. Запас корма (при остатке <= 3 дн. и когда подопечный на руках)
-  const totalFood = (state.supplies.daysLeft || 0) + (state.zooshans.giftedFoodDaysLeft || 0);
+  const totalFood = ((state.supplies && state.supplies.daysLeft) || 0) + ((state.zooshans && state.zooshans.giftedFoodDaysLeft) || 0);
   if (nActive > 0 && totalFood <= 3) {
     items.push({
       icon: '🛒',
@@ -2357,8 +2554,8 @@ function renderDeadlines() {
   }
 
   // 1. Долг по талону Зоошанса (30 дней)
-  if (state.zooshans.voucherDebt > 0) {
-    const left = state.zooshans.voucherDaysLeft;
+  if (state.zooshans && state.zooshans.voucherDebt > 0) {
+    const left = state.zooshans.voucherDaysLeft || 0;
     items.push({
       icon: '🎫',
       title: 'Срок талона «Зоошанса»',
@@ -2370,7 +2567,7 @@ function renderDeadlines() {
   }
 
   // 2. 7-дневный финотчет сборов на карту
-  if (state.zooshans.personalFundraiserActive || state.zooshans.personalCardCollectedBYN > 0) {
+  if (state.zooshans && (state.zooshans.personalFundraiserActive || state.zooshans.personalCardCollectedBYN > 0)) {
     const daysSince = state.zooshans.daysSinceLastFinReport || 0;
     const left = Math.max(0, 7 - daysSince);
     items.push({
@@ -2384,7 +2581,7 @@ function renderDeadlines() {
   }
 
   // 3. Ранняя бронь усыновителями (готовы забрать после выздоровления/по договору)
-  const hasEarlyBookingRadar = Boolean((state.pr.earlyBooking && state.pr.earlyBooking.active) || state.pr.earlyBookedAdopterWaiting);
+  const hasEarlyBookingRadar = Boolean(state.pr && ((state.pr.earlyBooking && state.pr.earlyBooking.active) || state.pr.earlyBookedAdopterWaiting));
   if (hasEarlyBookingRadar && nActive > 0) {
     const isRestricted = typeof isAnimalMedicallyRestricted === 'function' && isAnimalMedicallyRestricted();
     const waitDays = typeof getEarlyBookingWaitDays === 'function' ? getEarlyBookingWaitDays() : 0;
@@ -2567,8 +2764,8 @@ function renderDeadlines() {
   }
 
   // 12. Зарплата игрока (каждые 30 дней)
-  const salaryDays = 30 - (state.day % 30);
-  const freeSalary = state.player.income.monthlyFreeCash || state.player.income.monthlySalary || 400;
+  const salaryDays = 30 - ((state.day || 1) % 30);
+  const freeSalary = (state.player && state.player.income && (state.player.income.monthlyFreeCash || state.player.income.monthlySalary)) || 400;
   items.push({
     icon: '💵',
     title: 'Зарплата куратора',
@@ -2584,6 +2781,20 @@ function renderDeadlines() {
     const yVal = typeof y.days === 'number' ? y.days : 999;
     return xVal - yVal;
   });
+
+  // Update mobile radar badge
+  const radarBadge = document.getElementById('mobileRadarBadge');
+  if (radarBadge) {
+    const activeCount = Array.isArray(state.deadlines)
+      ? state.deadlines.filter(d => !d.resolved && !d.completed).length
+      : items.length;
+    radarBadge.textContent = String(activeCount);
+    if (activeCount === 0) {
+      radarBadge.classList.add('hidden');
+    } else {
+      radarBadge.classList.remove('hidden');
+    }
+  }
 
   if (items.length === 0) {
     container.innerHTML = `
@@ -3997,3 +4208,43 @@ window.openMentorArchiveModal = openMentorArchiveModal;
 window.closeMentorArchiveModal = closeMentorArchiveModal;
 window.renderMentorArchive = renderMentorArchive;
 window.confirmResetMentorProgress = confirmResetMentorProgress;
+
+// Синхронизация мобильного тайм-контроллера и скоростей
+if (typeof updateSpeedButtonsUI === 'function') {
+  const _origUpdateSpeedButtonsUI = updateSpeedButtonsUI;
+  updateSpeedButtonsUI = function() {
+    _origUpdateSpeedButtonsUI();
+    updateTimeControlsVisibility();
+  };
+  if (typeof window !== 'undefined') {
+    window.updateSpeedButtonsUI = updateSpeedButtonsUI;
+  }
+}
+
+if (typeof setSpeed === 'function') {
+  const _origSetSpeed = setSpeed;
+  setSpeed = function(speed) {
+    _origSetSpeed(speed);
+    updateTimeControlsVisibility();
+  };
+  if (typeof window !== 'undefined') {
+    window.setSpeed = setSpeed;
+  }
+}
+
+if (typeof advanceAcuteDay === 'function') {
+  const _origAdvanceAcuteDay = advanceAcuteDay;
+  advanceAcuteDay = function() {
+    _origAdvanceAcuteDay();
+    updateTimeControlsVisibility();
+  };
+  if (typeof window !== 'undefined') {
+    window.advanceAcuteDay = advanceAcuteDay;
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.switchMobileTab = switchMobileTab;
+  window.renderHUD = renderHUD;
+  window.updateTimeControlsVisibility = updateTimeControlsVisibility;
+}
