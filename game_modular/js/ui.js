@@ -2645,6 +2645,38 @@ function closeDrawers() {
   if (backdrop) backdrop.classList.remove('active');
 }
 
+function openMobileSettingsMenu() {
+  stopTimer();
+  const sheet = document.getElementById('mobileSettingsSheet');
+  const backdrop = document.getElementById('mobileSettingsBackdrop');
+  if (!sheet) return;
+
+  // Синхронизация счетчиков в меню
+  const albumCnt = document.getElementById('headerAlbumCount');
+  const menuAlbum = document.getElementById('mobileMenuAlbumCount');
+  if (albumCnt && menuAlbum) menuAlbum.textContent = albumCnt.textContent;
+
+  const mentorCnt = document.getElementById('headerMentorCount');
+  const menuMentor = document.getElementById('mobileMenuMentorCount');
+  if (mentorCnt && menuMentor) menuMentor.textContent = mentorCnt.textContent;
+
+  const seasonTxt = document.getElementById('mobileMenuSeasonText');
+  if (seasonTxt && state.currentSeason) {
+    const sMap = { summer: '☀️ Лето (сезон котят)', autumn: '🍁 Осень (хэллоуин)', winter: '❄️ Зима (мороз/праздники)', spring: '🌱 Весна (сезон клещей)' };
+    seasonTxt.textContent = sMap[state.currentSeason] || 'Зоошанс Минск';
+  }
+
+  sheet.classList.remove('hidden');
+  if (backdrop) backdrop.classList.add('active');
+}
+
+function closeMobileSettingsMenu() {
+  const sheet = document.getElementById('mobileSettingsSheet');
+  const backdrop = document.getElementById('mobileSettingsBackdrop');
+  if (sheet) sheet.classList.add('hidden');
+  if (backdrop) backdrop.classList.remove('active');
+}
+
 function showEventModal(title, bodyText, choices) {
   stopTimer();
   const overlay = document.getElementById('eventOverlayBox');
