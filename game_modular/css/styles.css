@@ -1344,7 +1344,7 @@ body {
     bottom: 0;
     left: 0;
     right: 0;
-    z-index: 50;
+    z-index: 45;
     background: var(--bg-surface);
     border-top: 1px solid var(--border-subtle);
     padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -1446,7 +1446,8 @@ body {
   }
 
   #mobileTab_supply,
-  #mobileTab_radar {
+  #mobileTab_radar,
+  #mobileTab_actions {
     display: flex !important;
   }
 }

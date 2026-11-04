@@ -2909,6 +2909,9 @@ function closeMobileSettingsMenu() {
 }
 
 function showEventModal(title, bodyText, choices) {
+  if (typeof switchMobileTab === 'function') {
+    switchMobileTab('actions');
+  }
   stopTimer();
   const overlay = document.getElementById('eventOverlayBox');
   const dash = document.getElementById('actionsDashboard');
@@ -4225,28 +4228,6 @@ if (typeof updateSpeedButtonsUI === 'function') {
   };
   if (typeof window !== 'undefined') {
     window.updateSpeedButtonsUI = updateSpeedButtonsUI;
-  }
-}
-
-if (typeof setSpeed === 'function') {
-  const _origSetSpeed = setSpeed;
-  setSpeed = function(speed) {
-    _origSetSpeed(speed);
-    updateTimeControlsVisibility();
-  };
-  if (typeof window !== 'undefined') {
-    window.setSpeed = setSpeed;
-  }
-}
-
-if (typeof advanceAcuteDay === 'function') {
-  const _origAdvanceAcuteDay = advanceAcuteDay;
-  advanceAcuteDay = function() {
-    _origAdvanceAcuteDay();
-    updateTimeControlsVisibility();
-  };
-  if (typeof window !== 'undefined') {
-    window.advanceAcuteDay = advanceAcuteDay;
   }
 }
 

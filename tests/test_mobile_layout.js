@@ -94,4 +94,17 @@ assert(
   'styles.css should not need a desktop :root restore hack once dark palette is properly scoped'
 );
 
+// 5. Verify desktop responsive restoration of #mobileTab_actions alongside #mobileTab_supply and #mobileTab_radar
+assert(
+  desktopMediaBlock.includes('#mobileTab_actions') &&
+  desktopMediaBlock.includes('display: flex'),
+  'styles.css MUST restore #mobileTab_actions with display: flex in @media (min-width: 1024px)'
+);
+
+// 6. Verify z-index layering alignment: mobile dock sits at z-index: 45
+assert(
+  cssContent.includes('.mobile-bottom-dock') && cssContent.includes('z-index: 45;'),
+  'styles.css MUST set .mobile-bottom-dock z-index to 45 (above sticky header 40, below modals 50+)'
+);
+
 console.log('✅ Mobile Layout CSS Architecture & Theme Variables test passed.');

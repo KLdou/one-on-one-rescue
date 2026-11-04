@@ -152,6 +152,30 @@ assert(!getOrCreateElem('mobileTabBtn_supply').classList.contains('active'), 'mo
 assert(!getOrCreateElem('mobileTab_radar').classList.contains('hidden'), 'mobileTab_radar should be visible');
 assert(getOrCreateElem('mobileTab_supply').classList.contains('hidden'), 'mobileTab_supply should be hidden');
 
+// 1b. Test Auto-switch to Actions tab on showEventModal
+console.log('Test 1b: Auto-switch to Actions tab on showEventModal');
+// Switch to 'supply' tab first
+context.switchMobileTab('supply');
+assert(getOrCreateElem('mobileTabBtn_supply').classList.contains('active'), 'Supply tab should initially be active');
+assert(getOrCreateElem('mobileTab_actions').classList.contains('hidden'), 'Actions container should initially be hidden');
+
+// Trigger showEventModal
+assert(typeof context.showEventModal === 'function', 'showEventModal must be defined');
+context.showEventModal('Критическое событие', 'Описание события для проверки вкладки', [
+  { label: 'Понятно', action: () => {} }
+]);
+
+// Actions tab should now be automatically activated
+assert(getOrCreateElem('mobileTabBtn_actions').classList.contains('active'), 'Actions tab button must be active after showEventModal');
+assert(!getOrCreateElem('mobileTabBtn_supply').classList.contains('active'), 'Supply tab button must no longer be active');
+assert(!getOrCreateElem('mobileTab_actions').classList.contains('hidden'), 'Actions container must be visible after showEventModal');
+assert(getOrCreateElem('mobileTab_supply').classList.contains('hidden'), 'Supply container must be hidden');
+
+// Clean up modal state
+getOrCreateElem('eventOverlayBox').classList.add('hidden');
+getOrCreateElem('eventOverlayBox').classList.remove('flex');
+assert(getOrCreateElem('eventOverlayBox').classList.contains('hidden'), 'Event overlay should be hidden after cleanup');
+
 // 2. Test renderHUD()
 console.log('Test 2: renderHUD state binding and safe fills');
 assert(typeof context.renderHUD === 'function', 'renderHUD must be defined');
