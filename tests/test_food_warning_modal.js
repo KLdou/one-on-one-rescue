@@ -117,11 +117,20 @@ vm.runInContext(`
       try { origShowEventModal(title, desc, buttons); } catch (e) {}
     }
   };
+
+  function sanitizeFixture() {
+    state.animal.hiddenState = {};
+    state.animal.health = 88;
+    state.newborn = { active: false, milkDaysLeft: 0, lastFormulaWarningDay: -1 };
+    state.triggeredEvents = {};
+    state.escapeQuest = { active: false };
+  }
 `, context);
 
 // Test 1: When food drops to <= 1, triggerSuppliesLowModal is invoked and pauses timer
 vm.runInContext(`{
   startNewRun(false);
+  sanitizeFixture();
   state.animal.species = 'cat';
   state.animal.activeCount = 1;
   state.animal.totalCount = 1;
@@ -143,13 +152,12 @@ vm.runInContext(`{
   console.log('PASS: Test 1 - Food <= 1 triggers supplies low modal and pauses timer.');
 }`, context);
 
-// Test 2: Instant purchase deducts 65 BYN for cat / 120 BYN for dog, adds 14 days, no starvation penalty
+// Test 2: Instant purchase deducts 65 BYN for cat / 120 BYN for dog or litter, adds 14 days, no starvation penalty
 vm.runInContext(`{
-  // 2A: Cat
+  // 2A: Single Cat (65 BYN)
   startNewRun(false);
+  sanitizeFixture();
   state.animal.species = 'cat';
-  state.animal.hiddenState = {};
-  state.animal.health = 88;
   state.animal.activeCount = 1;
   state.animal.totalCount = 1;
   state.animal.count = 1;
@@ -177,8 +185,9 @@ vm.runInContext(`{
   assert.strictEqual(state.supplies.daysLeft, 13, 'Food consumed normally for 1 day');
   console.log('PASS: Test 2A - Instant buy for cat works (deducts 65 BYN, adds 14 days, avoids starvation).');
 
-  // 2B: Dog
+  // 2B: Dog (120 BYN)
   startNewRun(false);
+  sanitizeFixture();
   state.animal.species = 'dog';
   state.animal.activeCount = 1;
   state.animal.totalCount = 1;
@@ -198,12 +207,38 @@ vm.runInContext(`{
   assert.strictEqual(state.cash, 80, 'Cash should be deducted by 120 BYN (200 - 120 = 80)');
   assert.strictEqual(state.supplies.daysLeft, 14, 'Dog supplies.daysLeft should be incremented by 14');
   console.log('PASS: Test 2B - Instant buy for dog works (deducts 120 BYN, adds 14 days).');
+
+  // 2C: Cat Litter (120 BYN per GDD v2.2)
+  startNewRun(false);
+  sanitizeFixture();
+  state.animal.species = 'cat';
+  state.animal.activeCount = 4;
+  state.animal.totalCount = 4;
+  state.animal.count = 4;
+  state.supplies.daysLeft = 0;
+  state.supplies.lastWarningDay = -1;
+  state.zooshans.giftedFoodDaysLeft = 0;
+  state.cash = 200;
+  window.lastModalData = null;
+
+  processDayTick();
+  assert(window.lastModalData !== null, 'Modal should trigger for cat litter when daysLeft is 0');
+  const litterBuyBtn = window.lastModalData.buttons[0];
+  assert(litterBuyBtn.label.includes('120 BYN'), 'Cat litter buy button should indicate 120 BYN per GDD v2.2');
+  litterBuyBtn.action();
+  assert.strictEqual(state.cash, 80, 'Cash should be deducted by 120 BYN (200 - 120 = 80)');
+  assert.strictEqual(state.supplies.daysLeft, 14, 'Litter supplies.daysLeft should be incremented by 14');
+  console.log('PASS: Test 2C - Instant buy for cat litter works (deducts 120 BYN for litter, adds 14 days).');
 }`, context);
 
 // Test 3: Insufficient cash when clicking instant purchase
 vm.runInContext(`{
   startNewRun(false);
+  sanitizeFixture();
   state.animal.species = 'cat';
+  state.animal.activeCount = 1;
+  state.animal.totalCount = 1;
+  state.animal.count = 1;
   state.supplies.daysLeft = 0;
   state.supplies.lastWarningDay = -1;
   state.cash = 20; // less than 65 BYN
@@ -227,6 +262,7 @@ vm.runInContext(`{
 // Test 4: Second call on the same game day does not trigger duplicate modal
 vm.runInContext(`{
   startNewRun(false);
+  sanitizeFixture();
   state.animal.species = 'cat';
   state.animal.activeCount = 1;
   state.animal.totalCount = 1;
@@ -251,6 +287,7 @@ vm.runInContext(`{
 // Test 5: Formula warning triggers appropriately for foster newborns when milkDaysLeft <= 1
 vm.runInContext(`{
   startNewRun(false);
+  sanitizeFixture();
   state.animal.species = 'cat';
   state.animal.activeCount = 3;
   state.animal.totalCount = 3;
@@ -289,6 +326,39 @@ vm.runInContext(`{
   processDayTick();
   assert.strictEqual(window.lastModalData, null, 'Formula modal must not trigger twice on the same day');
   console.log('PASS: Test 5 - Formula warning triggers for foster newborns and has spam protection.');
+}`, context);
+
+// Test 6: Calendar Date does not desync on early return
+vm.runInContext(`{
+  startNewRun(false);
+  sanitizeFixture();
+  state.animal.species = 'cat';
+  state.animal.activeCount = 1;
+  state.animal.totalCount = 1;
+  state.animal.count = 1;
+  state.supplies.daysLeft = 0;
+  state.supplies.lastWarningDay = -1;
+  state.cash = 100;
+
+  const initialDate = new Date(state.calendarDate.getTime());
+  const initialDay = state.day;
+
+  // First call: triggers warning modal and returns early
+  processDayTick();
+  assert.strictEqual(state.day, initialDay, 'Day should not have advanced on early return');
+  assert.strictEqual(state.calendarDate.getTime(), initialDate.getTime(), 'Calendar date should be rewound to original date on early return');
+
+  // Dismiss / buy
+  const buyBtn = window.lastModalData.buttons[0];
+  buyBtn.action();
+
+  // Second call: completes tick
+  processDayTick();
+  assert.strictEqual(state.day, initialDay + 1, 'Day should now advance by 1');
+  const expectedDate = new Date(initialDate.getTime());
+  expectedDate.setDate(expectedDate.getDate() + 1);
+  assert.strictEqual(state.calendarDate.getDate(), expectedDate.getDate(), 'Calendar date should advance by exactly 1 day overall');
+  console.log('PASS: Test 6 - Calendar date correctly rewinds on early return and stays in sync.');
 }`, context);
 
 console.log('ALL TESTS PASSED SUCCESSFULLY!');

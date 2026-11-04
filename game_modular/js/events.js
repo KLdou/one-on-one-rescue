@@ -1093,8 +1093,9 @@ function triggerSuppliesLowModal(isZero) {
 
   const a = state.animal || {};
   const g = typeof getAnimalGrammar === 'function' ? getAnimalGrammar(a) : { isDog: a.species === 'dog' };
-  const cost = g.isDog ? 120 : 65;
-  const supplyName = g.isDog ? 'корм и пеленки' : 'корм и наполнитель';
+  const isLitter = Boolean((a.count > 1) || (a.totalCount > 1));
+  const cost = (g.isDog || isLitter) ? 120 : 65;
+  const supplyName = g.isDog ? 'корм и пеленки' : (isLitter ? 'корм и наполнитель для выводка' : 'корм и наполнитель');
 
   const title = isZero
     ? '🚨 ЗАКОНЧИЛСЯ КОРМ И НАПОЛНИТЕЛЬ!'

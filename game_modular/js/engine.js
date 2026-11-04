@@ -521,6 +521,7 @@ function processDayTick() {
         if (typeof triggerFormulaLowModal === 'function') {
           triggerFormulaLowModal(milkDays <= 0);
         }
+        state.calendarDate.setDate(state.calendarDate.getDate() - 1);
         renderAll();
         return;
       }
@@ -567,6 +568,7 @@ function processDayTick() {
         if (typeof triggerSuppliesLowModal === 'function') {
           triggerSuppliesLowModal(totalFood <= 0);
         }
+        state.calendarDate.setDate(state.calendarDate.getDate() - 1);
         renderAll();
         return;
       }
