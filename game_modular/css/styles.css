@@ -47,6 +47,12 @@
   /* Системный шрифт */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+
+  /* Безопасные отступы для безрамочных мобильных дисплеев (iOS / Android) */
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sat: env(safe-area-inset-top, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
 }
 
 /* Базовые утилиты скрытия (offline & specificity guard) */
@@ -104,6 +110,15 @@ body[data-season="spring"] {
 
 * {
   box-sizing: border-box;
+}
+
+html, body {
+  overscroll-behavior-y: contain;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, a, input, select, .craft-card, .action-card, .resource-widget {
+  touch-action: manipulation;
 }
 
 body {
