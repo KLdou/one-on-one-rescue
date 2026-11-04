@@ -121,6 +121,8 @@ vm.runInContext(`
   function sanitizeFixture() {
     state.animal.hiddenState = {};
     state.animal.health = 88;
+    state.animal.hasMotherCat = false;
+    state.animal.motherLactating = false;
     state.newborn = { active: false, milkDaysLeft: 0, lastFormulaWarningDay: -1 };
     state.triggeredEvents = {};
     state.escapeQuest = { active: false };
