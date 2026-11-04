@@ -2695,11 +2695,13 @@ function showEventModal(title, bodyText, choices) {
   const overlay = document.getElementById('eventOverlayBox');
   const dash = document.getElementById('actionsDashboard');
   const extraBox = document.getElementById('extraQuestionBox');
+  const dock = document.getElementById('mobileTimeDock');
 
   overlay.classList.remove('hidden');
   overlay.classList.add('flex');
   dash.classList.add('hidden');
   if (extraBox) extraBox.classList.add('hidden');
+  if (dock) dock.classList.add('dock-hidden');
 
   document.getElementById('eventBadge').textContent = '⚡ СОБЫТИЕ (ИГРА НА ПАУЗЕ)';
   document.getElementById('eventBadge').className = 'craft-badge text-xs font-mono uppercase font-bold bg-amber-500 text-slate-950';
@@ -2726,6 +2728,8 @@ function showEventModal(title, bodyText, choices) {
 function closeEventModal() {
   document.getElementById('eventOverlayBox').classList.add('hidden');
   document.getElementById('eventOverlayBox').classList.remove('flex');
+  const dock = document.getElementById('mobileTimeDock');
+  if (dock) dock.classList.remove('dock-hidden');
   if (!state.onboarding || state.onboarding.day1ChoiceMade !== false) {
     document.getElementById('actionsDashboard').classList.remove('hidden');
   }

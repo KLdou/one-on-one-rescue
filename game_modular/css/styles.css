@@ -327,7 +327,8 @@ body {
   }
 
   .mobile-bottom-nav,
-  .mobile-drawer-triggers {
+  .mobile-drawer-triggers,
+  .mobile-time-dock {
     display: none !important;
   }
 
@@ -442,6 +443,36 @@ body {
     background: var(--border-strong);
     border-radius: 9999px;
     margin: 0 auto 10px auto;
+  }
+
+  .mobile-time-dock {
+    position: fixed;
+    bottom: calc(62px + var(--sab));
+    left: 12px;
+    right: 12px;
+    max-width: 480px;
+    margin: 0 auto;
+    background: rgba(255, 253, 249, 0.96);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 16px rgba(44, 48, 46, 0.12);
+    padding: 6px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 25;
+    transition: all 0.25s ease;
+  }
+
+  .mobile-time-dock.dock-hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(20px);
+  }
+
+  body {
+    padding-bottom: calc(125px + var(--sab));
   }
 
   .drawer-left,

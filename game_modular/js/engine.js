@@ -181,6 +181,53 @@ function updateSpeedButtonsUI() {
     }
   }
 
+  // Синхронизация мобильного плавающего дока
+  const mBtnAcute = document.getElementById('mobileBtnAdvanceAcuteDay');
+  if (mBtnAcute) {
+    if (isAcute) {
+      mBtnAcute.classList.remove('hidden');
+    } else {
+      mBtnAcute.classList.add('hidden');
+    }
+    mBtnAcute.disabled = Boolean(state.gameOver);
+  }
+
+  const mSpeedGroup = document.getElementById('mobileSpeedGroup');
+  if (mSpeedGroup) {
+    if (isAcute) {
+      mSpeedGroup.classList.add('hidden');
+      mSpeedGroup.classList.remove('flex');
+    } else {
+      mSpeedGroup.classList.remove('hidden');
+      mSpeedGroup.classList.add('flex');
+    }
+  }
+
+  const mMapping = [
+    { id: 'mobileBtnSpeed0', s: 0 },
+    { id: 'mobileBtnSpeed1', s: 1 },
+    { id: 'mobileBtnSpeed2', s: 2 },
+    { id: 'mobileBtnSpeed5', s: 5 }
+  ];
+  mMapping.forEach(item => {
+    const el = document.getElementById(item.id);
+    if (!el) return;
+    if (state.gameOver) {
+      el.disabled = true;
+      el.className = 'px-2 py-2 rounded-xl text-xs font-mono font-semibold bg-[var(--bg-muted)] text-[var(--text-muted)] border border-[var(--border-subtle)] opacity-50';
+    } else {
+      el.disabled = false;
+      el.className = currentSpeed === item.s
+        ? 'px-2.5 py-2 rounded-xl text-xs font-mono font-bold bg-emerald-600 text-white transition shadow-sm'
+        : 'px-2.5 py-2 rounded-xl text-xs font-mono font-semibold bg-[var(--bg-muted)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] transition';
+    }
+  });
+
+  const mBtnFF = document.getElementById('mobileBtnFastForward');
+  if (mBtnFF) {
+    mBtnFF.disabled = Boolean(state.gameOver);
+  }
+
   const dot = document.getElementById('tickIndicator');
   if (dot) {
     if (state.gameOver) {
