@@ -197,6 +197,11 @@ function startNewRun(experiencedCurator = false, forcedScenario = null) {
   if (mentModal) mentModal.classList.add('hidden');
   const mentArchModal = document.getElementById('mentorArchiveModal');
   if (mentArchModal) mentArchModal.classList.add('hidden');
+  const candModal = document.getElementById('candidateInterviewModal');
+  if (candModal) candModal.classList.add('hidden');
+  if (typeof window !== 'undefined') window.currentCandidateCall = null;
+  if (typeof closeCandidateModal === 'function') closeCandidateModal();
+  if (typeof closeMobileSettingsMenu === 'function') closeMobileSettingsMenu();
   if (typeof mentorHintQueue !== 'undefined' && Array.isArray(mentorHintQueue)) mentorHintQueue.length = 0;
   if (typeof closeMentorModal === 'function') closeMentorModal();
   if (typeof closeMentorArchiveModal === 'function') closeMentorArchiveModal();

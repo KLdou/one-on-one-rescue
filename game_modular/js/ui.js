@@ -256,7 +256,14 @@ function renderHUD() {
   // 1. Mobile Header
   const mobileNameEl = document.getElementById('mobilePetName');
   if (mobileNameEl) {
-    mobileNameEl.textContent = a.name || a.petName || 'Найденыш';
+    if (a.name || a.petName) {
+      mobileNameEl.textContent = a.name || a.petName;
+    } else if (a.count > 1 || a.initialCount > 1) {
+      const cnt = a.activeCount !== undefined ? a.activeCount : (a.count || a.initialCount);
+      mobileNameEl.textContent = `Выводок ${a.species === 'cat' ? 'котят' : 'щенков'} (${cnt} шт.)`;
+    } else {
+      mobileNameEl.textContent = 'Найденыш';
+    }
   }
 
   const mobileDayEl = document.getElementById('mobileGameDay');

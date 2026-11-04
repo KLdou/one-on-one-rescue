@@ -10,9 +10,7 @@ function isAnyBlockingModalOpen() {
 
   const candModal = document.getElementById('candidateInterviewModal');
   if (candModal && typeof candModal.classList?.contains === 'function' && !candModal.classList.contains('hidden')) {
-    if (typeof window !== 'undefined' && window.currentCandidateCall) {
-      return true;
-    }
+    return true;
   }
 
   const mentModal = document.getElementById('mentorModal');

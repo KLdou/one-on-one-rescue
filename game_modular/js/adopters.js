@@ -522,6 +522,7 @@ function markCandidateCallIntercepted(callId = null) {
 function closeCandidateModal() {
   const modal = document.getElementById('candidateInterviewModal');
   if (modal) modal.classList.add('hidden');
+  window.currentCandidateCall = null;
 }
 
 window.actionInspectCandidateSlot = actionInspectCandidateSlot;

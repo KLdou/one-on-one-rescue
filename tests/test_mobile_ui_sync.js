@@ -318,4 +318,13 @@ assert.strictEqual(clampedHealthFill.style.width, '0%', 'Negative health fill sh
 const fallbackPetNameEl = getOrCreateElem('mobilePetName');
 assert.strictEqual(fallbackPetNameEl.textContent, 'Найденыш', 'Missing pet name should fallback to Найденыш');
 
+// Test unnamed litter title parity on mobile header
+context.state.animal = { count: 3, species: 'cat' };
+context.renderHUD();
+assert.strictEqual(fallbackPetNameEl.textContent, 'Выводок котят (3 шт.)', 'Unnamed cat litter should format properly');
+
+context.state.animal = { count: 4, species: 'dog' };
+context.renderHUD();
+assert.strictEqual(fallbackPetNameEl.textContent, 'Выводок щенков (4 шт.)', 'Unnamed dog litter should format properly');
+
 console.log('✅ ALL MOBILE UI SYNC TESTS PASSED!');

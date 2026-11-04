@@ -73,6 +73,10 @@ assert(
   html.includes('id="mobileBtnAdvanceAcuteDay"') && html.includes('advanceAcuteDay()'),
   'index.html MUST contain #mobileBtnAdvanceAcuteDay calling advanceAcuteDay()'
 );
+assert(
+  html.includes('data-testid="mobileEndDayBtn"'),
+  'index.html MUST contain data-testid="mobileEndDayBtn"'
+);
 assert(html.includes('id="mobileSpeedControls"'), 'index.html MUST contain #mobileSpeedControls');
 
 const speedButtons = [
