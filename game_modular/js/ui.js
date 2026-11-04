@@ -2222,33 +2222,40 @@ function renderActionTabs() {
     prStatusText = `⏳ Поднятие через ${refreshWait} дн.`;
   }
 
-  const prTitle = !state.pr.prActive
-    ? (isOrphanBaby ? 'ПИАР: малыши без мамы' : (a.ageDays < 60 ? 'Раннее бронирование' : 'Системный ПИАР'))
-    : 'Поднять объявления в топ';
-  const prBadge = !state.pr.prActive
-    ? (isOrphanBaby ? 'Отдача до 60 дн.' : (a.ageDays < 60 ? '40+ дн.' : 'Куфар / Сайт'))
-    : `${state.pr.daysSinceAdRefresh}/6 дн.`;
-  const prSub = !state.pr.prActive
-    ? (isOrphanBaby
-        ? 'Малышей без мамы можно отдавать в семью до 60 дней по договору (прививки сделают хозяева).'
-        : (a.ageDays < 60 ? 'Размещение анкеты на раннюю бронь до вакцинации.' : 'Размещение анкеты на Куфаре, zooshans.by и в группах.'))
-    : 'Обновление анкет для восстановления максимального потока звонков.';
+  const isLostSearching = Boolean(h.isLostOrPurebred && state.pr.lostSearchDaysDone < 10);
+
+  const prTitle = isLostSearching
+    ? 'Поиск старых хозяев (ст. 231 ГК РБ)'
+    : (!state.pr.prActive
+      ? (isOrphanBaby ? 'ПИАР: малыши без мамы' : (a.ageDays < 60 ? 'Раннее бронирование' : 'Системный ПИАР'))
+      : 'Поднять объявления в топ');
+
+  const prBadge = isLostSearching
+    ? `${state.pr.lostSearchDaysDone}/10 дн.`
+    : (!state.pr.prActive
+      ? (isOrphanBaby ? 'Отдача до 60 дн.' : (a.ageDays < 60 ? '40+ дн.' : 'Куфар / Сайт'))
+      : `${state.pr.daysSinceAdRefresh}/6 дн.`);
+
+  const prSub = isLostSearching
+    ? 'По закону и правилам зоозащиты поиск старых хозяев длится 10 дней со дня находки. Стерилизация и пиар новым ручкам заблокированы.'
+    : (!state.pr.prActive
+      ? (isOrphanBaby
+          ? 'Малышей без мамы можно отдавать в семью до 60 дней по договору (прививки сделают хозяева).'
+          : (a.ageDays < 60 ? 'Размещение анкеты на раннюю бронь до вакцинации.' : 'Размещение анкеты на Куфаре, zooshans.by и в группах.'))
+      : 'Обновление анкет для восстановления максимального потока звонков.');
 
   careButtons.push({
-    icon: !state.pr.prActive ? '🚀' : '🔄',
+    icon: isLostSearching ? '🔎' : (!state.pr.prActive ? '🚀' : '🔄'),
     title: prTitle,
     badge: prBadge,
     sub: prSub,
     costBYN: 0,
-    costEnergy: prState === 'cooldown' ? 0 : (!state.pr.prActive ? 12 : 10),
+    costEnergy: prState === 'cooldown' || isLostSearching ? 0 : (!state.pr.prActive ? 12 : 10),
     state: prState,
     statusText: prStatusText,
     onClick: () => {
-      if (h.isLostOrPurebred && state.pr.lostSearchDaysDone < 10 && !state.pr.lostSearchActive) {
-        if (!spendEnergy(10)) return;
-        state.pr.lostSearchActive = true;
-        addLog(`День ${state.day}: 🔎 Запущен 10-дневный поиск старых хозяев по группам потеряшек.`, 'info');
-        renderAll();
+      if (h.isLostOrPurebred && state.pr.lostSearchDaysDone < 10) {
+        addLog(`День ${state.day}: 🔒 По ст. 231 ГК РБ поиск старых хозяев длится 10 дней со дня находки (${state.pr.lostSearchDaysDone}/10 дн.). Пиар новым ручкам временно заблокирован.`, 'info');
         return;
       }
       if (!state.pr.prActive) {
@@ -2577,14 +2584,29 @@ function renderLog() {
   ).join('');
 }
 
-function renderDeadlines() {
-  const container = document.getElementById('deadlinesRadarList');
-  if (!container) return;
-
+function getRadarItems() {
   const a = state.animal;
+  if (!a) return [];
+
   const nActive = a.activeCount !== undefined ? a.activeCount : (a.count || 0);
   const isOrphanBaby = !a.hasMotherCat && (a.ageCategory === 'kitten' || a.ageCategory === 'puppy');
   const items = [];
+
+  // Поиск хозяев (ст. 231 ГК РБ) для потеряшек/породистых (10 дней со дня находки)
+  if (a.hiddenState?.isLostOrPurebred && state.pr && state.pr.lostSearchDaysDone < 10) {
+    const lostDaysLeft = 10 - state.pr.lostSearchDaysDone;
+    items.push({
+      icon: '🔎',
+      title: 'Поиск хозяев (ст. 231)',
+      days: lostDaysLeft,
+      daysLeft: lostDaysLeft,
+      deadlineText: `${lostDaysLeft} дн.`,
+      sub: `Осталось ${lostDaysLeft} дн. поиска`,
+      color: 'amber',
+      urgent: true,
+      danger: false
+    });
+  }
 
   // 0. Запас корма (при остатке <= 3 дн. и когда подопечный на руках)
   const totalFood = ((state.supplies && state.supplies.daysLeft) || 0) + ((state.zooshans && state.zooshans.giftedFoodDaysLeft) || 0);
@@ -2823,10 +2845,20 @@ function renderDeadlines() {
 
   // Sort by days ascending
   items.sort((x, y) => {
-    const xVal = typeof x.days === 'number' ? x.days : 999;
-    const yVal = typeof y.days === 'number' ? y.days : 999;
+    const xVal = typeof x.days === 'number' ? x.days : (typeof x.daysLeft === 'number' ? x.daysLeft : 999);
+    const yVal = typeof y.days === 'number' ? y.days : (typeof y.daysLeft === 'number' ? y.daysLeft : 999);
     return xVal - yVal;
   });
+
+  return items;
+}
+window.getRadarItems = getRadarItems;
+
+function renderDeadlines() {
+  const container = document.getElementById('deadlinesRadarList');
+  if (!container) return;
+
+  const items = getRadarItems();
 
   // Update mobile radar badge
   const radarBadge = document.getElementById('mobileRadarBadge');
@@ -2859,9 +2891,10 @@ function renderDeadlines() {
       badgeClass = 'bg-amber-100 text-amber-900 border-amber-300 font-bold';
     }
 
-    const daysText = typeof item.days === 'string'
-      ? item.days
-      : (item.days === 0 ? 'СЕГОДНЯ!' : `${item.days} дн.`);
+    const daysVal = item.days !== undefined ? item.days : item.daysLeft;
+    const daysText = item.deadlineText || (typeof daysVal === 'string'
+      ? daysVal
+      : (daysVal === 0 ? 'СЕГОДНЯ!' : `${daysVal} дн.`));
 
     return `
       <div class="flex items-center justify-between p-2 rounded-lg bg-[var(--bg-muted)] border border-[var(--border-subtle)] text-xs font-mono transition hover:border-[var(--season-accent)]">

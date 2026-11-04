@@ -55,6 +55,11 @@ function savePetToAlbum(record) {
   }
 }
 
+function saveRescueAlbum(record) {
+  if (record) savePetToAlbum(record);
+}
+window.saveRescueAlbum = saveRescueAlbum;
+
 const MENTOR_STORAGE_KEY = 'zooshans_unlocked_mentor_hints';
 
 function getUnlockedMentorHints() {
@@ -170,6 +175,12 @@ function ensureStateBackwardCompatibility(st = window.state) {
   }
 
   if (st.pr) {
+    if (typeof st.pr.lostSearchActive !== 'boolean') {
+      st.pr.lostSearchActive = Boolean(st.animal?.hiddenState?.isLostOrPurebred && (st.pr.lostSearchDaysDone || 0) < 10);
+    }
+    if (typeof st.pr.lostSearchDaysDone !== 'number') {
+      st.pr.lostSearchDaysDone = 0;
+    }
     if (!st.pr.earlyBooking) {
       st.pr.earlyBooking = {
         active: Boolean(st.pr.earlyBookedAdopterWaiting),
@@ -372,6 +383,7 @@ function startNewRun(experiencedCurator = false, forcedScenario = null) {
 
     // Спасенные хвостики в текущей партии
     savedTails: [],
+    rescuedPets: [],
 
     // Экстренный 4-дневный квест поиска беглеца (срыв собаки или окно на передержке)
     escapeQuest: {
@@ -446,7 +458,7 @@ function startNewRun(experiencedCurator = false, forcedScenario = null) {
 
     // Системный пиар (обновление каждые 6 дней) и раннее бронирование с 45 дней
     pr: {
-      lostSearchActive: false,
+      lostSearchActive: Boolean((arch && arch.hiddenState && arch.hiddenState.isLostOrPurebred) || (forcedScenario && (forcedScenario.isLostOrPurebred || forcedScenario.hiddenState?.isLostOrPurebred))),
       lostSearchDaysDone: 0,
       prActive: false,
       daysInPr: 0,
@@ -474,6 +486,9 @@ function startNewRun(experiencedCurator = false, forcedScenario = null) {
     : (state.animal.count > 1 ? `Выводок (${state.animal.count} малышей, без клички)` : '«Найденыш»');
   addLog(`День 1 (${calStr}, ${sLabel}): Вы нашли подопечных — ${initialPetNameText} (${state.animal.title}).`, 'info');
   addLog(`День 1: Началась пошаговая острая фаза (Дни 1–3). Таймер отключен. Изучайте обстановку и завершайте дни вручную.`, 'info');
+  if (state.animal && state.animal.hiddenState && state.animal.hiddenState.isLostOrPurebred) {
+    state.pr.lostSearchActive = true;
+  }
   ensureStateBackwardCompatibility(state);
   renderAll();
   triggerDay1IntroModal();

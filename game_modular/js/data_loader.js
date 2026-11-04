@@ -258,6 +258,6 @@ function generateRandomAnimalScenario(forcedArchetype = null) {
     litterTrained: raw.litterTrained || false,
     litterTrainDaysDone: raw.litterTrainDaysDone || 0,
     visibleState: raw.visibleState,
-    hiddenState: { ...raw.hiddenState }
+    hiddenState: { ...raw.hiddenState, isLostOrPurebred: Boolean(raw.isLostOrPurebred || (raw.hiddenState && raw.hiddenState.isLostOrPurebred)) }
   };
 }

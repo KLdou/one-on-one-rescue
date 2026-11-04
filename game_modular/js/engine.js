@@ -1154,8 +1154,10 @@ function processDayTick() {
   }
 
   // 19. 10-дневный карантин поиска старых хозяев (породистые / колор-пойнты, GDD 4.1)
-  if (state.pr.lostSearchActive && state.pr.lostSearchDaysDone < 10) {
+  const isLostOrPurebred = Boolean(a.hiddenState && a.hiddenState.isLostOrPurebred);
+  if (isLostOrPurebred && state.pr.lostSearchDaysDone < 10) {
     state.pr.lostSearchDaysDone += 1;
+    state.pr.lostSearchActive = true;
     if ((state.pr.lostSearchDaysDone === 3 || state.pr.lostSearchDaysDone === 6) && !state.triggeredEvents['scam_' + state.pr.lostSearchDaysDone]) {
       state.triggeredEvents['scam_' + state.pr.lostSearchDaysDone] = true;
       const scams = getDynamicScammerCalls(a);
@@ -1166,10 +1168,14 @@ function processDayTick() {
     if (state.pr.lostSearchDaysDone === 10) {
       state.pr.lostSearchActive = false;
       if (Math.random() < 0.30) {
+        const rescueDateFormatted = state.calendarDate && typeof state.calendarDate.toLocaleDateString === 'function'
+          ? state.calendarDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
+          : formatCalendarDate(state.calendarDate);
         const tailRecord = {
           id: Date.now() + Math.random(),
           petName: a.petName,
           species: a.species,
+          status: 'returned_to_owner',
           archetypeId: a.id,
           archetypeTitle: a.title,
           coatName: a.coatName,
@@ -1178,19 +1184,28 @@ function processDayTick() {
           seasonsPassed: [...state.seasonsPassed],
           adopterSummary: 'Вернулся к прежним хозяевам (старый ветпаспорт)',
           dateSaved: formatCalendarDate(state.calendarDate),
+          rescueDate: rescueDateFormatted,
           personalSpent: state.personalMoneySpent || 0,
-          prChannel: 'Поиск потеряшек'
+          prChannel: 'Поиск потеряшек',
+          finalWord: 'На 10-й день поиска объявились настоящие хозяева с документами и ветпаспортом! Подопечный вернулся домой.'
         };
         state.savedTails.push(tailRecord);
+        if (!state.rescuedPets) state.rescuedPets = [];
+        state.rescuedPets.push(tailRecord);
         savePetToAlbum(tailRecord);
-        triggerEndGame(
-          true,
-          'ЧУДО ПОИСКА: Настоящие хозяева нашлись!',
-          `Ваши объявления в группах потеряшек сработали! На 10-й день приехала настоящая хозяйка со старым ветпаспортом и фото ${g.gen}. Семья возместила ваши расходы и сделала пожертвование в «Зоошанс»!`
+        if (typeof saveRescueAlbum === 'function') saveRescueAlbum(tailRecord);
+        stopTimer();
+        state.gameOver = true;
+        state.victory = true;
+        showEventModal(
+          'СТАРЫЕ ХОЗЯЕВА НАЙДЕНЫ! 🎉',
+          `По вашим объявлениям позвонили настоящие владельцы «${a.petName}»! Они предоставили ветпаспорт и детские фото. Питомец радостно узнал хозяев и благополучно вернулся домой!\n\n(Победа: питомец воссоединен с семьей, запись внесена в Личный альбом!)`,
+          [{ label: 'Завершить партию', style: 'primary', action: () => showAlbumModal() }]
         );
+        renderAll();
         return;
       } else {
-        addLog(`День ${state.day}: 10 дней поиска старых хозяев позади. Прежние владельцы не нашлись — теперь открыта стерилизация и поиск новой семьи!`, 'info');
+        addLog(`День ${state.day}: 📋 10 дней поиска старых хозяев (ст. 231 ГК РБ) завершены. Старые владельцы не объявились. Стерилизация и пиар новым ручкам разблокированы!`, 'success');
       }
     }
   }
