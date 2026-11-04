@@ -541,6 +541,61 @@ function payVoucherDebtWithOwnMoney() {
   renderAll();
 }
 
+function actionTogglePersonalFundraiser() {
+  if (state.gameOver) return;
+  if (!state.zooshans) return;
+
+  if (state.zooshans.personalFundraiserActive) {
+    state.zooshans.personalFundraiserActive = false;
+    addLog(`День ${state.day}: 💳 Сбор на личную карту закрыт. Поступление донатов и требование 7-дневного финотчета приостановлены.`, 'info');
+    if (typeof renderAll === 'function') renderAll();
+    return;
+  }
+
+  if (state.zooshans.personalDonationsBanned) {
+    addLog(`День ${state.day}: ⚠️ Сбор на личную карту заблокирован за просрочку финотчета!`, 'warn');
+    return;
+  }
+  if (state.zooshans.personalCardCollectedBYN >= 6500) {
+    addLog(`День ${state.day}: ⚠️ Лимит сборов на личную карту (6500 BYN в год) исчерпан!`, 'warn');
+    return;
+  }
+
+  if (!spendEnergy(15)) return;
+
+  state.zooshans.personalFundraiserActive = true;
+  state.zooshans.daysSinceLastFinReport = 0;
+  addLog(`День ${state.day}: 💳 Открыт сбор на личную карту (в пределах лимита 6500 BYN/год). Обязательно выкладывайте чеки каждые 7 дней!`, 'success');
+  if (typeof renderAll === 'function') renderAll();
+}
+
+function actionToggleOfficialFundraiser() {
+  if (state.gameOver) return;
+  if (!state.zooshans) return;
+
+  if (state.zooshans.officialFundraiserActive) {
+    state.zooshans.officialFundraiserActive = false;
+    addLog(`День ${state.day}: 🏦 Официальный сбор на р/с «Зоошанса» закрыт по инициативе куратора.`, 'info');
+    if (typeof renderAll === 'function') renderAll();
+    return;
+  }
+
+  const eligible = state.zooshans.voucherDebt >= 330 ||
+    Boolean(state.zooshans.expensiveApproved) ||
+    Boolean(state.animal && state.animal.hiddenState && state.animal.hiddenState.hasSevereTrauma && !state.animal.traumaOperated);
+
+  if (!eligible) {
+    addLog(`День ${state.day}: ⚠️ Официальный сбор на р/с открывается только при долге от 330 BYN или тяжелых операциях/травмах!`, 'warn');
+    return;
+  }
+
+  if (!spendEnergy(15)) return;
+
+  state.zooshans.officialFundraiserActive = true;
+  addLog(`День ${state.day}: 🏦 Колл-центр открыл официальный сбор на р/с «Зоошанса» для погашения долга за операцию/стационар!`, 'success');
+  if (typeof renderAll === 'function') renderAll();
+}
+
 function actionTakeSelfPhotos() {
   if (!spendEnergy(5)) return;
   state.photos.hasSelfPhotos = true;
@@ -996,3 +1051,5 @@ window.payVetBill = payVetBill;
 window.handleVolunteerTakeoverExamination = handleVolunteerTakeoverExamination;
 window.promptVolunteerDewormingRequest = promptVolunteerDewormingRequest;
 window.provideVolunteerDeworming = provideVolunteerDeworming;
+window.actionTogglePersonalFundraiser = actionTogglePersonalFundraiser;
+window.actionToggleOfficialFundraiser = actionToggleOfficialFundraiser;

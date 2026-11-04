@@ -1664,7 +1664,9 @@ function renderActionTabs() {
 
   // ================= 2. ВКЛАДКА: ЗООШАНС И СБОРЫ =================
   const zooButtons = [];
-  const canOpenOfficialRsFundraiser = state.zooshans.voucherDebt >= 330 || state.zooshans.expensiveApproved;
+  const canOpenOfficialRsFundraiser = state.zooshans.voucherDebt >= 330 ||
+    state.zooshans.expensiveApproved ||
+    Boolean(state.animal && state.animal.hiddenState && state.animal.hiddenState.hasSevereTrauma && !state.animal.traumaOperated);
 
   // 2.1. Подать заявление в Колл-центр «Зоошанса»
   zooButtons.push({
@@ -1747,32 +1749,31 @@ function renderActionTabs() {
   });
 
   // 2.4. Сбор на р/с «Зоошанса»
-  let rsState = 'active';
-  let rsStatusText = '';
   if (state.zooshans.officialFundraiserActive) {
-    rsState = 'completed';
-    rsStatusText = '✓ Официальный сбор открыт';
-  } else if (!canOpenOfficialRsFundraiser) {
-    rsState = 'locked';
-    rsStatusText = '🔒 Только при операциях / долге >330 BYN';
+    zooButtons.push({
+      icon: '🏦',
+      title: 'Закрыть сбор на р/с',
+      badge: 'Р/С открыт',
+      sub: 'Официальный сбор фонда на расчетный счет активен. Нажмите, чтобы закрыть сбор.',
+      costBYN: 0,
+      costEnergy: 0,
+      state: 'active',
+      statusText: '✓ Р/С открыт',
+      onClick: actionToggleOfficialFundraiser
+    });
+  } else {
+    zooButtons.push({
+      icon: '🏦',
+      title: 'Сбор на р/с «Зоошанса»',
+      badge: 'Официальный',
+      sub: 'Официальный сбор фонда при тяжелых операциях, травмах или долге от 330 BYN.',
+      costBYN: 0,
+      costEnergy: 15,
+      state: canOpenOfficialRsFundraiser ? 'active' : 'locked',
+      statusText: canOpenOfficialRsFundraiser ? '' : '🔒 Только при операциях / долге >330 BYN',
+      onClick: actionToggleOfficialFundraiser
+    });
   }
-
-  zooButtons.push({
-    icon: '🏦',
-    title: 'Сбор на р/с «Зоошанса»',
-    badge: state.zooshans.officialFundraiserActive ? 'Р/С открыт' : 'Официальный',
-    sub: 'Официальный сбор фонда при тяжелых операциях, травмах или долге от 330 BYN.',
-    costBYN: 0,
-    costEnergy: state.zooshans.officialFundraiserActive ? 0 : 15,
-    state: rsState,
-    statusText: rsStatusText,
-    onClick: () => {
-      if (!spendEnergy(15)) return;
-      state.zooshans.officialFundraiserActive = true;
-      addLog(`День ${state.day}: 🏦 Колл-центр открыл официальный сбор на р/с «Зоошанса» для погашения долга за операцию/стационар!`, 'success');
-      renderAll();
-    }
-  });
 
   // 2.5. Сбор на личную банковскую карту
   let cardState = 'active';
@@ -1780,30 +1781,36 @@ function renderActionTabs() {
   if (state.zooshans.personalDonationsBanned) {
     cardState = 'locked';
     cardStatusText = '🔒 Заблокирован за просрочку';
-  } else if (state.zooshans.personalFundraiserActive) {
-    cardState = 'completed';
-    cardStatusText = '✓ Сбор на карту активен';
   } else if (state.zooshans.personalCardCollectedBYN >= 6500) {
     cardState = 'locked';
     cardStatusText = '🔒 Лимит 6500 BYN исчерпан';
   }
 
-  zooButtons.push({
-    icon: '💳',
-    title: 'Сбор на личную карту',
-    badge: state.zooshans.personalFundraiserActive ? 'Активен' : 'До 6500 BYN',
-    sub: 'Сбор средств на питание, смеси, анализы и приемы в соцсетях.',
-    costBYN: 0,
-    costEnergy: state.zooshans.personalFundraiserActive ? 0 : 15,
-    state: cardState,
-    statusText: cardStatusText,
-    onClick: () => {
-      if (!spendEnergy(15)) return;
-      state.zooshans.personalFundraiserActive = true;
-      addLog(`День ${state.day}: 💳 Открыт сбор на личную карту (в пределах лимита 6500 BYN/год). Обязательно выкладывайте чеки каждые 7 дней!`, 'success');
-      renderAll();
-    }
-  });
+  if (state.zooshans.personalFundraiserActive) {
+    zooButtons.push({
+      icon: '💳',
+      title: 'Закрыть сбор на карту',
+      badge: 'Активен',
+      sub: 'Сбор на личную карту активен. Нажмите, чтобы закрыть сбор и приостановить требование 7-дневного финотчета.',
+      costBYN: 0,
+      costEnergy: 0,
+      state: 'active',
+      statusText: '✓ Сбор активен',
+      onClick: actionTogglePersonalFundraiser
+    });
+  } else {
+    zooButtons.push({
+      icon: '💳',
+      title: 'Сбор на личную карту',
+      badge: 'До 6500 BYN',
+      sub: 'Сбор средств на питание, смеси, анализы и приемы в соцсетях.',
+      costBYN: 0,
+      costEnergy: 15,
+      state: cardState,
+      statusText: cardStatusText,
+      onClick: actionTogglePersonalFundraiser
+    });
+  }
 
   // 2.6. Мимими-пост со сторителлингом
   const storytellingDoneToday = (state.pr.lastStorytellingDay === state.day);
@@ -2635,7 +2642,7 @@ function getRadarItems() {
   }
 
   // 2. 7-дневный финотчет сборов на карту
-  if (state.zooshans && (state.zooshans.personalFundraiserActive || state.zooshans.personalCardCollectedBYN > 0)) {
+  if (state.zooshans && state.zooshans.personalFundraiserActive) {
     const daysSince = state.zooshans.daysSinceLastFinReport || 0;
     const left = Math.max(0, 7 - daysSince);
     items.push({
