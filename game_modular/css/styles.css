@@ -1171,11 +1171,8 @@ body {
 
 :root {
   --bg-surface: #1e222b;
-  --bg-elevated: #282d39;
   --text-main: #f3f4f6;
-  --text-muted: #9ca3af;
   --accent-primary: #3b82f6;
-  --border-subtle: rgba(255, 255, 255, 0.08);
   --top-hud-height: 98px;
   --bottom-dock-height: 116px;
 }
@@ -1426,12 +1423,6 @@ body {
 
 /* Скрытие мобильных виджетов на десктопе (>= 1024px) */
 @media (min-width: 1024px) {
-  :root {
-    --bg-elevated: #EFE8DA;
-    --border-subtle: #E5DEC9;
-    --text-muted: #78756F;
-  }
-
   .mobile-top-sticky,
   .mobile-bottom-dock {
     display: none !important;

@@ -246,6 +246,7 @@ assert.strictEqual(context.state.energy, 20);
 assert(context.isMentorHintUnlocked('LOW_ENERGY_WARNING'), 'spendEnergy should invoke checkMentorTriggers');
 
 // 11. payVetBill calls checkMentorTriggers on debt increase
+if (typeof context.closeEventModal === 'function') context.closeEventModal();
 context.resetMentorProgress();
 context.state.energy = 100;
 context.state.zooshans.applicationSubmitted = true;
