@@ -1165,4 +1165,278 @@ body {
   font-weight: 700;
 }
 
+/* ==========================================================================
+   14. АДАПТИВНЫЙ МОБИЛЬНЫЙ КАРКАС (Sticky Top HUD & Bottom Dock)
+   ========================================================================== */
+
+:root {
+  --bg-surface: #1e222b;
+  --bg-elevated: #282d39;
+  --text-main: #f3f4f6;
+  --text-muted: #9ca3af;
+  --accent-primary: #3b82f6;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --top-hud-height: 98px;
+  --bottom-dock-height: 116px;
+}
+
+@media (max-width: 1023px) {
+  .mobile-top-sticky,
+  .mobile-bottom-dock {
+    --bg-surface: #1e222b;
+    --bg-elevated: #282d39;
+    --text-main: #f3f4f6;
+    --text-muted: #9ca3af;
+    --accent-primary: #3b82f6;
+    --border-subtle: rgba(255, 255, 255, 0.08);
+  }
+
+  .mobile-top-sticky {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-subtle);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  }
+
+  .app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 48px;
+    padding: 0 12px;
+  }
+
+  .pet-quick-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    padding: 4px 0;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .pet-meta {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+  }
+
+  .pet-name {
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  .game-day {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .header-badges {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .phase-chip {
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: var(--bg-elevated);
+    color: var(--text-main);
+  }
+
+  .hud-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    padding: 4px 10px 8px;
+  }
+
+  .hud-item {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 5px 6px;
+    color: var(--text-main);
+    min-height: 38px;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .hud-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .hud-val small {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 400;
+    margin-left: 2px;
+  }
+
+  .hud-progress {
+    display: flex;
+    height: 4px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+
+  .hud-progress .fill {
+    height: 100%;
+    transition: width 0.3s ease;
+  }
+
+  .fill.budget {
+    background: #eab308;
+  }
+
+  .fill.mental {
+    background: #a855f7;
+  }
+
+  .fill.energy {
+    background: #3b82f6;
+  }
+
+  .fill.locked {
+    background: #64748b;
+  }
+
+  .fill.health {
+    background: #ef4444;
+  }
+
+  .mobile-main-content {
+    padding: 12px 12px calc(var(--bottom-dock-height) + env(safe-area-inset-bottom, 0px) + 16px);
+  }
+
+  .mobile-bottom-dock {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border-subtle);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .time-controller-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .speed-controls {
+    display: flex;
+    gap: 4px;
+  }
+
+  .speed-btn {
+    min-width: 40px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-elevated);
+    color: var(--text-main);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .speed-btn.active {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+  }
+
+  .end-day-btn {
+    flex: 1;
+    height: 36px;
+    border-radius: 8px;
+    border: none;
+    background: #4f46e5;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .bottom-nav {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    height: 56px;
+  }
+
+  .nav-tab {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  .nav-tab.active {
+    color: var(--text-main);
+    font-weight: 600;
+  }
+
+  .nav-icon {
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .nav-badge {
+    position: absolute;
+    top: 6px;
+    right: 22%;
+    background: #ef4444;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 999px;
+  }
+}
+
+/* Скрытие мобильных виджетов на десктопе (>= 1024px) */
+@media (min-width: 1024px) {
+  :root {
+    --bg-elevated: #EFE8DA;
+    --border-subtle: #E5DEC9;
+    --text-muted: #78756F;
+  }
+
+  .mobile-top-sticky,
+  .mobile-bottom-dock {
+    display: none !important;
+  }
+}
+
+
 
