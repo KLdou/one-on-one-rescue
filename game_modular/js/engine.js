@@ -1149,6 +1149,49 @@ function processDayTick() {
       const item = state.trialAnimals[i];
       item.daysPassed += 1;
 
+      // Экстренный возврат хамелеона со скрытым красным флагом (Дни 3–4)
+      if (item.isChameleonReturn && item.daysPassed >= (item.targetDays || 3)) {
+        state.trialAnimals.splice(i, 1);
+        if (typeof stopTimer === 'function') {
+          stopTimer();
+        }
+
+        const penalties = (item.returnEvent && item.returnEvent.penalties) ? item.returnEvent.penalties : {};
+
+        // Возврат питомца куратору
+        state.animal.activeCount += item.count;
+        state.animal.count = state.animal.activeCount;
+        state.animal.trialCount = Math.max(0, (state.animal.trialCount || 0) - item.count);
+
+        // Дельта здоровья подопечного (мин 10)
+        const healthDelta = (penalties.petHealthDelta !== undefined) ? penalties.petHealthDelta : -20;
+        state.animal.health = Math.max(10, state.animal.health + healthDelta);
+
+        // Дельта менталки куратора (мин 0)
+        const mentalDelta = (penalties.curatorMentalDelta !== undefined) ? penalties.curatorMentalDelta : -30;
+        state.mental = Math.max(0, state.mental + mentalDelta);
+
+        // Ветеринарный счет при возврате (если есть)
+        const bill = penalties.vetBillByn || 0;
+        if (bill > 0) {
+          state.cash = Math.max(0, +(state.cash - bill).toFixed(1));
+          state.personalMoneySpent = +(state.personalMoneySpent + bill).toFixed(1);
+        }
+
+        // Сброс PR-прогресса на Куфаре
+        if (state.pr) {
+          state.pr.feedProgress = 0;
+          state.pr.views = 0;
+          state.pr.storytellingBoost = Math.max(0, (state.pr.storytellingBoost || 0) - 0.2);
+        }
+
+        if (typeof triggerChameleonReturnModal === 'function') {
+          triggerChameleonReturnModal(item);
+        }
+        renderAll();
+        return;
+      }
+
       // Красные флаги: отложенный удар на 4-й день (или при звонке куратора)
       if (item.isRedFlag) {
         if (item.daysPassed >= 4) {

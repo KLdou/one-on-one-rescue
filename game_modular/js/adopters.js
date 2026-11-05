@@ -608,7 +608,9 @@ function renderCandidateActionButtons(callData) {
     btnGive.className = 'px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs transition cursor-pointer shadow-sm';
     btnGive.textContent = '🏠 Отдать на испытательный (14 дн.)';
     btnGive.onclick = () => {
-      if (!callData.isSafe) {
+      if (callData.isChameleon && callData.hasHiddenRedFlag && !callData.photoChecked) {
+        actionAcceptCandidate(false, { successChance: 0.92 });
+      } else if (!callData.isSafe) {
         actionAcceptCandidate(false, { isRedFlag: true });
       } else if (callData.isTrialReturn) {
         actionAcceptCandidate(false, { isAsthmaReturn: true });
@@ -970,6 +972,9 @@ function finishTransferToTrial(countToGive, callData, options, fosterSpotHeld) {
     ? `${assignedPetNames[0]} и ${assignedPetNames[1]}`
     : assignedPetNames[0];
 
+  const isChameleonUnchecked = !!(callData && callData.isChameleon && callData.hasHiddenRedFlag && !callData.photoChecked);
+  const isRedFlag = !isChameleonUnchecked && !!options.isRedFlag;
+
   const trialItem = {
     id: Date.now() + Math.floor(Math.random() * 10000),
     petName: assignedPetName,
@@ -978,10 +983,14 @@ function finishTransferToTrial(countToGive, callData, options, fosterSpotHeld) {
     count: countToGive,
     daysPassed: 0,
     trialDaysTotal: 14,
-    targetDays: options.isRedFlag ? 4 : 14,
-    isRedFlag: !!options.isRedFlag,
-    reliabilityFlag: options.isRedFlag ? 'red' : (callData.isCompromise ? 'yellow' : 'green'),
-    reliabilityLabel: options.isRedFlag ? '🚨 Высокий риск возврата' : (callData.isCompromise ? '⚠️ Кураторское сопровождение' : '✓ Надежная семья'),
+    targetDays: isChameleonUnchecked
+      ? ((callData.returnEvent && callData.returnEvent.daysUntilReturn) ? callData.returnEvent.daysUntilReturn : 3)
+      : (isRedFlag ? 4 : 14),
+    isRedFlag: isRedFlag,
+    isChameleonReturn: isChameleonUnchecked,
+    returnEvent: isChameleonUnchecked ? callData.returnEvent : null,
+    reliabilityFlag: isRedFlag ? 'red' : (callData.isCompromise ? 'yellow' : 'green'),
+    reliabilityLabel: isRedFlag ? '🚨 Высокий риск возврата' : (callData.isCompromise ? '⚠️ Кураторское сопровождение' : '✓ Надежная семья'),
     avatarSvg: typeof buildPetSVG === 'function' ? buildPetSVG(a) : null,
     callData: callData,
     adopterSummary: callData.candidateName ? `${callData.candidateName} (${callData.housing || 'Минск'})` : callData.caller,

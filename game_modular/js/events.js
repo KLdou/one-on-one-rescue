@@ -999,6 +999,40 @@ function triggerTrialAsthmaReturnModal(trialItem) {
   );
 }
 
+function triggerChameleonReturnModal(trialItem) {
+  if (typeof stopTimer === 'function') {
+    stopTimer();
+  }
+  if (typeof checkMentorTriggers === 'function') {
+    checkMentorTriggers('ADOPTION_FAILED_POSTMORTEM');
+  }
+
+  const evt = (trialItem && trialItem.returnEvent) ? trialItem.returnEvent : {};
+  const title = evt.title || '🚨 ЭКСТРЕННЫЙ ВОЗВРАТ С ИСПЫТАТЕЛЬНОГО СРОКА';
+  const desc = evt.description || `Подопечный «${trialItem?.petName || 'хвостик'}» срочно возвращен куратору из-за нарушений условий содержания и скрытых рисков безопасности!`;
+
+  if (typeof addLog === 'function') {
+    addLog(`День ${state?.day || 1}: ⚠️ Урок куратора: проверка сеток-антикошек по фото — обязательное правило безопасности, защищающее от экстренных возвратов и падений!`, 'warn');
+  }
+
+  const choices = [
+    {
+      label: 'Забрать кота и начать всё заново',
+      style: 'danger',
+      action: () => {
+        if (typeof closeEventModal === 'function') {
+          closeEventModal();
+        }
+        if (typeof renderAll === 'function') {
+          renderAll();
+        }
+      }
+    }
+  ];
+
+  showEventModal(title, desc, choices);
+}
+
 function triggerPiroplasmosisCrisisModal() {
   stopTimer();
   state.mental = Math.max(0, state.mental - 25);
@@ -1437,9 +1471,11 @@ function triggerMidgameCrisisModal(crisis) {
 if (typeof window !== 'undefined') {
   window.MIDGAME_CRISES = MIDGAME_CRISES;
   window.triggerMidgameCrisisModal = triggerMidgameCrisisModal;
+  window.triggerChameleonReturnModal = triggerChameleonReturnModal;
 }
 if (typeof global !== 'undefined') {
   global.MIDGAME_CRISES = MIDGAME_CRISES;
   global.triggerMidgameCrisisModal = triggerMidgameCrisisModal;
+  global.triggerChameleonReturnModal = triggerChameleonReturnModal;
 }
 
