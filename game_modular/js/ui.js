@@ -1293,6 +1293,37 @@ function renderActionTabs() {
     }
   });
 
+  // 1.4.1. Вакцинация домашнего кота (личный питомец куратора)
+  const hasUnvacOwnCat = Boolean(state.player && state.player.ownPets && state.player.ownPets.id === 'unvaccinated_cat');
+  const wasOwnCatVaccinatedInGame = Boolean(state.player && state.player.ownPets && state.player.ownPets.id === 'vaccinated_cat' && state.player.ownPets.vaccinatedAtDay);
+  if (hasUnvacOwnCat) {
+    vetButtons.push({
+      icon: '💉',
+      title: 'Вакцинация домашнего кота',
+      badge: 'Свой кот',
+      sub: 'Комплексная прививка личного питомца. Снимает критический риск заражения (-215 BYN и -30% 🧠) при срыве карантина.',
+      costBYN: 60,
+      costEnergy: 10,
+      isVoucherEligible: false,
+      state: 'active',
+      statusText: '',
+      onClick: actionVaccinateOwnCat
+    });
+  } else if (wasOwnCatVaccinatedInGame) {
+    vetButtons.push({
+      icon: '💉',
+      title: 'Вакцинация домашнего кота',
+      badge: 'Привит',
+      sub: 'Домашний кот привит в клинике: иммунитет против вирусов активен.',
+      costBYN: 0,
+      costEnergy: 0,
+      isVoucherEligible: false,
+      state: 'completed',
+      statusText: '✓ Привит в клинике',
+      onClick: null
+    });
+  }
+
   // 1.5. ПЦР-профиль инфекций
   let pcrState = 'active';
   let pcrStatusText = '';

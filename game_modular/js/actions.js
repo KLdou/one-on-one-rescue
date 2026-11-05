@@ -1046,6 +1046,29 @@ function actionVaccinate() {
 }
 
 window.actionVaccinate = actionVaccinate;
+
+function actionVaccinateOwnCat() {
+  if (state.gameOver) return;
+  const p = state.player;
+  if (!p || !p.ownPets || p.ownPets.id !== 'unvaccinated_cat') {
+    addLog(`День ${state.day}: У вас нет непривитого домашнего кота!`, 'warn');
+    return;
+  }
+  if (state.cash < 60) {
+    addLog(`День ${state.day}: Не хватает средств (60 BYN) на вакцинацию домашнего кота!`, 'warn');
+    return;
+  }
+  if (!spendEnergy(10)) return;
+  state.cash = +(state.cash - 60).toFixed(1);
+  state.personalMoneySpent = +(state.personalMoneySpent + 60).toFixed(1);
+  p.ownPets.id = 'vaccinated_cat';
+  p.ownPets.label = 'Мой свой кот (привит)';
+  p.ownPets.infectionRisk = 'low';
+  p.ownPets.vaccinatedAtDay = state.day;
+  addLog(`День ${state.day}: 💉 Домашний кот успешно привит в клинике (комплексная вакцина + ветпаспорт, -60 BYN)! Критический риск заражения снят.`, 'success');
+  renderAll();
+}
+window.actionVaccinateOwnCat = actionVaccinateOwnCat;
 window.canAffordVetBill = canAffordVetBill;
 window.payVetBill = payVetBill;
 window.handleVolunteerTakeoverExamination = handleVolunteerTakeoverExamination;
