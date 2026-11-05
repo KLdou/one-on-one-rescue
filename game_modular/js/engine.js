@@ -959,7 +959,10 @@ function processDayTick() {
 
   // 9. Энергия и Менталка
   const householdDrain = calculateDailyHouseholdEnergyDrain();
-  const netEnergyChange = state.player.family.energyBonus - householdDrain;
+  const dailyEnergyBase = typeof calcDailyEnergyReserve === 'function'
+    ? calcDailyEnergyReserve(state.player.family.energyBonus)
+    : state.player.family.energyBonus;
+  const netEnergyChange = dailyEnergyBase - householdDrain;
   state.energy = Math.min(100, Math.max(5, state.energy + netEnergyChange));
 
   const housingMentalDrain = isAnimalAtPlayerHome() && nActive > 0 ? state.player.housing.dailyMentalDrain : 0;

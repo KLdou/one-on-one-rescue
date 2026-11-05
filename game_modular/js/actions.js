@@ -1023,6 +1023,10 @@ function actionVaccinate() {
   if (state.gameOver) return false;
   const a = state.animal;
   if (!a) return false;
+  if (a.vaccinationDelayDays > 0) {
+    addLog(`День ${state.day}: 🔒 Медотвод от вакцинации! Активная фаза лечения лишая (осталось ${a.vaccinationDelayDays} дн.).`, 'warn');
+    return false;
+  }
   if (!payVetBill(60, false, 'Комплексная вакцинация с ветпаспортом', false, 10)) return false;
   a.parasitesAndVaccinated = true;
   a.daysSinceVaccine1 = 0;

@@ -1257,6 +1257,9 @@ function renderActionTabs() {
   if (a.parasitesAndVaccinated) {
     vacState = 'completed';
     vacStatusText = '✓ Привит с ветпаспортом';
+  } else if (a.vaccinationDelayDays > 0) {
+    vacState = 'locked';
+    vacStatusText = `🔒 Медотвод (лишай, еще ${a.vaccinationDelayDays} дн.)`;
   } else if (a.ageDays < 60) {
     vacState = 'locked';
     vacStatusText = `🔒 С 60 дней (сейчас ${a.ageDays} дн.)`;
