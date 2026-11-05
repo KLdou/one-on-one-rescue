@@ -4814,11 +4814,21 @@ function toggleRealPracticeMode(forceVal) {
   }
 }
 
+function resetCandidatePhotoCheckResult() {
+  const photoBox = document.getElementById('candidatePhotoCheckResultBox');
+  if (photoBox) {
+    photoBox.innerHTML = '';
+    photoBox.classList.add('hidden');
+  }
+}
+
 if (typeof window !== 'undefined') {
   window.renderDifficultyModeBadge = renderDifficultyModeBadge;
   window.toggleRealPracticeMode = toggleRealPracticeMode;
+  window.resetCandidatePhotoCheckResult = resetCandidatePhotoCheckResult;
 }
 if (typeof global !== 'undefined') {
   global.renderDifficultyModeBadge = renderDifficultyModeBadge;
   global.toggleRealPracticeMode = toggleRealPracticeMode;
+  global.resetCandidatePhotoCheckResult = resetCandidatePhotoCheckResult;
 }

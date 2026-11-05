@@ -183,6 +183,7 @@ function runTests() {
     const { context } = env;
 
     context.resetState();
+    context.state.newborn.active = false;
     context.state.realPracticeMode = true;
     context.state.day = 7;
     context.state.animal.species = 'cat';
@@ -254,6 +255,7 @@ function runTests() {
     const { context } = env;
 
     context.resetState();
+    context.state.newborn.active = false;
     context.state.realPracticeMode = true;
     context.state.day = 9;
     context.state.zooshans.locationStatus = 'home_floor';
@@ -297,6 +299,7 @@ function runTests() {
     const { context } = env;
 
     context.resetState();
+    context.state.newborn.active = false;
     context.state.realPracticeMode = true;
     context.state.day = 12;
     context.state.zooshans.locationStatus = 'paid_foster';
@@ -335,6 +338,7 @@ function runTests() {
     const { context } = env;
 
     context.resetState();
+    context.state.newborn.active = false;
     context.state.realPracticeMode = true;
     context.state.day = 14;
 
@@ -378,6 +382,7 @@ function runTests() {
     const { context } = env;
 
     context.resetState();
+    context.state.newborn.active = false;
     context.state.realPracticeMode = true;
     context.state.day = 10;
     context.state.mental = 70;
@@ -415,6 +420,7 @@ function runTests() {
     const { context } = env;
 
     context.resetState();
+    context.state.newborn.active = false;
     context.state.realPracticeMode = true;
     context.state.onboarding.acutePhase = false;
     context.state.supplies.daysLeft = 10;
@@ -437,6 +443,7 @@ function runTests() {
     const { context } = env;
 
     context.resetState();
+    context.state.newborn.active = false;
     context.state.realPracticeMode = false;
     context.state.onboarding.acutePhase = false;
     context.state.supplies.daysLeft = 10;

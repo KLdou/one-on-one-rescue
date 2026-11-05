@@ -151,9 +151,148 @@ function getDynamicAdopterCalls(a) {
   return pool;
 }
 
+
+// База кандидатов-«хамелеонов» (GDD v2.3 / Реальная практика)
+const CHAMELEON_CANDIDATES = [
+  {
+    id: 'cham_plastic_mosquito_net',
+    candidateName: 'Алина, 26 лет',
+    housing: '14 этаж, новостройка (Минск-Мир)',
+    caller: 'Алина (Минск-Мир)',
+    source: 'Куфар',
+    isChameleon: true,
+    hasHiddenRedFlag: true,
+    returnRiskIfAdopted: 0.9,
+    isSafe: false,
+    dialogue: '«Здравствуйте! Очень понравился ваш подопечный. У нас отличная квартира на 14 этаже в Минск-Мире, на всех окнах стоят новенькие москитные сетки. Обеспечим идеальный уход!»',
+    extraQuestionReply: '«Да, сетки стоят на всех открывающихся окнах, окна мы полностью не распахиваем. Все жильцы так живут, котик никуда не денется».',
+    slot1: {
+      title: 'Безопасность и окна',
+      text: '«На окнах 14 этажа стоят плотные москитные сетки. Все надежно закрыто от насекомых и безопасно».',
+      flag: 'green'
+    },
+    slot2: {
+      title: 'Кормление и бюджет на ветеринара',
+      text: '«Готовы покупать качественный премиум-корм (Royal Canin), на ветеринара бюджет есть».',
+      flag: 'green'
+    },
+    slot3: {
+      title: 'Мотивация и договор',
+      text: '«Осознанное желание завести питомца в новую квартиру. Согласны на договор куратора с паспортными данными».',
+      flag: 'green'
+    },
+    photoCheckResult: {
+      costEnergy: 20,
+      mentalImpact: -5,
+      savedFromDisaster: true,
+      revealedTruth: 'Алина присылает фото: на окнах 14 этажа обычные тонкие москитки на пластиковых Z-креплениях, шатающихся от ветра! Ставить сетку-антикошку она категорически отказывается: «Это уродует окна!»',
+      reactionOnConfrontation: 'Алина возмущена: «Вы параноики! Никакие решетки я ставить не буду, это обычная квартира, а не тюрьма! Не отдаете — найду другого на Куфаре!»'
+    },
+    returnEvent: {
+      daysUntilReturn: 3,
+      title: '🚨 ЭКСТРЕННЫЙ ЗВОНОК: Сорвался с москитки!',
+      description: 'Алина в слезах звонит в панике: котик оперся лапами на москитную сетку на 14 этаже — пластиковые Z-крепления лопнули, и он сорвался вниз! Чудом выжил на козырьке, но получил тяжелейшие переломы. Срочно забирайте!',
+      penalties: {
+        petHealthDelta: -25,
+        curatorMentalDelta: -35,
+        vetBillByn: 90,
+        resetPr: true
+      }
+    }
+  },
+  {
+    id: 'cham_secret_gift_allergy',
+    candidateName: 'Игорь, 31 год',
+    housing: 'Своя квартира (Серебрянка)',
+    caller: 'Игорь (Серебрянка)',
+    source: 'Куфар',
+    isChameleon: true,
+    hasHiddenRedFlag: true,
+    returnRiskIfAdopted: 0.85,
+    isSafe: false,
+    dialogue: '«Добрый вечер! Хочу забрать котика сегодня же — сюрприз любимой жене на годовщину! Квартира своя, условия прекрасные».',
+    extraQuestionReply: '«Жена давно мечтала, обрадуется до слез! Все расходы беру на себя, договор подпишу прямо на месте».',
+    slot1: {
+      title: 'Безопасность и окна',
+      text: '«Своя 2-комнатная квартира, 4 этаж, качественные стеклопакеты с безопасным режимом проветривания».',
+      flag: 'green'
+    },
+    slot2: {
+      title: 'Кормление и бюджет на ветеринара',
+      text: '«Стабильная работа, покупка хорошего корма из зоомагазина, готовность оплачивать любые ветуслуги».',
+      flag: 'green'
+    },
+    slot3: {
+      title: 'Мотивация и договор',
+      text: '«Подарок для жены. Подписание официального договора «Зоошанса», паспорт гражданина РБ готов предоставить».',
+      flag: 'green'
+    },
+    photoCheckResult: {
+      costEnergy: 20,
+      mentalImpact: -5,
+      savedFromDisaster: true,
+      revealedTruth: 'При настойчивом требовании прислать фото условий и созвониться с супругой Игорь признается: «Жена вообще не в курсе! У нее астма и аллергия на цветение, но я надеялся, что на кота не будет...»',
+      reactionOnConfrontation: 'Игорь раздражен: «Какой еще созвон с женой?! Вы испортили весь сюрприз! На Куфаре полно нормальных людей, которые отдадут без допросов!»'
+    },
+    returnEvent: {
+      daysUntilReturn: 4,
+      title: '🚨 ВОЗВРАТ: «У жены отек, забирайте срочно!»',
+      description: 'Срочный ночной звонок от Игоря: «У жены начался тяжелый астматический приступ и отек Квинке, вызвали скорую! Забирайте кота прямо сейчас или мы выставим его в подъезд!»',
+      penalties: {
+        petHealthDelta: -15,
+        curatorMentalDelta: -30,
+        vetBillByn: 0,
+        resetPr: true
+      }
+    }
+  },
+  {
+    id: 'cham_genuine_ideal_adopter',
+    candidateName: 'Екатерина, 29 лет',
+    housing: 'Своя квартира, Грушевка',
+    caller: 'Екатерина (Грушевка)',
+    source: 'Куфар',
+    isChameleon: true,
+    hasHiddenRedFlag: false,
+    returnRiskIfAdopted: 0.0,
+    isSafe: true,
+    dialogue: '«Здравствуйте! Давно ищем питомца для души. У нас своя квартира на Грушевке, на всех окнах стоят PetScreen и гребенки. Готовы показать все фото!»',
+    extraQuestionReply: '«Мы ответственно подошли к вопросу: сдали аллерготесты, закупили когтеточку и корм супер-премиум. Очень ждем встречи!»',
+    slot1: {
+      title: 'Безопасность и окна',
+      text: '«Своя квартира на 5 этаже. Установлены сертифицированные стальные сетки «Антикошка» (PetScreen) и гребенки».',
+      flag: 'green'
+    },
+    slot2: {
+      title: 'Кормление и бюджет на ветеринара',
+      text: '«Кормление холистиком (Grandorf/Farmina), регулярные чекапы в проверенной ветклинике, финансовая подушка».',
+      flag: 'green'
+    },
+    slot3: {
+      title: 'Мотивация и договор',
+      text: '«Осознанное решение, сданные аллергопробы. Готовность подписать договор куратора и присылать фото-отчеты».',
+      flag: 'green'
+    },
+    photoCheckResult: {
+      costEnergy: 20,
+      mentalImpact: 10,
+      savedFromDisaster: false,
+      revealedTruth: 'Екатерина моментально присылает детальные фото: на окнах мощные стальные сетки PetScreen с усиленным профилем, добротные гребенки, тяжелые керамические миски и домик-когтеточка. Это идеальные ручки!',
+      reactionOnConfrontation: 'Екатерина с улыбкой поддерживает куратора: «Мы полностью разделяем ваши стандарты! Безопасность хвостика — превыше всего».',
+      notes: 'Подтверждена абсолютная надежность кандидата (риск возврата 0%).'
+    },
+    returnEvent: null
+  }
+];
+
 function triggerRandomAdopterCall() {
-  const calls = getDynamicAdopterCalls(state.animal);
-  const picked = randomItem(calls);
+  let picked;
+  if (state && state.realPracticeMode && Math.random() < 0.35 && Array.isArray(CHAMELEON_CANDIDATES) && CHAMELEON_CANDIDATES.length > 0) {
+    picked = JSON.parse(JSON.stringify(randomItem(CHAMELEON_CANDIDATES)));
+  } else {
+    const calls = getDynamicAdopterCalls(state.animal);
+    picked = randomItem(calls);
+  }
   triggerIncomingCallModal(picked, false);
 }
 
@@ -161,6 +300,21 @@ function ensureCandidateCallSlots(call, a) {
   const g = getAnimalGrammar(a);
   const isDog = g.isDog;
   const singleWord = isDog ? (a.ageCategory === 'puppy' ? 'щенка' : 'собаку') : (a.ageCategory !== 'adult' ? 'котенка' : (a.gender === 'female' ? 'кошку' : 'кота'));
+
+  if (call.isChameleon) {
+    if (!call.candidateName) call.candidateName = call.caller || 'Кандидат';
+    if (!call.housing) call.housing = 'Своя квартира (Минск)';
+    if (!call.source) call.source = 'Куфар';
+    if (!call.slot1) {
+      call.slot1 = { title: 'Безопасность и окна', text: 'Квартирные условия, заявлены защитные сетки на окнах.', flag: 'green' };
+    }
+    if (!call.slot2) {
+      call.slot2 = { title: 'Кормление и бюджет на ветеринара', text: 'Стабильный доход, готовность покупать качественный корм и оплачивать ветеринара.', flag: 'green' };
+    }
+    if (!call.slot3) {
+      call.slot3 = { title: 'Мотивация и договор', text: 'Осознанное решение, согласие на договор куратора «Зоошанса».', flag: 'green' };
+    }
+  }
 
   if (!call.candidateName) {
     if (call.id === 'call_window_fall_fatal') call.candidateName = 'Артем, 24 года';
@@ -283,6 +437,16 @@ function triggerIncomingCallModal(callData, isOldOwnerSearch = false) {
   window.currentCandidateCall = callData;
   callData.slot2Inspected = false;
   callData.slot3Inspected = false;
+  callData.photoChecked = !!callData.photoChecked;
+  callData.unmasked = !!callData.unmasked;
+  callData.blocked = !!callData.blocked;
+  callData.verifiedSafe = !!callData.verifiedSafe;
+
+  const photoBox = document.getElementById('candidatePhotoCheckResultBox');
+  if (photoBox) {
+    photoBox.innerHTML = '';
+    photoBox.classList.add('hidden');
+  }
 
   const modal = document.getElementById('candidateInterviewModal');
   if (!modal) return;
@@ -379,6 +543,31 @@ function renderCandidateActionButtons(callData) {
     return;
   }
 
+  // Кнопка углубленной фото-проверки условий (-20⚡)
+  if (!callData.isScam) {
+    const btnPhoto = document.createElement('button');
+    btnPhoto.id = 'btnRequestPhotoCheck';
+    if (callData.photoChecked) {
+      btnPhoto.className = 'px-3 py-2 rounded-xl bg-slate-100 text-slate-500 border border-slate-300 font-bold text-xs cursor-not-allowed opacity-60';
+      btnPhoto.disabled = true;
+      btnPhoto.textContent = callData.unmasked ? '📸 Фото проверены (Обман вскрыт 🚨)' : '📸 Фото проверены (Безопасно ✓)';
+    } else {
+      btnPhoto.className = 'px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs transition cursor-pointer shadow-sm flex items-center gap-1';
+      btnPhoto.textContent = '📸 Запросить фото окон и условий (-20⚡)';
+      btnPhoto.onclick = () => actionRequestPhotoCheck();
+    }
+    container.appendChild(btnPhoto);
+  }
+
+  if (callData.blocked) {
+    const btnBlocked = document.createElement('button');
+    btnBlocked.className = 'px-3.5 py-2 rounded-xl bg-rose-700 text-rose-100 font-bold text-xs opacity-60 cursor-not-allowed border border-rose-800 flex items-center gap-1';
+    btnBlocked.disabled = true;
+    btnBlocked.textContent = '🚫 Отдать подопечного (Заблокировано из-за угрозы жизни)';
+    container.appendChild(btnBlocked);
+    return;
+  }
+
   if (callData.isScam) {
     const btn = document.createElement('button');
     btn.className = 'px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition cursor-pointer shadow-sm';
@@ -431,6 +620,93 @@ function renderCandidateActionButtons(callData) {
   }
 }
 
+
+function actionRequestPhotoCheck() {
+  if (state.gameOver) return;
+  const call = window.currentCandidateCall;
+  if (!call) return;
+
+  if (call.photoChecked) {
+    addLog(`День ${state.day}: 📸 Фото-проверка условий уже проведена для этого кандидата!`, 'info');
+    return;
+  }
+
+  if (!spendEnergy(20)) {
+    addLog(`День ${state.day}: Не хватает 20⚡ для углубленной фото-проверки условий и сеток!`, 'warn');
+    return;
+  }
+
+  call.photoChecked = true;
+
+  const resultBox = document.getElementById('candidatePhotoCheckResultBox');
+  const res = call.photoCheckResult || (call.hasHiddenRedFlag ? {
+    costEnergy: 20,
+    mentalImpact: -5,
+    savedFromDisaster: true,
+    revealedTruth: 'При проверке вскрылись критические нарушения безопасности жилья.',
+    reactionOnConfrontation: 'Кандидат возмутился недоверием и отказался исправлять условия.'
+  } : {
+    costEnergy: 20,
+    mentalImpact: 10,
+    savedFromDisaster: false,
+    revealedTruth: 'Кандидат предоставил четкие фотографии условий проживания и сеток. Все проверено и безопасно.',
+    reactionOnConfrontation: 'Кандидат с пониманием отнесся к проверке куратора.'
+  });
+
+  if (call.hasHiddenRedFlag) {
+    const delta = (res.mentalImpact !== undefined) ? res.mentalImpact : -5;
+    state.mental = Math.max(0, state.mental + delta);
+    call.unmasked = true;
+    call.blocked = true;
+
+    addLog(`День ${state.day}: 📸 Фото-проверка (-20⚡): ВСКРЫТ СКРЫТЫЙ ОБМАН! «${call.candidateName || call.caller}» скрывал(а) опасные условия (${delta}% 🧠). Передача заблокирована!`, 'danger');
+
+    if (resultBox) {
+      resultBox.innerHTML = `
+        <div class="p-3 rounded-xl border border-rose-400 bg-rose-50 text-rose-950">
+          <div class="flex items-center gap-1.5 font-bold text-xs text-rose-800 mb-1">
+            <span>🚨 СКРЫТЫЙ КРАСНЫЙ ФЛАГ ВСКРЫТ (${delta}% 🧠)</span>
+          </div>
+          <p class="text-xs leading-relaxed mb-2 font-medium">${res.revealedTruth || ''}</p>
+          <div class="text-[11px] italic bg-rose-100/70 p-2 rounded-lg border border-rose-200">
+            <span class="font-bold">Реакция кандидата:</span> ${res.reactionOnConfrontation || ''}
+          </div>
+          <div class="mt-2 text-[11px] font-bold text-rose-700">
+            ⛔ Передача питомца этому кандидату заблокирована кураторским надзором!
+          </div>
+        </div>
+      `;
+      resultBox.classList.remove('hidden');
+    }
+  } else {
+    const delta = (res.mentalImpact !== undefined) ? res.mentalImpact : 10;
+    state.mental = Math.min(100, state.mental + delta);
+    call.verifiedSafe = true;
+    call.returnRiskIfAdopted = 0.0;
+
+    addLog(`День ${state.day}: 📸 Фото-проверка (-20⚡): УСЛОВИЯ ПОЛНОСТЬЮ ПОДТВЕРЖДЕНЫ! Надежные сетки и идеальный уход (+${delta}% 🧠). Риск возврата 0%!`, 'success');
+
+    if (resultBox) {
+      resultBox.innerHTML = `
+        <div class="p-3 rounded-xl border border-emerald-400 bg-emerald-50 text-emerald-950">
+          <div class="flex items-center gap-1.5 font-bold text-xs text-emerald-800 mb-1">
+            <span>✅ ПРОВЕРКА ПРОЙДЕНА: УСЛОВИЯ ПОДТВЕРЖДЕНЫ (+${delta}% 🧠)</span>
+          </div>
+          <p class="text-xs leading-relaxed font-medium">${res.revealedTruth || ''}</p>
+          ${res.reactionOnConfrontation ? `<div class="mt-2 text-[11px] italic bg-emerald-100/70 p-2 rounded-lg border border-emerald-200"><span class="font-bold">Реакция:</span> ${res.reactionOnConfrontation}</div>` : ''}
+          <div class="mt-2 text-[11px] font-bold text-emerald-700">
+            ✓ Сетки и условия безопасны. Риск возврата сведен к 0%.
+          </div>
+        </div>
+      `;
+      resultBox.classList.remove('hidden');
+    }
+  }
+
+  renderCandidateActionButtons(call);
+  renderAll();
+}
+
 function actionInspectCandidateSlot(slotIndex) {
   if (state.gameOver) return;
   const call = window.currentCandidateCall;
@@ -471,7 +747,8 @@ function actionRefuseCandidate() {
   const hasRevealedRedFlag =
     (call.slot1 && call.slot1.flag === 'red') ||
     (call.slot2Inspected && call.slot2 && call.slot2.flag === 'red') ||
-    (call.slot3Inspected && call.slot3 && call.slot3.flag === 'red');
+    (call.slot3Inspected && call.slot3 && call.slot3.flag === 'red') ||
+    call.unmasked;
 
   if (hasRevealedRedFlag) {
     state.filteredBadCalls = (state.filteredBadCalls || 0) + 1;
@@ -488,6 +765,11 @@ function actionAcceptCandidate(isPair, options = {}) {
   if (state.gameOver) return;
   const call = window.currentCandidateCall;
   if (!call) return;
+
+  if (call.blocked) {
+    addLog(`День ${state.day}: ⛔ Передача питомца этому кандидату заблокирована кураторским надзором!`, 'danger');
+    return;
+  }
 
   if (call.intercepted || call.interceptedByVolunteer) {
     closeCandidateModal();
@@ -534,6 +816,11 @@ function markCandidateCallIntercepted(callId = null) {
 function closeCandidateModal() {
   const modal = document.getElementById('candidateInterviewModal');
   if (modal) modal.classList.add('hidden');
+  const photoBox = document.getElementById('candidatePhotoCheckResultBox');
+  if (photoBox) {
+    photoBox.innerHTML = '';
+    photoBox.classList.add('hidden');
+  }
   window.currentCandidateCall = null;
 }
 
@@ -542,6 +829,26 @@ window.actionRefuseCandidate = actionRefuseCandidate;
 window.closeCandidateModal = closeCandidateModal;
 window.actionAcceptCandidate = actionAcceptCandidate;
 window.markCandidateCallIntercepted = markCandidateCallIntercepted;
+window.actionRequestPhotoCheck = actionRequestPhotoCheck;
+window.CHAMELEON_CANDIDATES = CHAMELEON_CANDIDATES;
+window.triggerRandomAdopterCall = triggerRandomAdopterCall;
+window.triggerIncomingCallModal = triggerIncomingCallModal;
+window.ensureCandidateCallSlots = ensureCandidateCallSlots;
+window.renderCandidateActionButtons = renderCandidateActionButtons;
+
+if (typeof global !== 'undefined') {
+  global.actionInspectCandidateSlot = actionInspectCandidateSlot;
+  global.actionRefuseCandidate = actionRefuseCandidate;
+  global.closeCandidateModal = closeCandidateModal;
+  global.actionAcceptCandidate = actionAcceptCandidate;
+  global.markCandidateCallIntercepted = markCandidateCallIntercepted;
+  global.actionRequestPhotoCheck = actionRequestPhotoCheck;
+  global.CHAMELEON_CANDIDATES = CHAMELEON_CANDIDATES;
+  global.triggerRandomAdopterCall = triggerRandomAdopterCall;
+  global.triggerIncomingCallModal = triggerIncomingCallModal;
+  global.ensureCandidateCallSlots = ensureCandidateCallSlots;
+  global.renderCandidateActionButtons = renderCandidateActionButtons;
+}
 
 
 // 7-ДНЕВНЫЙ ИСПЫТАТЕЛЬНЫЙ СРОК: Передача животного и бронь места на передержке (GDD 8.4, 8.5)
