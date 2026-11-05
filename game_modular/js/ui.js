@@ -435,6 +435,11 @@ function renderTopBar() {
     }
   }
 
+  // Индикатор режима сложности «Реальная практика» (GDD v2.3)
+  if (typeof renderDifficultyModeBadge === 'function') {
+    renderDifficultyModeBadge();
+  }
+
   // Обновление кнопок скорости
   updateSpeedButtonsUI();
 
@@ -4759,4 +4764,58 @@ if (typeof global !== 'undefined') {
   global.getFatalCandidateMistakeInfo = getFatalCandidateMistakeInfo;
   global.renderCandidateMistakeHighlight = renderCandidateMistakeHighlight;
   global.showEndGameModal = triggerEndGame;
+}
+
+
+function renderDifficultyModeBadge() {
+  const badge = document.getElementById('realPracticeBadge');
+  if (badge) {
+    if (state.realPracticeMode) {
+      badge.textContent = '🔥 Реальная практика';
+      badge.title = 'Режим «Реальная практика»: повышенная сложность, хамелеоны среди кандидатов и форс-мажоры';
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+  }
+
+  const mobileBadge = document.getElementById('mobileRealPracticeBadge');
+  if (mobileBadge) {
+    if (state.realPracticeMode) {
+      mobileBadge.classList.remove('hidden');
+    } else {
+      mobileBadge.classList.add('hidden');
+    }
+  }
+
+  const chk = document.getElementById('chkRealPractice');
+  if (chk) {
+    chk.checked = Boolean(state.realPracticeMode);
+  }
+  const chkMob = document.getElementById('chkRealPracticeMobile');
+  if (chkMob) {
+    chkMob.checked = Boolean(state.realPracticeMode);
+  }
+}
+
+function toggleRealPracticeMode(forceVal) {
+  const newVal = (typeof forceVal === 'boolean') ? forceVal : !state.realPracticeMode;
+  state.realPracticeMode = newVal;
+  renderDifficultyModeBadge();
+  if (typeof addLog === 'function') {
+    if (newVal) {
+      addLog('Режим «Реальная практика» активирован: повышенная сложность, хамелеоны на Куфаре и форс-мажоры.', 'warn');
+    } else {
+      addLog('Режим «Реальная практика» отключен: стандартный уровень сложности.', 'info');
+    }
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.renderDifficultyModeBadge = renderDifficultyModeBadge;
+  window.toggleRealPracticeMode = toggleRealPracticeMode;
+}
+if (typeof global !== 'undefined') {
+  global.renderDifficultyModeBadge = renderDifficultyModeBadge;
+  global.toggleRealPracticeMode = toggleRealPracticeMode;
 }

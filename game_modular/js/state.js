@@ -203,11 +203,33 @@ function ensureStateBackwardCompatibility(st = window.state) {
     st.fatalCandidateData = null;
   }
 
+  // Режим «Реальная практика» и блокировки энергии/ментала (GDD v2.3)
+  if (typeof st.realPracticeMode !== 'boolean') {
+    st.realPracticeMode = false;
+  }
+  if (typeof st.householdEnergyLock !== 'number') {
+    st.householdEnergyLock = 0;
+  }
+  if (!Array.isArray(st.tempEnergyLocks)) {
+    st.tempEnergyLocks = [];
+  }
+  if (!Array.isArray(st.pendingMentalEvents)) {
+    st.pendingMentalEvents = [];
+  }
+  if (!Array.isArray(st.dailyMentalDrains)) {
+    st.dailyMentalDrains = [];
+  }
+
   return st;
 }
 window.ensureStateBackwardCompatibility = ensureStateBackwardCompatibility;
 
-function startNewRun(experiencedCurator = false, forcedScenario = null) {
+function startNewRun(experiencedCurator = false, forcedScenario = null, options = {}) {
+  if (typeof experiencedCurator === 'object' && experiencedCurator !== null) {
+    options = experiencedCurator;
+    experiencedCurator = options.experiencedCurator || false;
+    forcedScenario = options.forcedScenario || null;
+  }
   stopTimer();
   document.getElementById('endGameModal').classList.add('hidden');
   const endBanner = document.getElementById('endGameOverviewBanner');
@@ -277,10 +299,27 @@ function startNewRun(experiencedCurator = false, forcedScenario = null) {
   const initialSeason = getSeasonFromMonth(startDate.getMonth());
 
   // Если у игрока есть сохраненные подопечные в альбоме, опция опыта
-  const hasPastExperience = getSavedAlbum().length > 0;
+  const albumCount = (typeof getSavedAlbum === 'function') ? getSavedAlbum().length : 0;
+  const hasPastExperience = albumCount > 0;
   const isExperienced = experiencedCurator || (hasPastExperience && document.getElementById('chkExperiencedCurator') && document.getElementById('chkExperiencedCurator').checked);
 
+  // Режим «Реальная практика» (при >= 2 спасенных или ручном тумблере/параметре)
+  const chkRealPracticeEl = (typeof document !== 'undefined' && document.getElementById) ? document.getElementById('chkRealPractice') : null;
+  let isRealPractice = albumCount >= 2 || Boolean(chkRealPracticeEl && chkRealPracticeEl.checked);
+  if (options && typeof options === 'object') {
+    if (options.realPracticeMode !== undefined) {
+      isRealPractice = Boolean(options.realPracticeMode);
+    } else if (options.realPractice !== undefined) {
+      isRealPractice = Boolean(options.realPractice);
+    }
+  }
+
   state = {
+    realPracticeMode: Boolean(isRealPractice),
+    householdEnergyLock: 0,
+    tempEnergyLocks: [],
+    pendingMentalEvents: [],
+    dailyMentalDrains: [],
     day: 1,
     calendarDate: startDate,
     currentSeason: initialSeason,
@@ -533,6 +572,34 @@ function calculateEarlyBookingDropChance(waitDays) {
   if (waitDays <= 14) return 0.25;
   if (waitDays <= 25) return 0.35;
   return 0.45;
+}
+
+function calcDailyEnergyReserve(baseEnergy = null, st = null) {
+  if (typeof baseEnergy === 'object' && baseEnergy !== null) {
+    st = baseEnergy;
+    baseEnergy = null;
+  }
+  const targetState = st || (typeof window !== 'undefined' && window.state) || (typeof state !== 'undefined' ? state : null) || {};
+
+  let base = (typeof baseEnergy === 'number')
+    ? baseEnergy
+    : (targetState.player?.family?.energyBonus !== undefined ? targetState.player.family.energyBonus : 32);
+
+  const householdLock = Number(targetState.householdEnergyLock) || 0;
+  const tempLocks = Array.isArray(targetState.tempEnergyLocks) ? targetState.tempEnergyLocks : [];
+  const tempLocksSum = tempLocks.reduce((sum, item) => {
+    if (!item) return sum;
+    if (item.daysRemaining !== undefined && item.daysRemaining <= 0) return sum;
+    return sum + (Number(item.amount) || 0);
+  }, 0);
+
+  return Math.max(0, base - householdLock - tempLocksSum);
+}
+if (typeof window !== 'undefined') {
+  window.calcDailyEnergyReserve = calcDailyEnergyReserve;
+}
+if (typeof global !== 'undefined') {
+  global.calcDailyEnergyReserve = calcDailyEnergyReserve;
 }
 
 function calculateDailyHouseholdEnergyDrain() {
