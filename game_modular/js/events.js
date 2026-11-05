@@ -1015,9 +1015,10 @@ function triggerChameleonReturnModal(trialItem) {
     addLog(`День ${state?.day || 1}: ⚠️ Урок куратора: проверка сеток-антикошек по фото — обязательное правило безопасности, защищающее от экстренных возвратов и падений!`, 'warn');
   }
 
+  const singleWord = trialItem?.species === 'dog' ? 'собаку' : 'кота';
   const choices = [
     {
-      label: 'Забрать кота и начать всё заново',
+      label: `Забрать ${singleWord} и начать всё заново`,
       style: 'danger',
       action: () => {
         if (typeof closeEventModal === 'function') {
