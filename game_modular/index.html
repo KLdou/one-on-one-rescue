@@ -1031,11 +1031,16 @@
 
       <!-- STORIES КАРТОЧКА 9:16 ДЛЯ СОЦСЕТЕЙ -->
       <div class="craft-card bg-[var(--bg-muted)] p-3.5 mb-4 flex flex-col items-center">
-        <div class="w-full flex items-center justify-between mb-2">
+        <div class="w-full flex flex-wrap items-center justify-between gap-2 mb-2">
           <span class="text-xs font-mono uppercase text-[var(--text-secondary)] font-bold">📲 Карточка истории (9:16 для Stories):</span>
-          <button onclick="copyStoryCardToClipboard()" id="btnCopyStoryCard" class="px-2.5 py-1 rounded bg-[var(--bg-card)] hover:bg-[var(--bg-elevated)] text-sky-800 border border-[var(--border-subtle)] text-[11px] font-mono font-semibold transition">
-            📋 Скопировать текст
-          </button>
+          <div class="flex items-center gap-1.5">
+            <button onclick="copyWordleSummaryToClipboard()" id="btnCopyWordleSummary" class="px-2.5 py-1 rounded bg-[var(--bg-card)] hover:bg-[var(--bg-elevated)] text-emerald-800 border border-[var(--border-subtle)] text-[11px] font-mono font-semibold transition" title="Скопировать краткую карточку для комментариев">
+              💬 Скопировать для комментов
+            </button>
+            <button onclick="copyStoryCardToClipboard()" id="btnCopyStoryCard" class="px-2.5 py-1 rounded bg-[var(--bg-card)] hover:bg-[var(--bg-elevated)] text-sky-800 border border-[var(--border-subtle)] text-[11px] font-mono font-semibold transition">
+              📋 Скопировать текст
+            </button>
+          </div>
         </div>
 
         <!-- 9:16 Превью карточки -->

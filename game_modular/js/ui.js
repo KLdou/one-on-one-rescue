@@ -3336,6 +3336,107 @@ function copyStoryCardToClipboard() {
   });
 }
 
+function getWordleTagline(s) {
+  if (!s) return 'борьба за жизнь подопечного';
+  if (s.tagline) return s.tagline;
+  if (s.victory) {
+    return 'Дома навсегда! 🏆';
+  }
+  const reason = s.fatalMistakeReason || '';
+  if (reason === 'burnout' || (s.mental !== undefined && s.mental <= 0)) {
+    return 'выгорел на карантине';
+  }
+  if (reason.startsWith('call_') || reason.startsWith('scam_') || reason === 'bad_adopter' || reason === 'unsuitable_adopter') {
+    return 'отдал сомнительным ручкам';
+  }
+  if (reason.includes('milk') || reason.includes('starvation')) {
+    return 'ошибка выкорма малышей';
+  }
+  if (reason === 'piroplasmosis') {
+    return 'укус клеща (пироплазмоз)';
+  }
+  if (reason === 'escape_lost_forever') {
+    return 'потерялся при побеге';
+  }
+  if (reason === 'gurskogo_trap') {
+    return 'ловушка усыпалки Гурского';
+  }
+  if (reason === 'dumped_box_trap') {
+    return 'коробка у ветклиники';
+  }
+  if (reason === 'fip_no_treatment' || reason.includes('virus') || reason === 'health_failure' || reason.includes('icu_')) {
+    return 'инфекция оказалась сильнее';
+  }
+  return 'борьба за жизнь подопечного';
+}
+
+function generateWordleSummaryText(s = (typeof state !== 'undefined' ? state : {})) {
+  const curState = s || (typeof state !== 'undefined' ? state : {});
+  const a = curState.animal || {};
+  const petName = a.petName || a.title || 'Подопечный';
+  const tagline = getWordleTagline(curState);
+  const days = curState.day !== undefined ? curState.day : 0;
+  const spent = curState.personalMoneySpent !== undefined ? curState.personalMoneySpent : 0;
+  const filtered = curState.filteredBadCalls !== undefined ? curState.filteredBadCalls : 0;
+
+  return `🐾 Я и «${petName}» в симуляторе спасения (Минск): ${tagline}\n` +
+    `⏳ ${days} дн. • 💰 ${spent} BYN • 🛡️ ${filtered} неадекватов с Куфара\n` +
+    `Попробуй спасти хвостика: https://zooshans.by/help-us`;
+}
+
+function copyWordleSummaryToClipboard() {
+  const curState = (typeof state !== 'undefined') ? state : {};
+  const text = generateWordleSummaryText(curState);
+  const btn = document.getElementById('btnCopyWordleSummary');
+
+  function showSuccess() {
+    if (!btn) return;
+    const oldText = btn.textContent;
+    const oldClass = btn.className;
+    btn.textContent = '✓ Скопировано для комментов!';
+    btn.className = 'px-2.5 py-1 rounded bg-emerald-600 text-white border border-emerald-500 text-[11px] font-mono font-bold transition shadow-sm';
+    setTimeout(() => {
+      btn.textContent = oldText;
+      btn.className = oldClass;
+    }, 2500);
+  }
+
+  function fallbackCopy(str) {
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = str;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      textarea.style.top = '0';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      if (typeof textarea.select === 'function') {
+        textarea.select();
+      }
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      if (successful) {
+        showSuccess();
+      } else {
+        alert('Не удалось скопировать текст в буфер обмена.');
+      }
+    } catch (e) {
+      alert('Не удалось скопировать текст в буфер обмена.');
+    }
+  }
+
+  if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+    navigator.clipboard.writeText(text).then(() => {
+      showSuccess();
+    }).catch(() => {
+      fallbackCopy(text);
+    });
+  } else {
+    fallbackCopy(text);
+  }
+}
+
 // 5. АЛЬБОМ СПАСЕННЫХ ХВОСТОВ И ОПЫТ КУРАТОРА (СЕКЦИЯ 7, GDD 9.2)
 
 let currentAlbumTab = 'trial';
