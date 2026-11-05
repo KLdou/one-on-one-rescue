@@ -1098,10 +1098,15 @@ function renderActionTabs() {
   // 1.1. Первичный осмотр + лампа Вуда
   const baseCheckup = 50;
   const checkupCost = hasDiscount ? Math.round(baseCheckup * 0.8) : baseCheckup;
+  const isFirstStep = state.day === 1 && !a.examinedWood;
+  const checkupBadge = a.examinedWood
+    ? 'Сделано'
+    : (isFirstStep ? '👉 Начни отсюда (Осмотр)' : 'Клиника');
   vetButtons.push({
     icon: '🔦',
     title: 'Первичный осмотр и просвет Вуда',
-    badge: a.examinedWood ? 'Сделано' : 'Клиника',
+    badge: checkupBadge,
+    isFirstStep: isFirstStep,
     sub: 'Осмотр ветеринара, диагностика микроспории (лишая) и беременности.',
     costBYN: a.examinedWood ? 0 : checkupCost,
     baseCostBYN: a.examinedWood ? null : (hasDiscount ? baseCheckup : null),
@@ -2453,6 +2458,9 @@ function renderButtonGrid(containerId, buttons) {
     else if (st === 'cooldown') stateClass = 'action-cooldown action-card--cooldown';
 
     btn.className = `action-card ${stateClass}`;
+    if (b.isFirstStep && !state.gameOver) {
+      btn.classList.add('action-card--first-step');
+    }
 
     // Полный тултип для подсказки (название, описание, статус)
     const tooltipParts = [b.title, b.sub];
