@@ -746,8 +746,9 @@ function triggerRedFlagDelayedStrikeModal(trialItem) {
   if (typeof checkMentorTriggers === 'function') {
     checkMentorTriggers('ADOPTION_FAILED_POSTMORTEM');
   }
-  state.fatalMistakeReason = trialItem.callData.id;
-  const consequence = trialItem.callData.consequenceText;
+  state.fatalMistakeReason = trialItem.callData ? trialItem.callData.id : null;
+  state.fatalCandidateData = trialItem.callData || null;
+  const consequence = trialItem.callData ? trialItem.callData.consequenceText : '';
   showEventModal(
     '💔 ТРАГЕДИЯ НА ИСПЫТАТЕЛЬНОМ СРОКЕ: КРАСНЫЙ ФЛАГ',
     `Прошло 4 дня тишины. Вы набрали номер абонента («${trialItem.adopterSummary}»)... Ваш номер заблокирован, либо хозяева буднично сообщили о трагедии:\n\n${consequence}\n\nВы отдали животное ненадежным ручкам, понадеявшись на русский авось. Опасные сигналы в разговоре были проигнорированы.`,

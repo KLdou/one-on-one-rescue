@@ -3179,6 +3179,147 @@ function closeEventModal() {
 
 // 4. ФИНАЛЬНЫЙ ЭКРАН, РАЗБОР ОШИБОК, АЛЬБОМ И КАРТОЧКА 9:16 (GDD 9.1, 9.2, 9.3)
 
+function getFatalCandidateMistakeInfo(candidateData) {
+  if (!candidateData || typeof candidateData !== 'object') {
+    return null;
+  }
+
+  // 1. Проверка пропущенных красных флагов (Слот 2, затем Слот 3)
+  if (candidateData.slot2 && candidateData.slot2.flag === 'red' && !candidateData.slot2Inspected) {
+    return {
+      slotIndex: 2,
+      slotTitle: candidateData.slot2.title || 'Кормление и бюджет на ветеринара',
+      slotText: candidateData.slot2.text || '',
+      isSkipped: true,
+      badgeText: '❌ Вопрос пропущен (не спросили)',
+      flag: 'red'
+    };
+  }
+
+  if (candidateData.slot3 && candidateData.slot3.flag === 'red' && !candidateData.slot3Inspected) {
+    return {
+      slotIndex: 3,
+      slotTitle: candidateData.slot3.title || 'Мотивация и договор',
+      slotText: candidateData.slot3.text || '',
+      isSkipped: true,
+      badgeText: '❌ Вопрос пропущен (не спросили)',
+      flag: 'red'
+    };
+  }
+
+  // 2. Проверка проверенных красных флагов (куратор видел, но все равно отдал)
+  if (candidateData.slot1 && candidateData.slot1.flag === 'red') {
+    return {
+      slotIndex: 1,
+      slotTitle: candidateData.slot1.title || 'Безопасность и окна',
+      slotText: candidateData.slot1.text || '',
+      isSkipped: false,
+      badgeText: '⚠️ Красный флаг проигнорирован',
+      flag: 'red'
+    };
+  }
+
+  if (candidateData.slot2 && candidateData.slot2.flag === 'red') {
+    return {
+      slotIndex: 2,
+      slotTitle: candidateData.slot2.title || 'Кормление и бюджет на ветеринара',
+      slotText: candidateData.slot2.text || '',
+      isSkipped: false,
+      badgeText: '⚠️ Красный флаг проигнорирован',
+      flag: 'red'
+    };
+  }
+
+  if (candidateData.slot3 && candidateData.slot3.flag === 'red') {
+    return {
+      slotIndex: 3,
+      slotTitle: candidateData.slot3.title || 'Мотивация и договор',
+      slotText: candidateData.slot3.text || '',
+      isSkipped: false,
+      badgeText: '⚠️ Красный флаг проигнорирован',
+      flag: 'red'
+    };
+  }
+
+  // 3. Желтые флаги компромисса при фатальном срыве
+  if (candidateData.slot2 && candidateData.slot2.flag === 'yellow' && !candidateData.slot2Inspected) {
+    return {
+      slotIndex: 2,
+      slotTitle: candidateData.slot2.title || 'Кормление и бюджет на ветеринара',
+      slotText: candidateData.slot2.text || '',
+      isSkipped: true,
+      badgeText: '❌ Вопрос пропущен (не спросили)',
+      flag: 'yellow'
+    };
+  }
+
+  if (candidateData.slot3 && candidateData.slot3.flag === 'yellow' && !candidateData.slot3Inspected) {
+    return {
+      slotIndex: 3,
+      slotTitle: candidateData.slot3.title || 'Мотивация и договор',
+      slotText: candidateData.slot3.text || '',
+      isSkipped: true,
+      badgeText: '❌ Вопрос пропущен (не спросили)',
+      flag: 'yellow'
+    };
+  }
+
+  if (candidateData.slot1 && candidateData.slot1.flag === 'yellow') {
+    return {
+      slotIndex: 1,
+      slotTitle: candidateData.slot1.title || 'Безопасность и окна',
+      slotText: candidateData.slot1.text || '',
+      isSkipped: false,
+      badgeText: '⚠️ Красный флаг проигнорирован',
+      flag: 'yellow'
+    };
+  }
+
+  // 4. Мошеннические звонки без слотов
+  if (candidateData.isScam) {
+    return {
+      slotIndex: 0,
+      slotTitle: candidateData.caller || 'Подозрительный звонок мошенника',
+      slotText: candidateData.dialogue || candidateData.consequenceText || '',
+      isSkipped: false,
+      badgeText: '⚠️ Красный флаг проигнорирован',
+      flag: 'red'
+    };
+  }
+
+  return null;
+}
+
+function renderCandidateMistakeHighlight(candidateData) {
+  const info = getFatalCandidateMistakeInfo(candidateData);
+  if (!info) return '';
+
+  const cleanText = (info.slotText || '').trim();
+  const quotedText = (cleanText.startsWith('«') && cleanText.endsWith('»'))
+    ? cleanText
+    : `«${cleanText}»`;
+
+  const badgeClass = info.isSkipped
+    ? 'bg-rose-200 text-rose-900 border border-rose-400'
+    : 'bg-amber-200 text-amber-900 border border-amber-400';
+
+  return `
+    <div class="rounded-xl border-2 border-rose-500 bg-rose-100/90 dark:bg-rose-950/40 p-3.5 shadow-sm">
+      <div class="flex items-center justify-between gap-2 mb-2 flex-wrap">
+        <span class="text-xs font-mono uppercase font-black text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
+          <span>🚨 РОКОВАЯ ОШИБКА ПРИ ЗВОНКЕ: ${escapeHtml(info.slotTitle)}</span>
+        </span>
+        <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${badgeClass}">
+          ${escapeHtml(info.badgeText)}
+        </span>
+      </div>
+      <div class="text-xs text-rose-900 dark:text-rose-200 bg-white/70 dark:bg-slate-900/60 p-2.5 rounded-lg border border-rose-200 dark:border-rose-900/50 italic leading-relaxed">
+        Цитата кандидата: ${escapeHtml(quotedText)}
+      </div>
+    </div>
+  `.trim();
+}
+
 function triggerEndGame(isVictory, title, description) {
   stopTimer();
   closeAnimalModal();
@@ -3202,12 +3343,34 @@ function triggerEndGame(isVictory, title, description) {
 
   // Обучающий блок «Работа над ошибками» (GDD 9.1)
   const mistakesBox = document.getElementById('endModalMistakesCard');
+  const candidateMistakeBox = document.getElementById('endModalCandidateMistakeBox');
   const mistakesText = document.getElementById('endModalMistakesText');
-  if (!isVictory && state.fatalMistakeReason) {
+  if (!isVictory && (state.fatalMistakeReason || state.fatalCandidateData)) {
     mistakesBox.classList.remove('hidden');
-    mistakesText.textContent = getMistakeEducationalText(state.fatalMistakeReason);
+    if (mistakesText) {
+      mistakesText.textContent = getMistakeEducationalText(state.fatalMistakeReason || '');
+    }
+    if (candidateMistakeBox) {
+      if (state.fatalCandidateData) {
+        const highlightHtml = renderCandidateMistakeHighlight(state.fatalCandidateData);
+        if (highlightHtml) {
+          candidateMistakeBox.innerHTML = highlightHtml;
+          candidateMistakeBox.classList.remove('hidden');
+        } else {
+          candidateMistakeBox.innerHTML = '';
+          candidateMistakeBox.classList.add('hidden');
+        }
+      } else {
+        candidateMistakeBox.innerHTML = '';
+        candidateMistakeBox.classList.add('hidden');
+      }
+    }
   } else {
-    mistakesBox.classList.add('hidden');
+    if (mistakesBox) mistakesBox.classList.add('hidden');
+    if (candidateMistakeBox) {
+      candidateMistakeBox.innerHTML = '';
+      candidateMistakeBox.classList.add('hidden');
+    }
   }
 
   // Обновление статистики партии
@@ -4556,4 +4719,13 @@ if (typeof window !== 'undefined') {
   window.computeResourceDeltas = computeResourceDeltas;
   window.spawnFloatingResourceBadges = spawnFloatingResourceBadges;
   window.renderButtonGrid = renderButtonGrid;
+  window.getFatalCandidateMistakeInfo = getFatalCandidateMistakeInfo;
+  window.renderCandidateMistakeHighlight = renderCandidateMistakeHighlight;
+  window.showEndGameModal = triggerEndGame;
+}
+
+if (typeof global !== 'undefined') {
+  global.getFatalCandidateMistakeInfo = getFatalCandidateMistakeInfo;
+  global.renderCandidateMistakeHighlight = renderCandidateMistakeHighlight;
+  global.showEndGameModal = triggerEndGame;
 }

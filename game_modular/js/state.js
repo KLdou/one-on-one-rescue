@@ -199,6 +199,9 @@ function ensureStateBackwardCompatibility(st = window.state) {
   if (st.newborn && typeof st.newborn.lastFormulaWarningDay !== 'number') {
     st.newborn.lastFormulaWarningDay = -1;
   }
+  if (st.fatalCandidateData === undefined) {
+    st.fatalCandidateData = null;
+  }
 
   return st;
 }
@@ -285,6 +288,7 @@ function startNewRun(experiencedCurator = false, forcedScenario = null) {
     gameOver: false,
     victory: false,
     fatalMistakeReason: null, // Для обучающего экрана «Работа над ошибками» (GDD 9.1)
+    fatalCandidateData: null, // Данные звонка претендента при роковой ошибке пристройства
     secondWindUsed: false,    // «Второе дыхание» в @zooshans_chat (+45% менталки при первом падении до 0%)
     keptForSelfUsed: false,   // Кнопка «Оставить себе» не более 1 раза за партию
     lastOwnPetFoodShareDay: -999, // Кулдаун 14 дней на выручку кормом от своего кота
@@ -596,6 +600,15 @@ function checkMentalHealth() {
       triggerBurnoutModal();
     }
   }
+}
+
+if (typeof window !== 'undefined') {
+  window.startNewRun = startNewRun;
+  window.resetState = startNewRun;
+}
+if (typeof global !== 'undefined') {
+  global.startNewRun = startNewRun;
+  global.resetState = startNewRun;
 }
 
 function checkAnimalHealth() {
