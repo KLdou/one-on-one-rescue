@@ -1205,3 +1205,241 @@ function triggerFormulaLowModal(isZero) {
   );
 }
 window.triggerFormulaLowModal = triggerFormulaLowModal;
+
+// --- КРИЗИСЫ СЕРЕДИНЫ ИГРЫ (ДНИ 5–20) И ДИЛЕММЫ «РЕАЛЬНОЙ ПРАКТИКИ» (GDD v2.3) ---
+
+const MIDGAME_CRISES = [
+  {
+    id: 'crisis_incubation_ringworm',
+    dayMin: 6,
+    dayMax: 10,
+    title: '🔦 Сюрприз инкубационного периода',
+    description: 'Инкубационный период (1–2 недели) подошел к концу: при вечернем осмотре под ультрафиолетовой лампой Вуда на ушах и мордочке котенка обнаружено изумрудное свечение спор микроспории (лишая)! Чтобы грибок не распространился по всей шерсти и споры не заселили квартиру, требуется немедленное решение по протоколу лечения.',
+    condition: (st) => {
+      const a = st?.animal;
+      if (!a) return false;
+      const isCat = !a.species || a.species === 'cat';
+      const isStable = !a.fipTreatment && !a.traumaOperated && (!a.hiddenState || !a.hiddenState.hasSevereTrauma) && !a.knownRingworm;
+      return isCat && isStable;
+    },
+    choiceA: {
+      label: 'Начать схему лечения (Итраконазол + мази + дезинфекция) (-45 BYN, -25⚡, -15🧠)',
+      style: 'primary',
+      action: (st) => {
+        const a = st.animal;
+        st.cash = Math.max(0, +(st.cash - 45).toFixed(1));
+        st.personalMoneySpent = +(st.personalMoneySpent + 45).toFixed(1);
+        st.energy = Math.max(0, st.energy - 25);
+        st.mental = Math.max(0, st.mental - 15);
+        if (a) {
+          a.health = Math.max(0, a.health - 5);
+          a.vaccinationDelayDays = (a.vaccinationDelayDays || 0) + 14;
+          a.vaccineDelayDays = (a.vaccineDelayDays || 0) + 14;
+        }
+        if (st.pr) {
+          st.pr.feedProgress = 0;
+          st.pr.views = 0;
+        }
+        if (typeof addLog === 'function') {
+          addLog(`День ${st.day}: 🔦 Начата системная терапия микроспории: капсулы Итраконазола, мази и дезинфекция (-45 BYN, -25⚡, -15🧠, вакцинация отложена на 14 дн.).`, 'info');
+        }
+      }
+    },
+    choiceB: {
+      label: 'Мазать только местно (Экономия) (-10 BYN, -10⚡, -5🧠)',
+      style: 'danger',
+      action: (st) => {
+        const a = st.animal;
+        st.cash = Math.max(0, +(st.cash - 10).toFixed(1));
+        st.personalMoneySpent = +(st.personalMoneySpent + 10).toFixed(1);
+        st.energy = Math.max(0, st.energy - 10);
+        st.mental = Math.max(0, st.mental - 5);
+        if (a) {
+          a.health = Math.max(0, a.health - 15);
+          a.vaccinationDelayDays = (a.vaccinationDelayDays || 0) + 21;
+          a.vaccineDelayDays = (a.vaccineDelayDays || 0) + 21;
+        }
+        if (!Array.isArray(st.pendingMentalEvents)) st.pendingMentalEvents = [];
+        st.pendingMentalEvents.push({ day: st.day + 4, amount: -20, label: 'Осложнение лишая' });
+        if (typeof addLog === 'function') {
+          addLog(`День ${st.day}: ⚠️ Местная обработка не сдержала генерализацию спор: поражение кожи усилилось (-10 BYN, -10⚡, -5🧠, здоровье -15%, вакцинация отложена на 21 дн., через 4 дня грозит спад менталки).`, 'warn');
+        }
+      }
+    }
+  },
+  {
+    id: 'crisis_adaptation_rebellion',
+    dayMin: 8,
+    dayMax: 14,
+    title: '🌙 Ночной тыгыдык и бойкот лотка',
+    description: 'После недели на новом месте подопечный освоился и начал устанавливать свои порядки: ночные забеги по шторам, громкие серенады в 4 утра и категорический бойкот лотка — лужи на коврике в коридоре! Волонтерский опыт подсказывает: животное либо стрессует от древесного наполнителя, либо требует обогащения среды и внимания.',
+    condition: (st) => {
+      const loc = st?.zooshans?.locationStatus || '';
+      return loc === 'home_floor' || loc.includes('foster');
+    },
+    choiceA: {
+      label: 'Подобрать комкующийся наполнитель, поставить 2-й лоток и купить игрушки (-40 BYN, -30⚡, +5🧠)',
+      style: 'primary',
+      action: (st) => {
+        st.cash = Math.max(0, +(st.cash - 40).toFixed(1));
+        st.personalMoneySpent = +(st.personalMoneySpent + 40).toFixed(1);
+        st.energy = Math.max(0, st.energy - 30);
+        st.mental = Math.min(100, st.mental + 5);
+        if (typeof addLog === 'function') {
+          addLog(`День ${st.day}: 🌙 Проблема решена грамотно: подобран мягкий комкующийся наполнитель, добавлен второй лоток и игрушки (-40 BYN, -30⚡, +5🧠). Подопечный спокоен!`, 'success');
+        }
+      }
+    },
+    choiceB: {
+      label: 'Терпеть и убирать лужи с хлоркой (0 BYN, -15⚡, -25🧠)',
+      style: 'danger',
+      action: (st) => {
+        st.energy = Math.max(0, st.energy - 15);
+        st.mental = Math.max(0, st.mental - 25);
+        if (!Array.isArray(st.dailyMentalDrains)) st.dailyMentalDrains = [];
+        st.dailyMentalDrains.push({ id: 'chlorine_drain', amount: 8, daysRemaining: 4, label: 'Бойкот лотка' });
+        if (typeof addLog === 'function') {
+          addLog(`День ${st.day}: 🧴 Уборка хлоркой только усилила запах меток: питомец протестует (-15⚡, -25🧠, -8🧠/день в течение 4 дней).`, 'danger');
+        }
+      }
+    }
+  },
+  {
+    id: 'crisis_foster_ultimatum',
+    dayMin: 10,
+    dayMax: 18,
+    title: '⚡ Ультиматум: «Забирайте до завтра!»',
+    description: 'Звонок в панике: на передержке (или хозяин съемной квартиры) обнаружил содранные обои и затяжки на любимом тюле. Звучит жесткий ультиматум: «У вас ровно 24 часа, чтобы всё исправить или забрать животное на улицу!» Действовать нужно решительно.',
+    condition: (st) => {
+      const loc = st?.zooshans?.locationStatus || '';
+      const housingId = st?.player?.housing?.id || '';
+      return loc.includes('foster') || housingId.includes('rent');
+    },
+    choiceA: {
+      label: 'Компенсировать тюль и привезти большую складную клетку (-65 BYN, -20⚡, -10🧠)',
+      style: 'primary',
+      action: (st) => {
+        st.cash = Math.max(0, +(st.cash - 65).toFixed(1));
+        st.personalMoneySpent = +(st.personalMoneySpent + 65).toFixed(1);
+        st.energy = Math.max(0, st.energy - 20);
+        st.mental = Math.max(0, st.mental - 10);
+        if (typeof addLog === 'function') {
+          addLog(`День ${st.day}: ⚡ Конфликт урегулирован: куплен новый тюль и привезена надежная волонтерская клетка для изоляции во время отсутствия людей (-65 BYN, -20⚡, -10🧠). Передержка спасена!`, 'success');
+        }
+      }
+    },
+    choiceB: {
+      label: 'Экстренно забрать к себе «в ванную / на балкон» (0 BYN, -35⚡, -20🧠)',
+      style: 'danger',
+      action: (st) => {
+        st.energy = Math.max(0, st.energy - 35);
+        st.mental = Math.max(0, st.mental - 20);
+        st.householdEnergyLock = Math.max(st.householdEnergyLock || 0, 15);
+        if (st.zooshans && st.zooshans.locationStatus && st.zooshans.locationStatus.includes('foster')) {
+          st.zooshans.locationStatus = st.zooshans.hasCage ? 'home_cage' : 'home_floor';
+        }
+        if (typeof addLog === 'function') {
+          addLog(`День ${st.day}: 📦 Животное экстренно эвакуировано в вашу ванную комнату (-35⚡, -20🧠). Бытовой замок энергии заблокировал 15⚡/день!`, 'warn');
+        }
+      }
+    }
+  },
+  {
+    id: 'crisis_zooshans_chat_sos',
+    dayMin: 12,
+    dayMax: 16,
+    title: '🆘 СОС в чате @zooshans_chat',
+    description: 'В волонтерском чате @zooshans_chat вспыхивает экстренное сообщение: в районе Каменной Горки под проливным дождем у магазина сидит промокший месячный котенок, его гоняют вороны. Никто из кураторов не может выехать. Либо кто-то перехватит его на 4 дня до освобождения места у постоянного волонтера, либо малыш не переживет ночь.',
+    condition: (st) => true,
+    choiceA: {
+      label: 'Перехватить в отдельную комнату/ванную на 4 дня (Карантин) (-25 BYN, -25⚡)',
+      style: 'primary',
+      action: (st) => {
+        st.cash = Math.max(0, +(st.cash - 25).toFixed(1));
+        st.personalMoneySpent = +(st.personalMoneySpent + 25).toFixed(1);
+        st.energy = Math.max(0, st.energy - 25);
+        if (!Array.isArray(st.tempEnergyLocks)) st.tempEnergyLocks = [];
+        st.tempEnergyLocks.push({ id: 'sos_kitten_lock', amount: 15, daysRemaining: 4, label: 'Перехват котенка из чата' });
+        if (!Array.isArray(st.pendingMentalEvents)) st.pendingMentalEvents = [];
+        st.pendingMentalEvents.push({ day: st.day + 4, amount: 25, label: 'Спасенный котенок из чата уехал на передержку' });
+        if (typeof addLog === 'function') {
+          addLog(`День ${st.day}: 🆘 Вы спасли малыша из-под дождя и изолировали в ванной (-25 BYN, -25⚡, -15⚡ резерва на 4 дня). Через 4 дня он уедет к волонтеру (+25🧠)!`, 'success');
+        }
+      }
+    },
+    choiceB: {
+      label: 'Пройти мимо и сделать репост (Ресурсов впритык) (0 BYN, -5⚡, -18🧠)',
+      style: 'secondary',
+      action: (st) => {
+        st.energy = Math.max(0, st.energy - 5);
+        st.mental = Math.max(0, st.mental - 18);
+        if (typeof addLog === 'function') {
+          addLog(`День ${st.day}: 😔 Вы сделали репост, но осадок вины волонтера давит камнем на душу (-5⚡, -18% Менталки). Берегите собственные силы!`, 'warn');
+        }
+      }
+    }
+  }
+];
+
+function triggerMidgameCrisisModal(crisis) {
+  if (!crisis) return;
+  if (typeof crisis === 'string') {
+    const list = (typeof window !== 'undefined' && window.MIDGAME_CRISES) ? window.MIDGAME_CRISES : MIDGAME_CRISES;
+    crisis = list.find(c => c.id === crisis);
+    if (!crisis) return;
+  }
+
+  stopTimer();
+  if (typeof switchMobileTab === 'function') {
+    switchMobileTab('actions');
+  }
+
+  if (state && state.triggeredEvents) {
+    state.triggeredEvents[crisis.id] = true;
+  }
+
+  const choices = [
+    {
+      label: crisis.choiceA.label,
+      style: crisis.choiceA.style || 'primary',
+      action: () => {
+        if (typeof crisis.choiceA.action === 'function') {
+          crisis.choiceA.action(state);
+        }
+        if (typeof closeEventModal === 'function') {
+          closeEventModal();
+        }
+        if (typeof renderAll === 'function') {
+          renderAll();
+        }
+      }
+    },
+    {
+      label: crisis.choiceB.label,
+      style: crisis.choiceB.style || 'danger',
+      action: () => {
+        if (typeof crisis.choiceB.action === 'function') {
+          crisis.choiceB.action(state);
+        }
+        if (typeof closeEventModal === 'function') {
+          closeEventModal();
+        }
+        if (typeof renderAll === 'function') {
+          renderAll();
+        }
+      }
+    }
+  ];
+
+  showEventModal(crisis.title, crisis.description, choices);
+}
+
+if (typeof window !== 'undefined') {
+  window.MIDGAME_CRISES = MIDGAME_CRISES;
+  window.triggerMidgameCrisisModal = triggerMidgameCrisisModal;
+}
+if (typeof global !== 'undefined') {
+  global.MIDGAME_CRISES = MIDGAME_CRISES;
+  global.triggerMidgameCrisisModal = triggerMidgameCrisisModal;
+}
+

@@ -470,6 +470,39 @@ function checkMentorTriggers(directHintId = null) {
 }
 window.checkMentorTriggers = checkMentorTriggers;
 
+function checkMidgameCrises() {
+  if (!state || !state.realPracticeMode || state.day < 5 || state.day > 20) {
+    return false;
+  }
+  const crises = (typeof window !== 'undefined' && window.MIDGAME_CRISES)
+    ? window.MIDGAME_CRISES
+    : ((typeof MIDGAME_CRISES !== 'undefined') ? MIDGAME_CRISES : null);
+  if (!Array.isArray(crises)) {
+    return false;
+  }
+
+  for (const crisis of crises) {
+    if (!state.triggeredEvents || !state.triggeredEvents[crisis.id]) {
+      if (state.day >= crisis.dayMin && state.day <= crisis.dayMax) {
+        if (typeof crisis.condition === 'function' && crisis.condition(state)) {
+          stopTimer();
+          if (typeof triggerMidgameCrisisModal === 'function') {
+            triggerMidgameCrisisModal(crisis);
+          } else if (typeof window !== 'undefined' && typeof window.triggerMidgameCrisisModal === 'function') {
+            window.triggerMidgameCrisisModal(crisis);
+          }
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+window.checkMidgameCrises = checkMidgameCrises;
+if (typeof global !== 'undefined') {
+  global.checkMidgameCrises = checkMidgameCrises;
+}
+
 function processDayTick() {
   if (state.gameOver) {
     stopTimer();
@@ -595,6 +628,12 @@ function processDayTick() {
   a.ageDays += 1;
   if (a && a.parasitesAndVaccinated) {
     a.daysSinceVaccine1 = (a.daysSinceVaccine1 || 0) + 1;
+  }
+  if (a && a.vaccinationDelayDays > 0) {
+    a.vaccinationDelayDays -= 1;
+  }
+  if (a && a.vaccineDelayDays > 0) {
+    a.vaccineDelayDays -= 1;
   }
 
   // Окончание лактации у мамы-кошки на 45-й день
@@ -926,6 +965,52 @@ function processDayTick() {
   const housingMentalDrain = isAnimalAtPlayerHome() && nActive > 0 ? state.player.housing.dailyMentalDrain : 0;
   state.mental = Math.min(100, Math.max(0, state.mental + state.player.family.mentalBonus - housingMentalDrain));
 
+  // 9а. Отложенные ментальные дренажи (GDD 2.3)
+  if (Array.isArray(state.dailyMentalDrains) && state.dailyMentalDrains.length > 0) {
+    for (let i = state.dailyMentalDrains.length - 1; i >= 0; i--) {
+      const drain = state.dailyMentalDrains[i];
+      if (drain && drain.daysRemaining > 0) {
+        state.mental = Math.max(0, state.mental - (drain.amount || 0));
+        drain.daysRemaining -= 1;
+        addLog(`День ${state.day}: 🧠 ${drain.label}: -${drain.amount}% Менталки (осталось ${drain.daysRemaining} дн.)`, 'warn');
+        if (drain.daysRemaining <= 0) {
+          state.dailyMentalDrains.splice(i, 1);
+        }
+      } else {
+        state.dailyMentalDrains.splice(i, 1);
+      }
+    }
+  }
+
+  // 9б. Временные блокировки энергии (GDD 2.3)
+  if (Array.isArray(state.tempEnergyLocks) && state.tempEnergyLocks.length > 0) {
+    for (let i = state.tempEnergyLocks.length - 1; i >= 0; i--) {
+      const lock = state.tempEnergyLocks[i];
+      if (lock && lock.daysRemaining > 0) {
+        lock.daysRemaining -= 1;
+        if (lock.daysRemaining <= 0) {
+          state.tempEnergyLocks.splice(i, 1);
+          addLog(`День ${state.day}: ⚡ Окончен временный карантин: блокировка -${lock.amount}⚡ снята!`, 'info');
+        }
+      } else {
+        state.tempEnergyLocks.splice(i, 1);
+      }
+    }
+  }
+
+  // 9в. Отложенные ментальные события (GDD 2.3)
+  if (Array.isArray(state.pendingMentalEvents) && state.pendingMentalEvents.length > 0) {
+    for (let i = state.pendingMentalEvents.length - 1; i >= 0; i--) {
+      const pEvent = state.pendingMentalEvents[i];
+      if (pEvent && state.day >= pEvent.day) {
+        state.mental = Math.min(100, Math.max(0, state.mental + (pEvent.amount || 0)));
+        const pLabel = pEvent.amount >= 0 ? `+${pEvent.amount}%` : `${pEvent.amount}%`;
+        addLog(`День ${state.day}: 🧠 Отложенное событие «${pEvent.label}» (${pLabel} Менталки)`, pEvent.amount >= 0 ? 'success' : 'warn');
+        state.pendingMentalEvents.splice(i, 1);
+      }
+    }
+  }
+
   // 10. Оплата коммерческой платной передержки (16 BYN/сут кот | 33 BYN/сут собака, GDD 7.2)
   const inStationary = Boolean(a.inStationaryDaysLeft && a.inStationaryDaysLeft > 0);
   if (state.zooshans.locationStatus === 'paid_foster' && nActive > 0 && !inStationary) {
@@ -1045,6 +1130,12 @@ function processDayTick() {
 
   // 17. Проверка медицинских и бытовых кризисов
   if (checkMedicalAndCrisisTriggers()) {
+    renderAll();
+    return;
+  }
+
+  // 17б. Кризисы середины игры (Дни 5–20) в режиме «Реальная практика»
+  if (checkMidgameCrises()) {
     renderAll();
     return;
   }
