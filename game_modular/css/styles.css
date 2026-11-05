@@ -880,6 +880,87 @@ body {
   border: 1px solid #FCA5A5 !important;
 }
 
+/* Всплывающие тактильные микро-бейджи изменения ресурсов при кликах */
+@keyframes floatResourceBadge {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0) scale(0.85);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(-50%, -10px) scale(1.05);
+  }
+  75% {
+    opacity: 1;
+    transform: translate(-50%, -24px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -36px) scale(0.9);
+  }
+}
+
+.floating-resource-pill {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  user-select: none;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2.5px 8px;
+  border-radius: 9999px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: floatResourceBadge 0.95s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+
+.floating-resource-pill.spend-cash,
+.spend-cash {
+  background: #FEE2E2;
+  color: #B91C1C;
+  border: 1px solid #FCA5A5;
+}
+
+.floating-resource-pill.gain-cash,
+.gain-cash {
+  background: #ECFDF5;
+  color: #065F46;
+  border: 1px solid #A7F3D0;
+}
+
+.floating-resource-pill.spend-energy,
+.spend-energy {
+  background: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #FDE68A;
+}
+
+.floating-resource-pill.gain-energy,
+.gain-energy {
+  background: #FEF9C3;
+  color: #854D0E;
+  border: 1px solid #FDE047;
+}
+
+.floating-resource-pill.spend-mental,
+.spend-mental {
+  background: #FEE2E2;
+  color: #991B1B;
+  border: 1px solid #F87171;
+}
+
+.floating-resource-pill.gain-mental,
+.gain-mental {
+  background: #EDE9FE;
+  color: #5B21B6;
+  border: 1px solid #DDD6FE;
+}
+
 .badge-status-locked {
   font-family: var(--font-mono);
   font-size: 9.5px;

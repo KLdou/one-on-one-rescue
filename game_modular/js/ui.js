@@ -2440,6 +2440,111 @@ function finalizeActionButton(b) {
   }
 }
 
+/**
+ * Вычисляет изменения ресурсов (деньги, энергия, менталка) между двумя состояниями
+ * для генерации тактильных микро-бейджей обратной связи.
+ * @param {Object} before - Снимок состояния до действия { cash, energy, mental }
+ * @param {Object} after - Снимок состояния после действия { cash, energy, mental }
+ * @returns {Array<{ text: string, type: string, amount: number, resource: string }>}
+ */
+function computeResourceDeltas(before, after) {
+  if (!before || !after) return [];
+  const deltas = [];
+
+  // Изменение денег (строго в BYN, никогда $ или USD)
+  if (typeof before.cash === 'number' && typeof after.cash === 'number') {
+    const diff = Math.round((after.cash - before.cash) * 100) / 100;
+    if (Math.abs(diff) >= 0.01) {
+      const rounded = Math.abs(diff % 1) < 0.01 ? Math.round(diff) : Number(diff.toFixed(1));
+      const sign = rounded > 0 ? '+' : '';
+      deltas.push({
+        text: `${sign}${rounded} BYN`,
+        type: rounded < 0 ? 'spend-cash' : 'gain-cash',
+        amount: rounded,
+        resource: 'cash'
+      });
+    }
+  }
+
+  // Изменение энергии (⚡)
+  if (typeof before.energy === 'number' && typeof after.energy === 'number') {
+    const diff = Math.round((after.energy - before.energy) * 100) / 100;
+    if (Math.abs(diff) >= 0.01) {
+      const rounded = Math.abs(diff % 1) < 0.01 ? Math.round(diff) : Number(diff.toFixed(1));
+      const sign = rounded > 0 ? '+' : '';
+      deltas.push({
+        text: `${sign}${rounded} ⚡`,
+        type: rounded < 0 ? 'spend-energy' : 'gain-energy',
+        amount: rounded,
+        resource: 'energy'
+      });
+    }
+  }
+
+  // Изменение ментального здоровья (🧠)
+  if (typeof before.mental === 'number' && typeof after.mental === 'number') {
+    const diff = Math.round((after.mental - before.mental) * 100) / 100;
+    if (Math.abs(diff) >= 0.01) {
+      const rounded = Math.abs(diff % 1) < 0.01 ? Math.round(diff) : Number(diff.toFixed(1));
+      const sign = rounded > 0 ? '+' : '';
+      deltas.push({
+        text: `${sign}${rounded} 🧠`,
+        type: rounded < 0 ? 'spend-mental' : 'gain-mental',
+        amount: rounded,
+        resource: 'mental'
+      });
+    }
+  }
+
+  return deltas;
+}
+
+/**
+ * Создает и анимирует парящие микро-бейджи ресурсов непосредственно над карточкой действия.
+ * @param {HTMLElement} anchorEl - Кнопка или карточка действия, вызвавшая списание
+ * @param {Array<{ text: string, type: string }>} deltas - Массив изменений ресурсов
+ */
+function spawnFloatingResourceBadges(anchorEl, deltas) {
+  if (typeof document === 'undefined' || !document || !document.body) return;
+  if (!anchorEl || typeof anchorEl.getBoundingClientRect !== 'function') return;
+  if (!Array.isArray(deltas) || deltas.length === 0) return;
+
+  let rect = anchorEl.getBoundingClientRect();
+  if ((!rect || (rect.width === 0 && rect.height === 0)) && anchorEl._cachedRect) {
+    rect = anchorEl._cachedRect;
+  }
+  if (!rect) return;
+
+  const centerX = (rect.left || 0) + (rect.width || 0) / 2;
+  const startY = (rect.top || 0);
+  const n = deltas.length;
+  const spacing = 55;
+
+  deltas.forEach((d, idx) => {
+    const badge = document.createElement('div');
+    badge.className = `floating-resource-pill ${d.type || ''}`.trim();
+    badge.textContent = d.text;
+    if (typeof badge.setAttribute === 'function') {
+      badge.setAttribute('aria-hidden', 'true');
+    }
+
+    const offsetX = (idx - (n - 1) / 2) * spacing;
+    const posX = Math.round(centerX + offsetX);
+    const posY = Math.round(startY);
+
+    badge.style.left = `${posX}px`;
+    badge.style.top = `${posY}px`;
+
+    document.body.appendChild(badge);
+
+    setTimeout(() => {
+      if (badge && badge.parentNode) {
+        badge.parentNode.removeChild(badge);
+      }
+    }, 1000);
+  });
+}
+
 function renderButtonGrid(containerId, buttons) {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -2481,7 +2586,32 @@ function renderButtonGrid(containerId, buttons) {
       btn.disabled = true;
       btn.title = fullTooltip;
     } else {
-      btn.onclick = b.onClick;
+      if (typeof b.onClick === 'function') {
+        const origOnClick = b.onClick;
+        btn.onclick = function(e) {
+          const beforeState = {
+            cash: state.cash,
+            energy: state.energy,
+            mental: state.mental
+          };
+          if (typeof btn.getBoundingClientRect === 'function') {
+            btn._cachedRect = btn.getBoundingClientRect();
+          }
+          const ret = origOnClick.call(this, e);
+          const afterState = {
+            cash: state.cash,
+            energy: state.energy,
+            mental: state.mental
+          };
+          const deltas = computeResourceDeltas(beforeState, afterState);
+          if (deltas.length > 0) {
+            spawnFloatingResourceBadges(btn, deltas);
+          }
+          return ret;
+        };
+      } else {
+        btn.onclick = null;
+      }
     }
 
     // Бейдж стоимости BYN / статус выполнения
@@ -4322,4 +4452,7 @@ if (typeof window !== 'undefined') {
   window.switchMobileTab = switchMobileTab;
   window.renderHUD = renderHUD;
   window.updateTimeControlsVisibility = updateTimeControlsVisibility;
+  window.computeResourceDeltas = computeResourceDeltas;
+  window.spawnFloatingResourceBadges = spawnFloatingResourceBadges;
+  window.renderButtonGrid = renderButtonGrid;
 }
