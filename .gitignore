@@ -23,6 +23,8 @@ node_modules/
 dist/
 tmp/
 temp/
+.balance_cache.json
+balance_report.json
 
 *.zip
 
